@@ -106,7 +106,7 @@ int sr_connect_to_server(struct sr_instance* sr,unsigned short port,
     }
 
     /* set server address */
-    memcpy(&(sr->sr_addr.sin_addr),hp->h_addr,hp->h_length);
+    memcpy(&(sr->sr_addr.sin_addr),hp->h_addr_list[0],hp->h_length);
 
     /* create socket */
     if ((sr->sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)

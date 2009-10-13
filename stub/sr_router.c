@@ -38,6 +38,22 @@ void sr_init(struct sr_instance* sr)
 } /* -- sr_init -- */
 
 
+void test_dump_packet(uint8_t * packet, unsigned int len)
+{
+  int i;
+
+  for(i = 0; i < len; i++)
+    {
+      if(i % 8 == 0)
+	{
+	  printf("\n");
+	}
+
+      printf("%02x\t",packet[i]);
+    }
+
+  printf("\n");
+}
 
 /*---------------------------------------------------------------------
  * Method: sr_handlepacket(uint8_t* p,char* interface)
@@ -64,6 +80,8 @@ void sr_handlepacket(struct sr_instance* sr,
     assert(sr);
     assert(packet);
     assert(interface);
+
+    test_dump_packet(packet,len);
 
     printf("*** -> Received packet of length %d \n",len);
 
