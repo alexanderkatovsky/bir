@@ -1,0 +1,79 @@
+
+  This email describes your particular setup for the VNS sr
+  assignment.
+
+  You have been assigned topology 8846 which looks like this:
+
+
+                                            Application Server
+                                        +====================+
+                                        |                    |
+                                        |   171.67.241.26    |
+                                        |                    |
+                                        +====================+
+                                                /
+                                               /
+                                              /
+                    eth0:                    /
+                   171.67.241.25             /     eth1: 171.67.241.27
+                           +============(eth1)==+
+                           |                    |
+  internet =============(eth0)  Your Router     |
+                           |                    |
+                           +============(eth2)==+
+                                            \    eth2: 171.67.241.29
+                                             \
+                                              \
+                                               \
+                                        +====================+
+                                        |                    |
+                                        |  171.67.241.28     |
+                                        |                    |
+                                        +====================+
+                                           Application Server
+
+
+  To connect to your topology, after compiling the stub code, invoke sr
+  as follows:
+
+  >./sr -t 8846 -s vns-2.stanford.edu
+
+  Please verify that the IP addresses for the interfaces match those
+  in this email!
+
+  Your output upon connecting should look like this:
+
+ Loading routing table
+ -----------------------------------------------------
+ Destination     Gateway         Mask            Iface
+0.0.0.0    172.24.74.17    0.0.0.0    eth0
+171.67.241.26    171.67.241.26    255.255.255.255    eth1
+171.67.241.28    171.67.241.28    255.255.255.255    eth2
+
+ -----------------------------------------------------
+ Client dgu connecting to Server vns-2:12345
+ Requesting topology 8846
+ Router interfaces:
+ eth0    HWaddr70:00:00:eb:00:01
+ inet addr 171.67.241.25
+ eth1    HWaddr70:00:00:eb:00:02
+ inet addr 171.67.241.27
+ eth2    HWaddr70:00:00:eb:00:06
+ inet addr 171.67.241.29
+ <-- Ready to process packets -->
+
+ Secondly, please verify that you can see packets arriving to your topology when you
+ try and ping one of your router interfaces.  To do this, connect to your topology
+ as described above and try and ping eth0 (IP: 171.67.241.25).
+
+ $ ping 171.67.241.25
+
+ If you see output from sr that looks like:
+
+ *** -> Received packet of length 60
+ *** -> Received packet of length 60
+ *** -> Received packet of length 60
+
+ everything is working!  If not, please email vns-support@lists.stanford.edu.
+
+Good Luck!
