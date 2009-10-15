@@ -291,8 +291,6 @@ int sr_read_from_server(struct sr_instance* sr /* borrowed */)
         } while (errno == EINTR); /* be mindful of signals */
     } 
 
-    /* My entry for most unreadable line of code - guido */
-    /* ... you win - mc                                  */
     command = *(((int *)buf)+1) = ntohl(*(((int *)buf)+1));
 
     switch (command)
