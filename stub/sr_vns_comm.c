@@ -106,7 +106,7 @@ int sr_connect_to_server(struct sr_instance* sr,unsigned short port,
     }
 
     /* set server address */
-    memcpy(&(sr->sr_addr.sin_addr),hp->h_addr,hp->h_length);
+    memcpy(&(sr->sr_addr.sin_addr),hp->h_addr_list[0],hp->h_length);
 
     /* create socket */
     if ((sr->sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -291,8 +291,6 @@ int sr_read_from_server(struct sr_instance* sr /* borrowed */)
         } while (errno == EINTR); /* be mindful of signals */
     } 
 
-    /* My entry for most unreadable line of code - guido */
-    /* ... you win - mc                                  */
     command = *(((int *)buf)+1) = ntohl(*(((int *)buf)+1));
 
     switch (command)
