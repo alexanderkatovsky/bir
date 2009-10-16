@@ -20,6 +20,7 @@
 #include "grizly.h"
 #include <string.h>
 #include <stdlib.h>
+
 /*--------------------------------------------------------------------- 
  * Method: sr_init(void)
  * Scope:  Global
@@ -37,69 +38,73 @@ void sr_init(struct sr_instance* sr)
 
 } /* -- sr_init -- */
 
-/*
- * lookup the hardware MAC address corresponding to the IP address ip
- */
-int grizly_lookup_arp(struct sr_instance * inst, uint32_t ip, unsigned char * ha)
+void grizly_process_ip_icmp_request_data(struct sr_instance * sr,uint8_t * packet, unsigned int len,char* interface)
 {
-    struct sr_if* if_walker = 0;
-    int ret = 0;
+    uint8_t * data = (uint8_t*)malloc(len);
+    int start_ip = sizeof(struct sr_ethernet_hdr);
+    int start_icmp = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
+    struct sr_ethernet_hdr * eth_from = (struct sr_ethernet_hdr *) (packet);
+    struct sr_ethernet_hdr * eth_to = (struct sr_ethernet_hdr *) (data);
+    struct ip * ip_from = (struct ip *) (packet + start_ip);
+    struct ip * ip_to = (struct ip *) (data + start_ip);
+    struct icmphdr * icmp_from = (struct icmphdr *) (packet + start_icmp);
+    struct icmphdr * icmp_to = (struct icmphdr *) (data + start_icmp);
+    memcpy(data,packet,len);
+    memcpy(eth_to->ether_dhost,eth_from->ether_shost,ETHER_ADDR_LEN);
+    memcpy(eth_to->ether_shost,eth_from->ether_dhost,ETHER_ADDR_LEN);
 
-    if(inst->if_list != 0)
+    ip_to->ip_src = ip_from->ip_dst;
+    ip_to->ip_dst = ip_from->ip_src;
+
+    icmp_to->type = ICMP_REPLY;
+    icmp_to->checksum = icmpheader_checksum(packet + start_icmp, len - start_icmp);
+
+    if(sr_send_packet(sr,data,len,interface) == -1)
     {
-        if_walker = inst->if_list;
-    
-        if(if_walker->ip == ip)
-        {
-            ret = 1;
-            memcpy(ha,if_walker->addr,ETHER_ADDR_LEN);
-        }
-        
-        while((ret == 0) && if_walker->next)
-        {
-            if_walker = if_walker->next;
-            
-            if(if_walker->ip == ip)
-            {
-                ret = 1;
-                memcpy(ha,if_walker->addr,ETHER_ADDR_LEN);
-            }
-        }
+        printf("\nfailed to send ARP response\n");
     }
-    
-    return ret;
+
+    free(data);
 }
 
-void grizly_process_arp_request(struct sr_instance * inst, struct sr_arphdr * request, char * interface)
+void grizly_process_ip_icmp_data(struct sr_instance * sr,uint8_t * packet, unsigned int len,char* interface)
 {
-    uint8_t * arp_response = 0;
-    struct sr_arphdr * response;
-    struct sr_ethernet_hdr * eth_hdr;
-    unsigned int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_arphdr);
+    int start_icmp = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
+    struct icmphdr * icmp_hdr = (struct icmphdr *) (packet + start_icmp);
 
-    arp_response = (uint8_t *) malloc(len);
-    response = (struct sr_arphdr *) (arp_response + sizeof(struct sr_ethernet_hdr));
-    eth_hdr = (struct sr_ethernet_hdr *)arp_response;
-    memcpy(response,request,sizeof(struct sr_arphdr));
-
-    if(grizly_lookup_arp(inst,request->ar_tip,response->ar_sha))
+    if(icmp_hdr->checksum != icmpheader_checksum(packet + start_icmp, len - start_icmp))
     {
-        response->ar_op = htons(ARP_REPLY);
-        memcpy(response->ar_tha,request->ar_sha,ETHER_ADDR_LEN);
-        response->ar_tip = request->ar_sip;
-        response->ar_sip = request->ar_tip;
-        
-        memcpy(eth_hdr->ether_dhost,request->ar_sha,ETHER_ADDR_LEN);
-        memcpy(eth_hdr->ether_shost,response->ar_sha,ETHER_ADDR_LEN);
-        eth_hdr->ether_type = htons(ETHERTYPE_ARP);
-
-        if(sr_send_packet(inst,arp_response,len,interface) == -1)
+        printf("\nchecksums differ %x, %x\n", icmp_hdr->checksum,
+               icmpheader_checksum(packet + start_icmp, len - start_icmp));
+    }
+    else
+    {
+        switch(icmp_hdr->type)
         {
-            printf("\nfailed to send ARP response\n");
+        case ICMP_REQUEST:
+            grizly_process_ip_icmp_request_data(sr,packet,len,interface);
+            break;
         }
     }
+}
 
-    free(arp_response);
+void grizly_process_ip_data(struct sr_instance * sr,uint8_t * packet, unsigned int len,char* interface)
+{
+    struct ip * ip_hdr = (struct ip * ) (packet + sizeof(struct sr_ethernet_hdr));
+
+    if(ip_hdr->ip_sum != ipheader_checksum(ip_hdr))
+    {
+        printf("\nchecksums differ %x, %x\n", ip_hdr->ip_sum, ipheader_checksum(ip_hdr));
+    }
+    else
+    {
+        switch(ip_hdr->ip_p)
+        {
+        case IP_P_ICMP:
+            grizly_process_ip_icmp_data(sr,packet,len,interface);
+            break;
+        }
+    }
 }
 
 
@@ -142,11 +147,12 @@ void sr_handlepacket(struct sr_instance* sr,
     case ETHERTYPE_ARP:
         grizly_process_arp_request(sr, (struct sr_arphdr*) (packet + sizeof(struct sr_ethernet_hdr)), interface);
         break;
+    case ETHERTYPE_IP:
+        grizly_process_ip_data(sr,packet,len,interface);
+        break;
     }
 
-    printf("*** -> Received packet of length %d \n",len);
-
-    
+    printf("*** -> Received packet of length %d \n",len);    
 }/* end sr_ForwardPacket */
 
 

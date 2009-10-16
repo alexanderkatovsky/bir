@@ -75,6 +75,21 @@
 #endif
 #endif
 
+#define ICMP_REPLY 0
+#define ICMP_REQUEST 8
+
+struct icmphdr
+{
+    uint8_t type;
+    uint8_t code;
+    uint16_t checksum;
+    uint16_t id;
+    uint16_t sequence;
+} __attribute__ ((packed)) ;
+
+#define IP_P_ICMP 1
+#define IP_P_TCP  6
+
 /*
  * Structure of an internet header, naked of options.
  */
