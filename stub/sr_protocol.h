@@ -87,6 +87,18 @@ struct icmphdr
     uint16_t sequence;
 } __attribute__ ((packed)) ;
 
+struct tcpheader {
+    unsigned short int   tcph_srcport;
+    unsigned short int   tcph_destport;
+    unsigned int     tcph_seqnum;
+    unsigned int     tcph_acknum;
+    unsigned char    tcph_reserved:4, tcph_offset:4;
+    unsigned char    tcph_flags;
+    unsigned short int   tcph_win;
+    unsigned short int   tcph_chksum;
+    unsigned short int   tcph_urgptr;
+} __attribute__ ((packed)) ;
+
 #define IP_P_ICMP 1
 #define IP_P_TCP  6
 

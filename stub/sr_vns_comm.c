@@ -42,6 +42,7 @@
 #include "sr_protocol.h"
 
 #include "vnscommand.h"
+#include "grizly.h"
 
 static void sr_log_packet(struct sr_instance* , uint8_t* , int );
 static int  sr_arp_req_not_for_us(struct sr_instance* sr, 
@@ -167,34 +168,34 @@ int sr_handle_hwinfo(struct sr_instance* sr, c_hwinfo* hwinfo)
         switch( ntohl(hwinfo->mHWInfo[i].mKey))
         {
             case HWFIXEDIP:
-                /*Debug("Fixed IP: %s\n",inet_ntoa(
-                            *((struct in_addr*)(hwinfo->mHWInfo[i].value))));*/
+                Debug("Fixed IP: %s\n",inet_ntoa(
+                            *((struct in_addr*)(hwinfo->mHWInfo[i].value))));
                 break;    
             case HWINTERFACE:    
-                /*Debug("INTERFACE: %s\n",hwinfo->mHWInfo[i].value);*/
+                Debug("INTERFACE: %s\n",hwinfo->mHWInfo[i].value);
                 sr_add_interface(sr,hwinfo->mHWInfo[i].value);
                 break;
             case HWSPEED:    
-                /* Debug("Speed: %d\n",
-                        ntohl(*((unsigned int*)hwinfo->mHWInfo[i].value))); */
+                Debug("Speed: %d\n",
+                        ntohl(*((unsigned int*)hwinfo->mHWInfo[i].value))); 
                 break;
             case HWSUBNET:
-                /* Debug("Subnet: %s\n",inet_ntoa(
-                            *((struct in_addr*)(hwinfo->mHWInfo[i].value)))); */
+                Debug("Subnet: %s\n",inet_ntoa(
+                            *((struct in_addr*)(hwinfo->mHWInfo[i].value))));
                 break;
             case HWMASK:
-                /* Debug("Mask: %s\n",inet_ntoa(
-                            *((struct in_addr*)(hwinfo->mHWInfo[i].value)))); */
+                Debug("Mask: %s\n",inet_ntoa(
+                            *((struct in_addr*)(hwinfo->mHWInfo[i].value)))); 
                 break;
             case HWETHIP:    
-                /*Debug("IP: %s\n",inet_ntoa(
-                            *((struct in_addr*)(hwinfo->mHWInfo[i].value))));*/
+                Debug("IP: %s\n",inet_ntoa(
+                            *((struct in_addr*)(hwinfo->mHWInfo[i].value))));
                 sr_set_ether_ip(sr,*((uint32_t*)hwinfo->mHWInfo[i].value));
                 break;
             case HWETHER:
-                /*Debug("\tHardware Address: ");
+                Debug("\tHardware Address: ");
                 DebugMAC(hwinfo->mHWInfo[i].value);
-                Debug("\n"); */
+                Debug("\n"); 
                 sr_set_ether_addr(sr,(unsigned char*)hwinfo->mHWInfo[i].value);
                 break;
             default:
@@ -444,6 +445,8 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
 
     /* -- log packet -- */
     sr_log_packet(sr,buf,len);
+    printf("\n<<<< Sending packet of length %d \n",len);
+    dump_raw(buf,len);
 
     if ( ! sr_ether_addrs_match_interface( sr, buf, iface) )
     {

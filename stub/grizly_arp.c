@@ -9,40 +9,57 @@
 #include <string.h>
 #include <stdlib.h>
 
-/*
- * lookup the hardware MAC address corresponding to the IP address ip
- */
-int grizly_lookup_arp(struct sr_instance * inst, uint32_t ip, unsigned char * ha)
+int get_MAC_from_interface_name(struct sr_instance * inst, char * interface, unsigned char * ha)
 {
-    struct sr_if* if_walker = 0;
+    uint32_t temp;
+
+    return get_MAC_and_IP_from_interface_name(inst,interface,ha,&temp);
+}
+
+int get_MAC_and_IP_from_interface_name(struct sr_instance * inst, char * interface, unsigned char * ha, uint32_t * ip)
+{
+    struct sr_if * node = inst->if_list;
     int ret = 0;
 
-    if(inst->if_list != 0)
+    while(!ret && node)
     {
-        if_walker = inst->if_list;
-    
-        if(if_walker->ip == ip)
+        if(strcmp(interface, node->name) == 0)
         {
             ret = 1;
-            memcpy(ha,if_walker->addr,ETHER_ADDR_LEN);
+            memcpy(ha,node->addr,ETHER_ADDR_LEN);
+            *ip = node->ip;
         }
-        
-        while((ret == 0) && if_walker->next)
-        {
-            if_walker = if_walker->next;
-            
-            if(if_walker->ip == ip)
-            {
-                ret = 1;
-                memcpy(ha,if_walker->addr,ETHER_ADDR_LEN);
-            }
-        }
+
+        node = node->next;
     }
-    
+
     return ret;
 }
 
-void grizly_process_arp_request(struct sr_instance * inst, struct sr_arphdr * request, char * interface)
+/*
+ * lookup the hardware MAC address corresponding to the IP address ip
+ */
+int get_MAC_from_interface_ip(struct sr_instance * inst, uint32_t ip, unsigned char * ha)
+{
+
+    struct sr_if * node = inst->if_list;
+    int ret = 0;
+
+    while(!ret && node)
+    {
+        if(node->ip == ip)
+        {
+            ret = 1;
+            memcpy(ha,node->addr,ETHER_ADDR_LEN);
+        }
+
+        node = node->next;
+    }
+
+    return ret;
+}
+
+void arp_reply_to_request(struct sr_instance * inst, struct sr_arphdr * request, char * interface)
 {
     uint8_t * arp_response = 0;
     struct sr_arphdr * response;
@@ -54,7 +71,7 @@ void grizly_process_arp_request(struct sr_instance * inst, struct sr_arphdr * re
     eth_hdr = (struct sr_ethernet_hdr *)arp_response;
     memcpy(response,request,sizeof(struct sr_arphdr));
 
-    if(grizly_lookup_arp(inst,request->ar_tip,response->ar_sha))
+    if(get_MAC_from_interface_ip(inst,request->ar_tip,response->ar_sha))
     {
         response->ar_op = htons(ARP_REPLY);
         memcpy(response->ar_tha,request->ar_sha,ETHER_ADDR_LEN);
@@ -72,4 +89,25 @@ void grizly_process_arp_request(struct sr_instance * inst, struct sr_arphdr * re
     }
 
     free(arp_response);
+}
+
+void process_arp_reply(struct sr_instance * inst, struct sr_arphdr * reply)
+{
+    add_to_arp_cache(reply->ar_sip,reply->ar_sha);
+
+    /* forward everything in the wfar list */
+    process_wfar_list_on_arp_reply(reply->ar_sip);
+}
+
+void process_arp_data(struct sr_instance * inst, struct sr_arphdr * request, char * interface)
+{
+    switch(ntohs(request->ar_op))
+    {
+    case ARP_REQUEST:
+        arp_reply_to_request(inst,request,interface);
+        break;
+    case ARP_REPLY:
+        process_arp_reply(inst,request);
+        break;
+    }
 }
