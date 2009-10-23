@@ -92,6 +92,7 @@ struct sr_instance
     pthread_mutex_t   send_lock; /* experimental */
 
     struct sr_ifsys *interface_subsystem; /* subsystem to send/recv packets from */
+    void * router;
 };
 
 /* ----------------------------------------------------------------------------

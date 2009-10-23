@@ -25,6 +25,8 @@
 #include "sr_cpu_extension_nf2.h"
 #endif
 
+#include "debug.h"
+#include "router.h"
 /*-----------------------------------------------------------------------------
  * Method: sr_integ_init(..)
  * Scope: global
@@ -37,12 +39,11 @@
 
 void sr_integ_init(struct sr_instance* sr)
 {
-    printf(" ** sr_integ_init(..) called \n");
-    struct sr_ifsys *subsystem = (struct sr_ifsys *) malloc(
-        sizeof (struct sr_ifsys)
-    );
-    assert(subsystem != NULL);
-    sr_set_subsystem(get_sr(), subsystem);
+    printf("sr_integ_init\n");
+    struct sr_ifsys *subsystem = (struct sr_ifsys *) malloc(sizeof (struct sr_ifsys));
+
+    sr->router = router_init();
+    sr->interface_subsystem = subsystem;
 } /* -- sr_integ_init -- */
 
 /*-----------------------------------------------------------------------------
@@ -57,7 +58,7 @@ void sr_integ_init(struct sr_instance* sr)
 
 void sr_integ_hw_setup(struct sr_instance* sr)
 {
-    printf(" ** sr_integ_hw(..) called \n");
+    router_load_static_routes(sr);
 } /* -- sr_integ_hw_setup -- */
 
 /*---------------------------------------------------------------------
@@ -83,10 +84,11 @@ void sr_integ_input(struct sr_instance* sr,
         unsigned int len,
         const char* interface/* borrowed */)
 {
-    /* -- INTEGRATION PACKET ENTRY POINT!-- */
 
-    printf(" ** sr_integ_input(..) called \n");
+    Debug("\n>>>> Received packet of length %d from interface %s \n",len,interface);
+    dump_raw(packet,len);
 
+    router_handle_incoming_packet(router_construct_packet(sr,packet,len,interface));
 } /* -- sr_integ_input -- */
 
 /*-----------------------------------------------------------------------------
@@ -101,7 +103,7 @@ void sr_integ_input(struct sr_instance* sr,
 void sr_integ_add_interface(struct sr_instance* sr,
                             struct sr_vns_if* vns_if/* borrowed */)
 {
-    printf(" ** sr_integ_add_interface(..) called \n");
+    interface_list_add_interface(ROUTER(sr)->iflist,vns_if);
 } /* -- sr_integ_add_interface -- */
 
 /*-----------------------------------------------------------------------------
@@ -132,6 +134,8 @@ int sr_integ_low_level_output(struct sr_instance* sr /* borrowed */,
                              unsigned int len,
                              const char* iface /* borrowed */)
 {
+    Debug("\n<<<< Sending packet of length %d on interface %s \n",len,iface);
+    dump_raw(buf,len);
 #ifdef _CPUMODE_
     return sr_cpu_output(sr, buf /*lent*/, len, iface);
 #else

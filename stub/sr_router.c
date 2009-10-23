@@ -96,6 +96,12 @@ void grizly_process_ip_icmp_data(struct sr_instance * sr,uint8_t * packet, unsig
 
 void process_tcp_data_for_us(struct sr_instance * sr,uint8_t * packet, unsigned int len,char* interface)
 {
+    struct ip * ip_hdr = (struct ip * ) (packet + sizeof(struct sr_ethernet_hdr));
+
+    if(ip_hdr->ip_ttl <= 1)
+    {
+        send_icmp_time_exceeded(sr,packet,len,interface);
+    }
 }
 
 /*is the ip address one of the router's interfaces?*/
@@ -154,7 +160,9 @@ void send_icmp_host_unreachable(struct sr_instance * sr,uint8_t * packet, unsign
 
 void send_icmp_time_exceeded(struct sr_instance * sr,uint8_t * packet, unsigned int len,char* interface)
 {
-    
+    int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof();
+    printf("sending ICMP time exceeded\n");
+
 }
 
 void arp_request(struct sr_instance * sr, uint32_t ip, char * interface)

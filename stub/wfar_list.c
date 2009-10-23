@@ -104,6 +104,7 @@ struct wfar_node * wfar_remove_node(struct wfar_node * node)
     {
         wfar_list = node->next;
     }
+
     free(node);
     return next;
 }
@@ -114,7 +115,12 @@ void process_wfar_list_on_arp_reply(uint32_t ip)
 {
     struct wfar_node * node = wfar_list;
 
+
     THREAD_SAFE(
+        while(node->next)
+        {
+            node = node->next;
+        }
         
         while(node)
         {
@@ -125,7 +131,7 @@ void process_wfar_list_on_arp_reply(uint32_t ip)
             }
             else
             {
-                node = node->next;
+                node = node->prev;
             }
         }
         )
