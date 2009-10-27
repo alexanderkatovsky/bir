@@ -14,6 +14,7 @@ struct sr_vns_if * interface_list_get_interface_by_ip(struct interface_list * li
 int interface_list_get_MAC_and_IP_from_name(struct interface_list * list,
                                             const char * interface, uint8_t * MAC, uint32_t * ip);
 struct interface_list * interface_list_create();
+void interface_list_destroy(struct interface_list * list);
 int interface_list_ip_exists(struct interface_list * list, uint32_t ip);
 
 #endif

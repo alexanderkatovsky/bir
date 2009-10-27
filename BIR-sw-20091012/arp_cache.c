@@ -29,6 +29,14 @@ void arp_clear_cache_thread(void * arg)
     while(1)
     {
         usleep(1000000);
+        
+        if(cache->signal == 0)
+        {
+            cache->signal = 1;
+            fifo_destroy(delete_list);
+            return;
+        }
+        
         pthread_mutex_lock(&cache->mutex);
         assoc_array_walk_array(cache->array,arp_clear_cache,delete_list);
         while((entry = fifo_pop(delete_list)))
@@ -44,11 +52,28 @@ struct arp_cache * arp_cache_create()
 {
     struct arp_cache * ret = (struct arp_cache *)malloc(sizeof(struct arp_cache));
     ret->array = assoc_array_create();
+    ret->signal = 1;
     pthread_mutex_init(&ret->mutex,NULL);
 
     sys_thread_new(arp_clear_cache_thread,ret);
     
     return ret;
+}
+
+void __delete_arp_cache(void * data)
+{
+    free((struct arp_cache_entry *)data);
+}
+
+void arp_cache_destroy(struct arp_cache * cache)
+{
+    cache->signal = 0;
+    while(cache->signal == 0)
+    {
+    }
+    pthread_mutex_destroy(&cache->mutex);
+    assoc_array_delete_array(cache->array,__delete_arp_cache);
+    free(cache); 
 }
 
 int arp_cache_get_MAC_from_ip(struct arp_cache * cache, uint32_t ip, uint8_t * MAC)
@@ -80,4 +105,26 @@ void arp_cache_add(struct arp_cache * cache, uint32_t ip, const uint8_t * MAC)
         assoc_array_insert(cache->array,ip,entry);
     }
     pthread_mutex_unlock(&cache->mutex);
+}
+
+int arp_cache_print_entry(int key, void * data, void * userdata)
+{
+    struct arp_cache_entry * entry = (struct arp_cache_entry*)data;
+    print_t print = (print_t)userdata;
+    
+    print_ip(entry->ip,print);
+    print("  ");
+    print_mac(entry->MAC,print);
+    print("  ");
+    print("%d",entry->ttl);
+    print("\n");
+    return 0;
+}
+
+void arp_cache_show(struct arp_cache * cache, print_t print)
+{
+    print("\nARP Cache:\n");
+    print("%3s               %3s              %3s\n","ip","MAC","ttl");   
+    assoc_array_walk_array(cache->array,arp_cache_print_entry,print);
+    print("\n\n");
 }

@@ -23,6 +23,7 @@ struct fifo
 };
 
 struct fifo * fifo_create();
+void fifo_destroy(struct fifo *);
 void * fifo_pop(struct fifo * list);
 void fifo_push(struct fifo * list, void * data);
 int fifo_length(struct fifo * list);

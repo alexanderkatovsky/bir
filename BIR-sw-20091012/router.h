@@ -24,9 +24,12 @@ struct sr_router
     struct arp_reply_waiting_list * arwl;
 };
 
+
 struct sr_router * router_init();
+void router_destroy(struct sr_router * router);
 void router_handle_incoming_packet(struct sr_packet * packet);
 struct sr_packet * router_construct_packet(struct sr_instance * sr, const uint8_t * packet, unsigned int len, const char* interface);
+struct sr_packet * router_copy_packet(struct sr_packet * packet);
 void router_load_static_routes(struct sr_instance * sr);
 void router_free_packet(struct sr_packet * );
 
@@ -49,7 +52,7 @@ unsigned short checksum_ipheader(const struct ip * ip_hdr);
 unsigned short checksum_icmpheader(const uint8_t * icmp_hdr, unsigned int len);
 
 void icmp_handle_incoming_packet(struct sr_packet * packet);
-void icmp_send_prot_unreachable(struct sr_packet * packet);
+void icmp_send_port_unreachable(struct sr_packet * packet);
 void icmp_send_time_exceeded(struct sr_packet * packet);
 void icmp_send_no_route(struct sr_packet * packet);
 

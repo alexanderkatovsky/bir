@@ -87,8 +87,9 @@ void sr_integ_input(struct sr_instance* sr,
 
     Debug("\n>>>> Received packet of length %d from interface %s \n",len,interface);
     dump_raw(packet,len);
-
-    router_handle_incoming_packet(router_construct_packet(sr,packet,len,interface));
+    struct sr_packet * p = router_construct_packet(sr,packet,len,interface);
+    router_handle_incoming_packet(p);
+    router_free_packet(p);
 } /* -- sr_integ_input -- */
 
 /*-----------------------------------------------------------------------------
@@ -154,6 +155,8 @@ int sr_integ_low_level_output(struct sr_instance* sr /* borrowed */,
 void sr_integ_destroy(struct sr_instance* sr)
 {
     printf(" ** sr_integ_destroy(..) called \n");
+    router_destroy(ROUTER(sr));
+    free(ROUTER(sr));
 } /* -- sr_integ_destroy -- */
 
 /*-----------------------------------------------------------------------------

@@ -51,6 +51,15 @@ struct sr_router * router_init()
     return ret;
 }
 
+void router_destroy(struct sr_router * router)
+{
+    interface_list_destroy(router->iflist);
+    forwarding_table_destroy(router->fwd_table);
+    arp_cache_destroy(router->a_cache);
+    arp_reply_waiting_list_destroy(router->arwl);
+    free(router);
+}
+
 
 /*
  * Swaps destination and source MAC addresses and sends
@@ -80,4 +89,13 @@ void router_load_static_routes(struct sr_instance * sr)
         forwarding_table_add_static_route(fwd_table,rt_entry);
         rt_entry = rt_entry->next;
     }
+}
+
+struct sr_packet * router_copy_packet(struct sr_packet * packet)
+{
+    struct sr_packet * ret = (struct sr_packet *)malloc(sizeof(struct sr_packet));
+    *ret = *packet;
+    ret->packet = (uint8_t *)malloc(packet->len);
+    memcpy(ret->packet,packet->packet,packet->len);
+    return ret;
 }

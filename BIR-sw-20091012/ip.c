@@ -3,6 +3,8 @@
 #include "arp_cache.h"
 #include <stdlib.h>
 
+void sr_transport_input(uint8_t* packet /* borrowed */);
+
 void ip_forward_packet(struct sr_packet * packet, uint32_t next_hop, const char * thru_interface)
 {
     struct ip * ip_hdr = IP_HDR(packet);
@@ -28,8 +30,6 @@ void ip_forward_packet(struct sr_packet * packet, uint32_t next_hop, const char 
                 printf("\nfailed to send packet\n");
             }
         }
-
-        router_free_packet(packet);
     }
 }
 
@@ -80,10 +80,10 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
                 icmp_handle_incoming_packet(packet);
                 break;
             case IP_P_TCP:
-                /*sr_transport_input(packet->packet);*/
+                sr_transport_input(packet->packet);
                 break;
             default:
-                icmp_send_prot_unreachable(packet);
+                icmp_send_port_unreachable(packet);
             }
         }
     }    

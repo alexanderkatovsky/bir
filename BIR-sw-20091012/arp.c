@@ -62,8 +62,6 @@ void arp_reply_to_request(struct sr_packet * packet)
         
         router_swap_eth_header_and_send(packet);
     }
-
-    free(packet);
 }
 
 void arp_process_reply(struct sr_packet * packet)

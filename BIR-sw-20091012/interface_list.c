@@ -11,6 +11,17 @@ struct interface_list * interface_list_create()
     return ret;
 }
 
+void __delete_interface_list(void * data)
+{
+    free((struct sr_vns_if *)data);
+}
+
+void interface_list_destroy(struct interface_list * list)
+{
+    assoc_array_delete_array(list->array,__delete_interface_list);
+    free(list);
+}
+
 void interface_list_add_interface(struct interface_list * list, struct sr_vns_if * interface)
 {
     struct sr_vns_if * interface_copy = (struct sr_vns_if *)malloc(sizeof(struct sr_vns_if));

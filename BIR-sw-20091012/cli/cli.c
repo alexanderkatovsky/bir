@@ -11,6 +11,7 @@
 #include "helper.h"
 #include "socket_helper.h"       /* writenstr()                       */
 #include "../sr_base_internal.h" /* struct sr_instance                */
+#include "../router.h"
 
 /* temporary */
 #include "cli_stubs.h"
@@ -62,6 +63,7 @@ struct sr_instance* my_get_sr() {
 #   define SR get_sr()
 #endif
 
+
 /**
  * Wrapper for writenstr.  Tries to send the specified string with the
  * file-scope fd.  If it fails, fd_alive is set to 0.  Does nothing if
@@ -71,6 +73,58 @@ static void cli_send_str( const char* str ) {
     if( fd_alive )
         if( 0 != writenstr( fd, str ) )
             fd_alive = 0;
+}
+
+
+static int cli_printf(const char * format, ...)
+{
+    int n = -1, size = 100;
+    char *p, *np;
+    va_list ap;
+    int end = 0;
+
+    p = malloc (size);
+
+    while (end == 0)
+    {
+        va_start(ap, format);
+        n = vsnprintf (p, size, format, ap);
+        va_end(ap);
+
+        if (n > -1 && n < size)
+        {
+            end = 1;
+        }
+        else
+        {
+            if (n > -1)
+            {
+                size = n+1;
+            }
+            else
+            {
+                size *= 2;
+            }
+            if ((np = realloc (p, size)) == NULL)
+            {
+                free(p);
+                p = NULL;
+                n = -1;
+                end = 1;
+            }
+            else
+            {
+                p = np;
+            }
+        }
+    }
+
+    if(p)
+    {
+        cli_send_str(p);
+    }
+
+    return n;
 }
 
 #ifdef _VNS_MODE_
@@ -218,7 +272,7 @@ void cli_show_ip() {
 }
 
 void cli_show_ip_arp() {
-    cli_send_str( "not yet implemented: show ARP cache of SR\n" );
+    arp_cache_show(ROUTER(get_sr())->a_cache, cli_printf);
 }
 
 void cli_show_ip_intf() {

@@ -30,6 +30,18 @@ void dump_packet(const uint8_t * packet, unsigned int len)
     Debug("\n");
 }
 
+void print_mac(const uint8_t * mac,print_t print)
+{
+    int i = 0;
+    for(; i < ETHER_ADDR_LEN - 1; i++)
+    {
+        print("%02x:", mac[i]);
+    }
+
+    print("%02x", mac[ETHER_ADDR_LEN - 1]);
+}
+
+
 void dump_mac(const uint8_t * mac)
 {
     int i = 0;
@@ -54,6 +66,15 @@ void dump_ip(uint32_t ip)
     uint8_t * i = (uint8_t *)&ip;
     Debug("%d.%d.%d.%d",i[0],i[1],i[2],i[3]);
 }
+
+void print_ip(uint32_t ip,print_t print)
+{
+    uint8_t * i = (uint8_t *)&ip;
+    char buf[20];
+    sprintf(buf,"%d.%d.%d.%d",i[0],i[1],i[2],i[3]);
+    print("%--15s",buf);
+}
+
 
 void dump_arp_hdr(const uint8_t * packet, unsigned int len)
 {
@@ -86,9 +107,14 @@ void dump_ip_hdr(const uint8_t * packet, unsigned int len)
 {
     struct ip * ip_hdr = (struct ip *) (packet + sizeof(struct sr_ethernet_hdr));
     Debug("IP header      :\n");
-    Debug("    version    :   %01x\n",ip_hdr->ip_v);
+    Debug("    hdr len    :   %d\n",ip_hdr->ip_hl);
+    Debug("    version    :   %d\n",ip_hdr->ip_v);
+    Debug("    tos        :   %d\n",ip_hdr->ip_tos);
+    Debug("    tot len    :   %d\n",ntohs(ip_hdr->ip_len));
+    Debug("    id         :   %d\n",ntohs(ip_hdr->ip_id));
+    Debug("    fragment of:   %04x\n",ntohs(ip_hdr->ip_off));
     Debug("    ttl        :   %d\n",ip_hdr->ip_ttl);
-    Debug("    protocol   :   %02x\n",ip_hdr->ip_p);
+    Debug("    protocol   :   %02d\n",ip_hdr->ip_p);
     Debug("    source IP  :   ");dump_ip(ip_hdr->ip_src.s_addr);Debug("\n");
     Debug("    dest   IP  :   ");dump_ip(ip_hdr->ip_dst.s_addr);Debug("\n");
 

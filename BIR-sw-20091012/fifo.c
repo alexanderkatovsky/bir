@@ -10,6 +10,11 @@ struct fifo * fifo_create()
     return list;
 }
 
+void fifo_destroy(struct fifo * list)
+{
+    free(list);
+}
+
 void * fifo_pop(struct fifo * list)
 {
     void * ret = 0;

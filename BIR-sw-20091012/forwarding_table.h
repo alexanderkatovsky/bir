@@ -26,6 +26,7 @@ struct forwarding_table
 };
 
 struct forwarding_table * forwarding_table_create();
+void forwarding_table_destroy(struct forwarding_table * fwd_table);
 void forwarding_table_add_static_route(struct forwarding_table * fwd_table, struct sr_rt * rt_entry);
 int forwarding_table_lookup_next_hop(struct forwarding_table * fwd_table, uint32_t ip, uint32_t * next_hop, char * thru);
 

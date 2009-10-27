@@ -10,6 +10,18 @@ struct forwarding_table * forwarding_table_create()
     return ret;
 }
 
+void __delete_forwarding_table(void * data)
+{
+    free((struct forwarding_table_entry *)data);
+}
+
+void forwarding_table_destroy(struct forwarding_table * fwd_table)
+{
+    pthread_mutex_destroy(&fwd_table->mutex);
+    assoc_array_delete_array(fwd_table->array,__delete_forwarding_table);
+    free(fwd_table);    
+}
+
 void forwarding_table_add_static_route(struct forwarding_table * fwd_table, struct sr_rt * rt_entry)
 {
     struct forwarding_table_entry * e = (struct forwarding_table_entry *)malloc(sizeof(struct forwarding_table_entry));
