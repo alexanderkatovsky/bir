@@ -7,12 +7,14 @@
 #include "assoc_array.h"
 #include "debug.h"
 
+struct sr_packet;
+
 #define ARP_CACHE_TIMEOUT 15
 
 struct arp_cache_entry
 {
     uint32_t ip;
-    char MAC[ETHER_ADDR_LEN];
+    uint8_t MAC[ETHER_ADDR_LEN];
 
     int ttl;
 };
@@ -22,7 +24,7 @@ struct arp_cache
     struct assoc_array * array;
 
     pthread_mutex_t mutex;
-    int signal;
+    int exit_signal;
 };
 
 struct arp_cache * arp_cache_create();
@@ -31,5 +33,5 @@ int arp_cache_get_MAC_from_ip(struct arp_cache * cache, uint32_t ip, uint8_t * M
 void arp_cache_add(struct arp_cache * cache, uint32_t ip, const uint8_t * MAC);
 
 void arp_cache_show(struct arp_cache * cache,print_t print);
-
+void arp_cache_alert_packet_received(struct sr_packet * packet);
 #endif

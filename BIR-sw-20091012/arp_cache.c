@@ -1,4 +1,4 @@
-#include "arp_cache.h"
+#include "router.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -30,9 +30,9 @@ void arp_clear_cache_thread(void * arg)
     {
         usleep(1000000);
         
-        if(cache->signal == 0)
+        if(cache->exit_signal == 0)
         {
-            cache->signal = 1;
+            cache->exit_signal = 1;
             fifo_destroy(delete_list);
             return;
         }
@@ -52,7 +52,7 @@ struct arp_cache * arp_cache_create()
 {
     struct arp_cache * ret = (struct arp_cache *)malloc(sizeof(struct arp_cache));
     ret->array = assoc_array_create();
-    ret->signal = 1;
+    ret->exit_signal = 1;
     pthread_mutex_init(&ret->mutex,NULL);
 
     sys_thread_new(arp_clear_cache_thread,ret);
@@ -67,8 +67,8 @@ void __delete_arp_cache(void * data)
 
 void arp_cache_destroy(struct arp_cache * cache)
 {
-    cache->signal = 0;
-    while(cache->signal == 0)
+    cache->exit_signal = 0;
+    while(cache->exit_signal == 0)
     {
     }
     pthread_mutex_destroy(&cache->mutex);
@@ -107,6 +107,11 @@ void arp_cache_add(struct arp_cache * cache, uint32_t ip, const uint8_t * MAC)
     pthread_mutex_unlock(&cache->mutex);
 }
 
+void arp_cache_alert_packet_received(struct sr_packet * packet)
+{
+/*    assoc_array_walk_array()*/
+}
+
 int arp_cache_print_entry(int key, void * data, void * userdata)
 {
     struct arp_cache_entry * entry = (struct arp_cache_entry*)data;
@@ -128,3 +133,4 @@ void arp_cache_show(struct arp_cache * cache, print_t print)
     assoc_array_walk_array(cache->array,arp_cache_print_entry,print);
     print("\n\n");
 }
+

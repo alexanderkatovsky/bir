@@ -13,7 +13,7 @@ MODE_VNS     =
 MODE = $(MODE_VNS)
 
 include Makefile.common
-DEBUG = -g -D_DEBUG_
+DEBUG = -g -D_DEBUG_ -O0
 PERF = -O3
 CFLAGS = -Wall -D_GNU_SOURCE $(DEBUG) $(ARCH) -I lwtcp -I cli $(MODE) $(MORE_FLAGS)
 USER_LIBS=libsr_base.a liblwtcp.a

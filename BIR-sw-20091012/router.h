@@ -8,6 +8,11 @@
 #include "arp_cache.h"
 #include "arp_reply_waiting_list.h"
 
+
+#define NEW_STRUCT(varname,structname)                                  \
+    struct structname * varname =                                       \
+        (struct structname * )malloc(sizeof(struct structname));
+
 struct sr_packet
 {
     struct sr_instance* sr;
@@ -25,7 +30,7 @@ struct sr_router
 };
 
 
-struct sr_router * router_init();
+struct sr_router * router_create();
 void router_destroy(struct sr_router * router);
 void router_handle_incoming_packet(struct sr_packet * packet);
 struct sr_packet * router_construct_packet(struct sr_instance * sr, const uint8_t * packet, unsigned int len, const char* interface);
@@ -43,7 +48,7 @@ void router_swap_eth_header_and_send(struct sr_packet * packet);
 #define ICMP_HDR(packet) ((struct icmphdr *)((packet)->packet + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)))
 
 void arp_handle_incoming_packet(struct sr_packet * packet);
-void arp_request(const struct sr_packet * packet, uint32_t ip, const char * interface);
+void arp_request(struct sr_instance * sr, uint32_t ip, const char * interface);
 
 void ip_handle_incoming_packet(struct sr_packet * packet);
 void ip_forward_packet(struct sr_packet * packet, uint32_t next_hop, const char * thru_interface);
@@ -54,6 +59,6 @@ unsigned short checksum_icmpheader(const uint8_t * icmp_hdr, unsigned int len);
 void icmp_handle_incoming_packet(struct sr_packet * packet);
 void icmp_send_port_unreachable(struct sr_packet * packet);
 void icmp_send_time_exceeded(struct sr_packet * packet);
-void icmp_send_no_route(struct sr_packet * packet);
+void icmp_send_host_unreachable(struct sr_packet * packet);
 
 #endif

@@ -25,6 +25,7 @@ void router_free_packet(struct sr_packet * packet)
 
 void router_handle_incoming_packet(struct sr_packet * packet)
 {
+    arp_cache_alert_packet_received(packet);
     switch(ntohs(ETH_HDR(packet)->ether_type))
     {
     case ETHERTYPE_ARP:
@@ -41,9 +42,9 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
     interface_list_add_interface(ROUTER(sr)->iflist,interface);
 }
 
-struct sr_router * router_init()
+struct sr_router * router_create()
 {
-    struct sr_router * ret = (struct sr_router *)malloc(sizeof(struct sr_router));
+    NEW_STRUCT(ret,sr_router);
     ret->iflist = interface_list_create();
     ret->fwd_table = forwarding_table_create();
     ret->a_cache = arp_cache_create();
@@ -57,6 +58,7 @@ void router_destroy(struct sr_router * router)
     forwarding_table_destroy(router->fwd_table);
     arp_cache_destroy(router->a_cache);
     arp_reply_waiting_list_destroy(router->arwl);
+
     free(router);
 }
 

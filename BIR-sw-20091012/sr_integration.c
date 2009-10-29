@@ -42,7 +42,7 @@ void sr_integ_init(struct sr_instance* sr)
     printf("sr_integ_init\n");
     struct sr_ifsys *subsystem = (struct sr_ifsys *) malloc(sizeof (struct sr_ifsys));
 
-    sr->router = router_init();
+    sr->router = router_create();
     sr->interface_subsystem = subsystem;
 } /* -- sr_integ_init -- */
 

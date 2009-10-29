@@ -15,8 +15,7 @@ void ip_forward_packet(struct sr_packet * packet, uint32_t next_hop, const char 
 
     if(!arp_cache_get_MAC_from_ip(ROUTER(packet->sr)->a_cache, next_hop, eth_hdr->ether_dhost))
     {
-        arp_request(packet,next_hop,thru_interface);
-        arp_reply_waiting_list_add(ROUTER(packet->sr)->arwl, packet,next_hop,thru_interface);
+        arp_request_handler_make_request(packet,next_hop,thru_interface);
     }
     else
     {
@@ -45,7 +44,7 @@ void ip_forward(struct sr_packet * packet)
     }
     else
     {
-        icmp_send_no_route(packet);
+        icmp_send_host_unreachable(packet);
     }
 }
 

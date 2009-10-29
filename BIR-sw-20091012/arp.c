@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void arp_request(const struct sr_packet * packet, uint32_t ip, const char * interface)
+void arp_request(struct sr_instance * sr, uint32_t ip, const char * interface)
 {
     int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_arphdr);
     uint8_t * data = (uint8_t *)malloc(len);
@@ -18,7 +18,7 @@ void arp_request(const struct sr_packet * packet, uint32_t ip, const char * inte
         eth_hdr->ether_dhost[i] = 0xff;
     }
 
-    if(!interface_list_get_MAC_and_IP_from_name(ROUTER(packet->sr)->iflist,
+    if(!interface_list_get_MAC_and_IP_from_name(ROUTER(sr)->iflist,
                                                 interface,eth_hdr->ether_shost,&(arp_hdr->ar_sip)))
     {
         printf("unable to get MAC from interface %s\n", interface);
@@ -36,7 +36,7 @@ void arp_request(const struct sr_packet * packet, uint32_t ip, const char * inte
 
         printf("ARP request to "); dump_ip(ip);printf(" through interface %s\n", interface);
 
-        if(sr_integ_low_level_output(packet->sr,data,len,interface) == -1)
+        if(sr_integ_low_level_output(sr,data,len,interface) == -1)
         {
             printf("\nfailed to send packet\n");
         }
@@ -64,13 +64,6 @@ void arp_reply_to_request(struct sr_packet * packet)
     }
 }
 
-void arp_process_reply(struct sr_packet * packet)
-{
-    struct sr_arphdr * arp_hdr = ARP_HDR(packet);
-    arp_cache_add(ROUTER(packet->sr)->a_cache,arp_hdr->ar_sip,arp_hdr->ar_sha);
-    arp_reply_waiting_list_dispatch(ROUTER(packet->sr)->arwl, ARP_HDR(packet)->ar_sip);
-}
-
 void arp_handle_incoming_packet(struct sr_packet * packet)
 {
     switch(ntohs(ARP_HDR(packet)->ar_op))
@@ -79,7 +72,7 @@ void arp_handle_incoming_packet(struct sr_packet * packet)
         arp_reply_to_request(packet);
         break;
     case ARP_REPLY:
-        arp_process_reply(packet);
+        arp_request_handler_process_reply(packet);
         break;
     }
 }

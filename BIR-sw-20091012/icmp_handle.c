@@ -62,7 +62,7 @@ void icmp_send_time_exceeded(struct sr_packet * packet)
     icmp_basic(packet,11,0);
 }
 
-void icmp_send_no_route(struct sr_packet * packet)
+void icmp_send_host_unreachable(struct sr_packet * packet)
 {
     icmp_basic(packet,3,1);
 }
