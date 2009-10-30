@@ -4,6 +4,11 @@
 #include "lwtcp/lwip/sys.h"
 #include "debug.h"
 
+void * arwl_key_get(void * data)
+{
+    return &((struct arwl_entry *)data)->next_hop;
+}
+
 void __delete_arwl(void * data)
 {
     struct arwl_entry * entry = (struct arwl_entry *) data;
@@ -29,7 +34,7 @@ void arp_reply_waiting_list_alert_host_unreachable(struct arwl_entry * entry)
 }
 
 
-int arp_handler_incr(int key, void * data, void * user_data)
+int arp_handler_incr(void * data, void * user_data)
 {
     struct arwl_entry * entry = (struct arwl_entry *) data;
     struct fifo * delete_list = (struct fifo *)user_data;
@@ -76,7 +81,7 @@ void arp_request_handler_thread(void * arg)
         while((entry = fifo_pop(delete_list)))
         {
             arp_reply_waiting_list_alert_host_unreachable(entry);
-            __delete_arwl(assoc_array_delete(list->array,entry->next_hop));
+            __delete_arwl(assoc_array_delete(list->array,&entry->next_hop));
         }
         pthread_mutex_unlock(&list->mutex);
     }
@@ -85,7 +90,7 @@ void arp_request_handler_thread(void * arg)
 struct arp_reply_waiting_list * arp_reply_waiting_list_create()
 {
     NEW_STRUCT(ret,arp_reply_waiting_list);
-    ret->array = assoc_array_create();
+    ret->array = assoc_array_create(arwl_key_get,assoc_array_key_comp_int);
     ret->exit_signal = 1;
     pthread_mutex_init(&ret->mutex,NULL);
     
@@ -115,7 +120,7 @@ void arp_reply_waiting_list_add(struct arp_reply_waiting_list * list, struct sr_
     l_entry->packet = router_copy_packet(packet);
     l_entry->next_hop = next_hop;
 
-    entry = (struct arwl_entry *)assoc_array_read(list->array,next_hop);
+    entry = (struct arwl_entry *)assoc_array_read(list->array,&next_hop);
 
     if(entry == NULL)
     {
@@ -123,7 +128,7 @@ void arp_reply_waiting_list_add(struct arp_reply_waiting_list * list, struct sr_
         entry->sr = packet->sr;
         entry->next_hop = next_hop;
         entry->packet_list = fifo_create();
-        assoc_array_insert(list->array,next_hop,entry);
+        assoc_array_insert(list->array,entry);
     }
 
     memcpy(entry->thru_interface, thru_interface, ETHER_ADDR_LEN);
@@ -139,7 +144,7 @@ void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint3
     struct arwl_list_entry * l_entry;
     pthread_mutex_lock(&list->mutex);
 
-    entry = (struct arwl_entry *)assoc_array_delete(list->array,ip);
+    entry = (struct arwl_entry *)assoc_array_delete(list->array,&ip);
     if(entry)
     {
         while((l_entry = ((struct arwl_list_entry * )fifo_pop(entry->packet_list))))
@@ -163,7 +168,7 @@ void arp_request_handler_process_reply(struct sr_packet * packet)
 
 void arp_request_handler_make_request(struct sr_packet * packet, uint32_t next_hop, const char * thru_interface)
 {
-    if(assoc_array_read(ROUTER(packet->sr)->arwl->array,next_hop) == NULL)
+    if(assoc_array_read(ROUTER(packet->sr)->arwl->array,&next_hop) == NULL)
     {
         arp_request(packet->sr,next_hop,thru_interface);
     }

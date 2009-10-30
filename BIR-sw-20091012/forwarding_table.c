@@ -1,11 +1,17 @@
 #include "forwarding_table.h"
 #include <stdlib.h>
 #include <string.h>
+#include "router.h"
+
+void * forwarding_table_get_key(void * data)
+{
+    return &((struct forwarding_table_entry *)data)->dest;
+}
 
 struct forwarding_table * forwarding_table_create()
 {
-    struct forwarding_table * ret = (struct forwarding_table *)malloc(sizeof(struct forwarding_table));
-    ret->array = assoc_array_create();
+    NEW_STRUCT(ret,forwarding_table);
+    ret->array = assoc_array_create(forwarding_table_get_key,assoc_array_key_comp_int);
     pthread_mutex_init(&ret->mutex,NULL);
     return ret;
 }
@@ -24,7 +30,7 @@ void forwarding_table_destroy(struct forwarding_table * fwd_table)
 
 void forwarding_table_add_static_route(struct forwarding_table * fwd_table, struct sr_rt * rt_entry)
 {
-    struct forwarding_table_entry * e = (struct forwarding_table_entry *)malloc(sizeof(struct forwarding_table_entry));
+    NEW_STRUCT(e,forwarding_table_entry);
     pthread_mutex_lock(&fwd_table->mutex);
     
     e->dest = rt_entry->dest.s_addr;
@@ -35,7 +41,7 @@ void forwarding_table_add_static_route(struct forwarding_table * fwd_table, stru
 
     e->type = FTABLE_STATIC_ENTRY;
 
-    assoc_array_insert(fwd_table->array,e->dest,e);
+    assoc_array_insert(fwd_table->array,e);
 
     pthread_mutex_unlock(&fwd_table->mutex);
 }
@@ -49,7 +55,7 @@ struct __LPMSearch
     char * thru;
 };
 
-int __LPMSearchFn(int key, void * data, void * user_data)
+int __LPMSearchFn(void * data, void * user_data)
 {
     struct __LPMSearch * srch = (struct __LPMSearch *) user_data;
     struct forwarding_table_entry * rt = (struct forwarding_table_entry *) data;

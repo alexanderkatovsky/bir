@@ -6,7 +6,7 @@
 #include "lwtcp/lwip/sys.h"
 #include "debug.h"
 
-int arp_clear_cache(int key, void * data, void * user_data)
+int arp_clear_cache(void * data, void * user_data)
 {
     struct arp_cache_entry * entry = (struct arp_cache_entry *) data;
     struct fifo * delete_list = (struct fifo *)user_data;
@@ -42,16 +42,21 @@ void arp_clear_cache_thread(void * arg)
         while((entry = fifo_pop(delete_list)))
         {
             Debug("deleting ip ");dump_ip(entry->ip);Debug(" from ARP cache\n");
-            free(assoc_array_delete(cache->array,entry->ip));
+            free(assoc_array_delete(cache->array,&entry->ip));
         }
         pthread_mutex_unlock(&cache->mutex);
     }
 }
 
+void * arp_cache_get_key(void * data)
+{
+    return &((struct arp_cache_entry *)data)->ip;
+}
+
 struct arp_cache * arp_cache_create()
 {
     struct arp_cache * ret = (struct arp_cache *)malloc(sizeof(struct arp_cache));
-    ret->array = assoc_array_create();
+    ret->array = assoc_array_create(arp_cache_get_key,assoc_array_key_comp_int);
     ret->exit_signal = 1;
     pthread_mutex_init(&ret->mutex,NULL);
 
@@ -82,7 +87,7 @@ int arp_cache_get_MAC_from_ip(struct arp_cache * cache, uint32_t ip, uint8_t * M
     int ret = 0;
     pthread_mutex_lock(&cache->mutex);
 
-    res = assoc_array_read(cache->array,ip);
+    res = assoc_array_read(cache->array,&ip);
     if(res)
     {
         memcpy(MAC,res->MAC,ETHER_ADDR_LEN);
@@ -100,9 +105,9 @@ void arp_cache_add(struct arp_cache * cache, uint32_t ip, const uint8_t * MAC)
     entry->ip = ip;
     entry->ttl = ARP_CACHE_TIMEOUT;
     memcpy(entry->MAC,MAC,ETHER_ADDR_LEN);
-    if(assoc_array_read(cache->array,ip) == NULL)
+    if(assoc_array_read(cache->array,&ip) == NULL)
     {
-        assoc_array_insert(cache->array,ip,entry);
+        assoc_array_insert(cache->array,entry);
     }
     pthread_mutex_unlock(&cache->mutex);
 }
@@ -112,7 +117,7 @@ void arp_cache_alert_packet_received(struct sr_packet * packet)
 /*    assoc_array_walk_array()*/
 }
 
-int arp_cache_print_entry(int key, void * data, void * userdata)
+int arp_cache_print_entry(void * data, void * userdata)
 {
     struct arp_cache_entry * entry = (struct arp_cache_entry*)data;
     print_t print = (print_t)userdata;

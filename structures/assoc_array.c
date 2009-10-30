@@ -174,6 +174,7 @@ void assoc_array_delete_array(struct assoc_array * array, void (* delete)(void *
 {
     struct AssocArrayNode * root = array->root;
     __assoc_array_delete_array(root,delete);
+    free(array);
 }
 
 void * __assoc_array_read(struct assoc_array * array, struct AssocArrayNode * node, void * key)

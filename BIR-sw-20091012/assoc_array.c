@@ -40,30 +40,30 @@ struct AssocArrayNode * __split(struct AssocArrayNode * node)
     return ret;
 }
 
-struct AssocArrayNode * __assoc_array_insert(struct AssocArrayNode * node, int key, void * data)
+struct AssocArrayNode * __assoc_array_insert(struct assoc_array * array, struct AssocArrayNode * node, void * data)
 {
     if(node == NULL)
     {
         node = (struct AssocArrayNode *) malloc(sizeof(struct AssocArrayNode));
         node->data = data;
-        node->key = key;
+        node->array = array;
         node->level = 1;
         node->right = NULL;
         node->left = NULL;
     }
     else
     {
-        if(key == node->key)
+        switch(array->cmp(array->get(data),array->get(node->data)))
         {
+        case ASSOC_ARRAY_KEY_EQ:
             node->data = data;
-        }
-        else if(key < node->key)
-        {
-            node->left = __assoc_array_insert(node->left,key,data);
-        }
-        else if(key > node->key)
-        {
-            node->right = __assoc_array_insert(node->right,key,data);
+            break;       
+        case ASSOC_ARRAY_KEY_LT:
+            node->left = __assoc_array_insert(array,node->left,data);
+            break;
+        case ASSOC_ARRAY_KEY_GT:
+            node->right = __assoc_array_insert(array,node->right,data);
+            break;
         }
         node = __skew(node);
         node = __split(node);
@@ -71,20 +71,21 @@ struct AssocArrayNode * __assoc_array_insert(struct AssocArrayNode * node, int k
     return node;
 }
 
-void assoc_array_insert(struct assoc_array * array, int key, void * data)
+void assoc_array_insert(struct assoc_array * array, void * data)
 {
-    array->root = __assoc_array_insert(array->root,key,data);
+    array->root = __assoc_array_insert(array,array->root,data);
 }
 
 #define __level(node) ((node) ? ((node)->level):0)
 
-struct AssocArrayNode * __assoc_array_delete(struct AssocArrayNode * node, void ** data, int key)
+struct AssocArrayNode * __assoc_array_delete(struct assoc_array * array,
+                                             struct AssocArrayNode * node, void ** data, void * key)
 {
     struct AssocArrayNode * succ;
     
     if(node)
     {
-        if(key == node->key)
+        if(array->cmp(key,array->get(node->data)) == ASSOC_ARRAY_KEY_EQ)
         {
             *data = node->data;
             if(node->left && node->right)
@@ -94,8 +95,7 @@ struct AssocArrayNode * __assoc_array_delete(struct AssocArrayNode * node, void 
                 {
                     succ = succ->right;
                 }
-                node->key = succ->key;
-                node->left = __assoc_array_delete(node->left,&node->data,node->key);
+                node->left = __assoc_array_delete(array,node->left,&node->data,array->get(succ->data));
             }
             else
             {
@@ -118,13 +118,13 @@ struct AssocArrayNode * __assoc_array_delete(struct AssocArrayNode * node, void 
         }
         else
         {
-            if(node->key < key)
+            if(array->cmp(key,array->get(node->data)) == ASSOC_ARRAY_KEY_GT)
             {
-                node->right = __assoc_array_delete(node->right,data,key);
+                node->right = __assoc_array_delete(array,node->right,data,key);
             }
             else
             {
-                node->left = __assoc_array_delete(node->left,data,key);
+                node->left = __assoc_array_delete(array,node->left,data,key);
             }
         }
         if(node)
@@ -150,10 +150,10 @@ struct AssocArrayNode * __assoc_array_delete(struct AssocArrayNode * node, void 
     return node;
 }
 
-void * assoc_array_delete(struct assoc_array * array, int key)
+void * assoc_array_delete(struct assoc_array * array, void * key)
 {
     void * data = NULL;
-    array->root = __assoc_array_delete(array->root,&data,key);
+    array->root = __assoc_array_delete(array,array->root,&data,key);
     return data;
 }
 
@@ -176,38 +176,39 @@ void assoc_array_delete_array(struct assoc_array * array, void (* delete)(void *
     __assoc_array_delete_array(root,delete);
 }
 
-void * __assoc_array_read(struct AssocArrayNode * node, int key)
+void * __assoc_array_read(struct assoc_array * array, struct AssocArrayNode * node, void * key)
 {
     void * ret = NULL;
     if(node)
     {
-        if(node->key == key)
+        switch(array->cmp(array->get(node->data),key))
         {
+        case ASSOC_ARRAY_KEY_EQ:
             ret = node->data;
-        }
-        else if(node->key < key)
-        {
-            ret = __assoc_array_read(node->right,key);
-        }
-        else
-        {
-            ret = __assoc_array_read(node->left,key);
+            break;       
+        case ASSOC_ARRAY_KEY_LT:
+            ret = __assoc_array_read(array, node->right, key);
+            break;
+        case ASSOC_ARRAY_KEY_GT:
+            ret = __assoc_array_read(array, node->left, key);
+            break;
         }
     }
     return ret;
 }
 
-void * assoc_array_read(struct assoc_array * array, int key)
+void * assoc_array_read(struct assoc_array * array, void * key)
 {
     struct AssocArrayNode * root = array->root;
-    return __assoc_array_read(root,key);
+    return __assoc_array_read(array,root,key);
 }
 
-void __assoc_array_walk(int * finished, struct AssocArrayNode * node, int (* fn)(int, void *, void *), void * user_data)
+void __assoc_array_walk(int * finished, struct AssocArrayNode * node,
+                        int (* fn)(void *, void *), void * user_data)
 {
     if(node)
     {
-        *finished = fn(node->key,node->data,user_data);
+        *finished = fn(node->data,user_data);
         if(*finished == 0)
         {
             __assoc_array_walk(finished,node->left,fn,user_data);
@@ -219,18 +220,58 @@ void __assoc_array_walk(int * finished, struct AssocArrayNode * node, int (* fn)
     }
 }
 
-void assoc_array_walk_array(struct assoc_array * array, int (* fn)(int, void *, void *), void * user_data)
+void assoc_array_walk_array(struct assoc_array * array,
+                            int (* fn)(void *, void *), void * user_data)
 {
     struct AssocArrayNode * root = array->root;
     int finished = 0;
     __assoc_array_walk(&finished,root,fn,user_data);
 }
 
-struct assoc_array * assoc_array_create()
+struct assoc_array * assoc_array_create(assoc_array_key_getter get, assoc_array_key_comp cmp)
 {
     struct assoc_array * array = (struct assoc_array *)malloc(sizeof(struct assoc_array));
     array->root = NULL;
+    array->get = get;
+    array->cmp = cmp;
     return array;
+}
+
+
+int assoc_array_key_comp_int(void * k1, void * k2)
+{
+    int ki1 = *((int*)k1);
+    int ki2 = *((int*)k2);
+
+    if( ki1 == ki2 )
+    {
+        return ASSOC_ARRAY_KEY_EQ;
+    }
+    else if( ki1 < ki2 )
+    {
+        return ASSOC_ARRAY_KEY_LT;
+    }
+    else
+    {
+        return ASSOC_ARRAY_KEY_GT;
+    }
+}
+
+int assoc_array_key_comp_str(void * k1, void * k2)
+{
+    int cmp = strcmp((const char *)k1, (const char *)k2);
+    if(cmp == 0)
+    {
+        return ASSOC_ARRAY_KEY_EQ;
+    }
+    else if(cmp < 0)
+    {
+        return ASSOC_ARRAY_KEY_LT;
+    }
+    else
+    {
+        return ASSOC_ARRAY_KEY_GT;
+    }
 }
 
 /*
@@ -270,3 +311,4 @@ int assoc_array_validate(struct assoc_array * array)
 {
     return __assoc_array_validate(array->root);
 }
+

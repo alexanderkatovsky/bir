@@ -3,11 +3,16 @@
 #include <string.h>
 #include "eth_headers.h"
 
+void * interface_list_key_get(void * data)
+{
+    return &((struct sr_vns_if *)data)->ip;
+}
+
 
 struct interface_list * interface_list_create()
 {
     struct interface_list * ret = (struct interface_list *)malloc(sizeof(struct interface_list));
-    ret->array = assoc_array_create();
+    ret->array = assoc_array_create(interface_list_key_get,assoc_array_key_comp_int);
     return ret;
 }
 
@@ -26,12 +31,12 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
 {
     struct sr_vns_if * interface_copy = (struct sr_vns_if *)malloc(sizeof(struct sr_vns_if));
     *interface_copy = *interface;
-    assoc_array_insert(list->array,interface->ip,interface_copy);
+    assoc_array_insert(list->array,interface_copy);
 }
 
 struct sr_vns_if * interface_list_get_interface_by_ip(struct interface_list * list, uint32_t ip)
 {
-    return (struct sr_vns_if *) assoc_array_read(list->array,ip);
+    return (struct sr_vns_if *) assoc_array_read(list->array,&ip);
 }
 
 struct __search_by_name_s
@@ -40,7 +45,7 @@ struct __search_by_name_s
     const char * interface;
 };
 
-int __search_by_name(int key, void * data, void * user_data)
+int __search_by_name(void * data, void * user_data)
 {
     struct __search_by_name_s * s = (struct __search_by_name_s *) user_data;
     struct sr_vns_if * vnsif = (struct sr_vns_if *) data;
@@ -73,5 +78,5 @@ int interface_list_get_MAC_and_IP_from_name(struct interface_list * list, const 
 
 int interface_list_ip_exists(struct interface_list * list, uint32_t ip)
 {
-    return (assoc_array_read(list->array,ip) != NULL);
+    return (assoc_array_read(list->array,&ip) != NULL);
 }
