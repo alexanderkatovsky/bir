@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include "sr_base_internal.h"
 #include "eth_headers.h"
-#include "assoc_array.h"
+#include "bi_assoc_array.h"
 #include "debug.h"
 
 struct sr_packet;
@@ -21,7 +21,7 @@ struct arp_cache_entry
 
 struct arp_cache
 {
-    struct assoc_array * array;
+    struct bi_assoc_array * array;
 
     pthread_mutex_t mutex;
     int exit_signal;

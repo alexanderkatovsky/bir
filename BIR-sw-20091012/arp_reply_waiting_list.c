@@ -78,12 +78,13 @@ void arp_request_handler_thread(void * arg)
         
         pthread_mutex_lock(&list->mutex);
         assoc_array_walk_array(list->array,arp_handler_incr,delete_list);
+        pthread_mutex_unlock(&list->mutex);
+        
         while((entry = fifo_pop(delete_list)))
         {
             arp_reply_waiting_list_alert_host_unreachable(entry);
             __delete_arwl(assoc_array_delete(list->array,&entry->next_hop));
         }
-        pthread_mutex_unlock(&list->mutex);
     }
 }
 
@@ -143,8 +144,9 @@ void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint3
     struct arwl_entry * entry;
     struct arwl_list_entry * l_entry;
     pthread_mutex_lock(&list->mutex);
-
     entry = (struct arwl_entry *)assoc_array_delete(list->array,&ip);
+    pthread_mutex_unlock(&list->mutex);
+    
     if(entry)
     {
         while((l_entry = ((struct arwl_list_entry * )fifo_pop(entry->packet_list))))
@@ -153,8 +155,6 @@ void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint3
         }
         __delete_arwl(entry);
     }
-    
-    pthread_mutex_unlock(&list->mutex);
 }
 
 
