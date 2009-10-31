@@ -58,31 +58,11 @@ void * arp_cache_get_MAC(void * data)
     return ((struct arp_cache_entry *)data)->MAC;
 }
 
-
-int arp_cache_cmp_MAC(void * k1, void * k2)
-{
-    uint8_t * i1 = (uint8_t *)k1;
-    uint8_t * i2 = (uint8_t *)k2;
-    int i = 0;
-    for(;i < ETHER_ADDR_LEN; i++)
-    {
-        if(i1[i] < i2[i])
-        {
-            return ASSOC_ARRAY_KEY_LT;
-        }
-        else if(i1[i] > i2[i])
-        {
-            return ASSOC_ARRAY_KEY_GT;
-        }
-    }
-    return ASSOC_ARRAY_KEY_EQ;
-}
-
 struct arp_cache * arp_cache_create()
 {
     struct arp_cache * ret = (struct arp_cache *)malloc(sizeof(struct arp_cache));
     ret->array = bi_assoc_array_create(arp_cache_get_key,assoc_array_key_comp_int,
-                                       arp_cache_get_MAC,arp_cache_cmp_MAC);
+                                       arp_cache_get_MAC,router_cmp_MAC);
     ret->exit_signal = 1;
     pthread_mutex_init(&ret->mutex,NULL);
 

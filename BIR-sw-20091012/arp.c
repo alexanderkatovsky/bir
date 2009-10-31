@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void arp_request(struct sr_instance * sr, uint32_t ip, const char * interface)
+void arp_request(struct sr_instance * sr, uint32_t ip, char * interface)
 {
     int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_arphdr);
     uint8_t * data = (uint8_t *)malloc(len);

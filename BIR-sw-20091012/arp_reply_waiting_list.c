@@ -166,7 +166,7 @@ void arp_request_handler_process_reply(struct sr_packet * packet)
 }
 
 
-void arp_request_handler_make_request(struct sr_packet * packet, uint32_t next_hop, const char * thru_interface)
+void arp_request_handler_make_request(struct sr_packet * packet, uint32_t next_hop, char * thru_interface)
 {
     if(assoc_array_read(ROUTER(packet->sr)->arwl->array,&next_hop) == NULL)
     {

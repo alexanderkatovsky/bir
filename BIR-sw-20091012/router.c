@@ -101,3 +101,23 @@ struct sr_packet * router_copy_packet(struct sr_packet * packet)
     memcpy(ret->packet,packet->packet,packet->len);
     return ret;
 }
+
+
+int router_cmp_MAC(void * k1, void * k2)
+{
+    uint8_t * i1 = (uint8_t *)k1;
+    uint8_t * i2 = (uint8_t *)k2;
+    int i = 0;
+    for(;i < ETHER_ADDR_LEN; i++)
+    {
+        if(i1[i] < i2[i])
+        {
+            return ASSOC_ARRAY_KEY_LT;
+        }
+        else if(i1[i] > i2[i])
+        {
+            return ASSOC_ARRAY_KEY_GT;
+        }
+    }
+    return ASSOC_ARRAY_KEY_EQ;
+}

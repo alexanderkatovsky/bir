@@ -37,10 +37,11 @@ struct arp_reply_waiting_list
 
 struct arp_reply_waiting_list * arp_reply_waiting_list_create();
 void arp_reply_waiting_list_destroy(struct arp_reply_waiting_list * list);
-void arp_reply_waiting_list_add(struct arp_reply_waiting_list * list, struct sr_packet * packet, uint32_t next_hop, const char * thru_interface);
+void arp_reply_waiting_list_add(struct arp_reply_waiting_list * list, struct sr_packet * packet,
+                                uint32_t next_hop, const char * thru_interface);
 void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint32_t ip);
 
 void arp_request_handler_process_reply(struct sr_packet * packet);
-void arp_request_handler_make_request(struct sr_packet * packet, uint32_t next_hop, const char * thru_interface);
+void arp_request_handler_make_request(struct sr_packet * packet, uint32_t next_hop, char * thru_interface);
 
 #endif

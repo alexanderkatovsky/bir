@@ -5,7 +5,7 @@
 
 void sr_transport_input(uint8_t* packet /* borrowed */);
 
-void ip_forward_packet(struct sr_packet * packet, uint32_t next_hop, const char * thru_interface)
+void ip_forward_packet(struct sr_packet * packet, uint32_t next_hop, char * thru_interface)
 {
     struct ip * ip_hdr = IP_HDR(packet);
     struct sr_ethernet_hdr * eth_hdr = ETH_HDR(packet);
