@@ -44,6 +44,7 @@ void ip_forward(struct sr_packet * packet)
     }
     else
     {
+        dump_ip(ip_hdr->ip_dst.s_addr);Debug(" not in forwarding table\n");
         icmp_send_host_unreachable(packet);
     }
 }

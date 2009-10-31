@@ -68,3 +68,26 @@ int interface_list_ip_exists(struct interface_list * list, uint32_t ip)
 {
     return (bi_assoc_array_read_1(list->array,&ip) != NULL);
 }
+
+int interface_list_print_entry(void * data, void * userdata)
+{
+    struct sr_vns_if * entry = (struct sr_vns_if *)data;
+    print_t print = (print_t)userdata;
+    
+    print_ip(entry->ip,print);
+    print("  ");
+    print_mac(entry->addr,print);
+    print("  ");
+    print("%s",entry->name);
+    print("\n");
+    return 0;
+}
+
+
+void interface_list_show(struct interface_list * list,print_t print)
+{
+    print("\nInterface List:\n");
+    print("%3s               %3s              %3s\n","ip","MAC","name");
+    bi_assoc_array_walk_array(list->array,interface_list_print_entry,print);
+    print("\n\n");
+}

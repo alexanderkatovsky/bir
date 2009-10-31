@@ -15,13 +15,12 @@ struct forwarding_table_entry
     uint32_t gw;
     uint32_t mask;
     char   interface[SR_NAMELEN];
-
-    uint8_t type;
 };
 
 struct forwarding_table
 {
-    struct assoc_array * array;
+    struct assoc_array * array_s;
+    struct assoc_array * array_d;
     pthread_mutex_t mutex;
 };
 

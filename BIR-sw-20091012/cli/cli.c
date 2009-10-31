@@ -276,7 +276,7 @@ void cli_show_ip_arp() {
 }
 
 void cli_show_ip_intf() {
-    cli_send_str( "not yet implemented: show interfaces on SR\n" );
+    interface_list_show(ROUTER(get_sr())->iflist, cli_printf);
 }
 
 void cli_show_ip_route() {

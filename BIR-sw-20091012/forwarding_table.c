@@ -11,7 +11,8 @@ void * forwarding_table_get_key(void * data)
 struct forwarding_table * forwarding_table_create()
 {
     NEW_STRUCT(ret,forwarding_table);
-    ret->array = assoc_array_create(forwarding_table_get_key,assoc_array_key_comp_int);
+    ret->array_s = assoc_array_create(forwarding_table_get_key,assoc_array_key_comp_int);
+    ret->array_d = assoc_array_create(forwarding_table_get_key,assoc_array_key_comp_int);
     pthread_mutex_init(&ret->mutex,NULL);
     return ret;
 }
@@ -24,7 +25,8 @@ void __delete_forwarding_table(void * data)
 void forwarding_table_destroy(struct forwarding_table * fwd_table)
 {
     pthread_mutex_destroy(&fwd_table->mutex);
-    assoc_array_delete_array(fwd_table->array,__delete_forwarding_table);
+    assoc_array_delete_array(fwd_table->array_s,__delete_forwarding_table);
+    assoc_array_delete_array(fwd_table->array_d,__delete_forwarding_table);
     free(fwd_table);    
 }
 
@@ -39,9 +41,7 @@ void forwarding_table_add_static_route(struct forwarding_table * fwd_table, stru
 
     memcpy(e->interface,rt_entry->interface,SR_NAMELEN);
 
-    e->type = FTABLE_STATIC_ENTRY;
-
-    assoc_array_insert(fwd_table->array,e);
+    assoc_array_insert(fwd_table->array_s,e);
 
     pthread_mutex_unlock(&fwd_table->mutex);
 }
@@ -83,7 +83,16 @@ int forwarding_table_lookup_next_hop(struct forwarding_table * fwd_table, uint32
     struct __LPMSearch srch = {0,0,ip,next_hop,thru};
     pthread_mutex_lock(&fwd_table->mutex);
     
-    assoc_array_walk_array(fwd_table->array,__LPMSearchFn,(void*)&srch);
+    assoc_array_walk_array(fwd_table->array_d,__LPMSearchFn,(void*)&srch);
+    if(srch.found == 0)
+    {
+        srch.max_mask = 0;
+        assoc_array_walk_array(fwd_table->array_s,__LPMSearchFn,(void*)&srch);
+    }
+    if(*next_hop == 0)
+    {
+        *next_hop = ip;
+    }
 
     pthread_mutex_unlock(&fwd_table->mutex);
 

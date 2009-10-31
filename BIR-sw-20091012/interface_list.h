@@ -3,6 +3,7 @@
 
 #include "bi_assoc_array.h"
 #include "sr_base_internal.h"
+#include "debug.h"
 
 struct interface_list
 {
@@ -16,5 +17,7 @@ int interface_list_get_MAC_and_IP_from_name(struct interface_list * list,
 struct interface_list * interface_list_create();
 void interface_list_destroy(struct interface_list * list);
 int interface_list_ip_exists(struct interface_list * list, uint32_t ip);
+
+void interface_list_show(struct interface_list * list, print_t print);
 
 #endif

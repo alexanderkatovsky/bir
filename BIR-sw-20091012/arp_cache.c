@@ -122,7 +122,6 @@ void arp_cache_alert_packet_received(struct sr_packet * packet)
     struct arp_cache * cache = ROUTER(packet->sr)->a_cache;
     pthread_mutex_lock(&cache->mutex);
     entry = bi_assoc_array_read_2(cache->array,eth_hdr->ether_shost);
-    dump_mac(eth_hdr->ether_shost);printf("\n\n");
     if(entry != NULL)
     {
         entry->ttl = ARP_CACHE_TIMEOUT;

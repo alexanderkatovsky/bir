@@ -43,17 +43,19 @@ int arp_handler_incr(void * data, void * user_data)
     {
         if(entry->request_number >= ARP_REQUEST_MAX)
         {
+            Debug("\n\nARP timeout ");dump_ip(entry->next_hop);Debug("\n\n");
             fifo_push(delete_list,entry);            
         }
         else
         {
+            arp_request(entry->sr,entry->next_hop, entry->thru_interface);
+            entry->request_ttl = ARP_REQUEST_TIMEOUT;
             entry->request_number += 1;
         }
     }
     else
     {
         entry->request_ttl -= 1;
-        arp_request(entry->sr,entry->next_hop, entry->thru_interface);
     }
     
     return 0;
@@ -129,6 +131,8 @@ void arp_reply_waiting_list_add(struct arp_reply_waiting_list * list, struct sr_
         entry->sr = packet->sr;
         entry->next_hop = next_hop;
         entry->packet_list = fifo_create();
+        entry->request_number = 0;
+        entry->request_ttl = ARP_REQUEST_TIMEOUT;
         assoc_array_insert(list->array,entry);
     }
 
