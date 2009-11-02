@@ -33,7 +33,7 @@ struct tcpheader {
 
 #define IP_P_ICMP 1
 #define IP_P_TCP  6
-
+#define IP_P_OSPF 89
 /*
  * Structure of an internet header, naked of options.
  */

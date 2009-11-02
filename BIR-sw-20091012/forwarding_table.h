@@ -4,7 +4,8 @@
 #include "assoc_array.h"
 #include "sr_base_internal.h"
 #include "sr_rt.h"
-#include <pthread.h>
+#include "mutex.h"
+
 
 #define FTABLE_STATIC_ENTRY  0
 #define FTABLE_DYNAMIC_ENTRY 1
@@ -21,7 +22,7 @@ struct forwarding_table
 {
     struct assoc_array * array_s;
     struct assoc_array * array_d;
-    pthread_mutex_t mutex;
+    struct sr_mutex * mutex;
 };
 
 struct forwarding_table * forwarding_table_create();

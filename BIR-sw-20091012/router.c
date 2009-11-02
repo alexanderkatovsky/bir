@@ -39,16 +39,25 @@ void router_handle_incoming_packet(struct sr_packet * packet)
 
 void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 {
-    interface_list_add_interface(ROUTER(sr)->iflist,interface);
+    struct sr_router * router = ROUTER(sr);
+    interface_list_add_interface(router->iflist,interface);
+
+    if(router->rid == 0)
+    {
+        router->rid = interface->ip;
+        router->aid = interface->ip & 0xff;
+    }
 }
 
-struct sr_router * router_create()
+struct sr_router * router_create(struct sr_instance * sr)
 {
     NEW_STRUCT(ret,sr_router);
-    ret->iflist = interface_list_create();
+    ret->iflist = interface_list_create(sr);
     ret->fwd_table = forwarding_table_create();
     ret->a_cache = arp_cache_create();
     ret->arwl = arp_reply_waiting_list_create();
+    ret->aid = 0;
+    ret->rid = 0;
     return ret;
 }
 
@@ -121,3 +130,4 @@ int router_cmp_MAC(void * k1, void * k2)
     }
     return ASSOC_ARRAY_KEY_EQ;
 }
+

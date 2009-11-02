@@ -37,14 +37,14 @@ void arp_clear_cache_thread(void * arg)
             return;
         }
         
-        pthread_mutex_lock(&cache->mutex);
+        mutex_lock(cache->mutex);
         bi_assoc_array_walk_array(cache->array,arp_clear_cache,delete_list);
         while((entry = fifo_pop(delete_list)))
         {
             Debug("deleting ip ");dump_ip(entry->ip);Debug(" from ARP cache\n");
             free(bi_assoc_array_delete_1(cache->array,&entry->ip));
         }
-        pthread_mutex_unlock(&cache->mutex);
+        mutex_unlock(cache->mutex);
     }
 }
 
@@ -64,7 +64,7 @@ struct arp_cache * arp_cache_create()
     ret->array = bi_assoc_array_create(arp_cache_get_key,assoc_array_key_comp_int,
                                        arp_cache_get_MAC,router_cmp_MAC);
     ret->exit_signal = 1;
-    pthread_mutex_init(&ret->mutex,NULL);
+    ret->mutex = mutex_create();
 
     sys_thread_new(arp_clear_cache_thread,ret);
     
@@ -82,7 +82,7 @@ void arp_cache_destroy(struct arp_cache * cache)
     while(cache->exit_signal == 0)
     {
     }
-    pthread_mutex_destroy(&cache->mutex);
+    mutex_destroy(cache->mutex);
     bi_assoc_array_delete_array(cache->array,__delete_arp_cache);
     free(cache); 
 }
@@ -91,7 +91,7 @@ int arp_cache_get_MAC_from_ip(struct arp_cache * cache, uint32_t ip, uint8_t * M
 {
     struct arp_cache_entry * res;
     int ret = 0;
-    pthread_mutex_lock(&cache->mutex);
+    mutex_lock(cache->mutex);
 
     res = bi_assoc_array_read_1(cache->array,&ip);
     if(res)
@@ -100,19 +100,19 @@ int arp_cache_get_MAC_from_ip(struct arp_cache * cache, uint32_t ip, uint8_t * M
         ret = 1;
     }
 
-    pthread_mutex_unlock(&cache->mutex);
+    mutex_unlock(cache->mutex);
     return ret;
 }
 
 void arp_cache_add(struct arp_cache * cache, uint32_t ip, const uint8_t * MAC)
 {
     struct arp_cache_entry * entry = (struct arp_cache_entry *)malloc(sizeof(struct arp_cache_entry));
-    pthread_mutex_lock(&cache->mutex);
+    mutex_lock(cache->mutex);
     entry->ip = ip;
     entry->ttl = ARP_CACHE_TIMEOUT;
     memcpy(entry->MAC,MAC,ETHER_ADDR_LEN);
     bi_assoc_array_insert(cache->array,entry);
-    pthread_mutex_unlock(&cache->mutex);
+    mutex_unlock(cache->mutex);
 }
 
 void arp_cache_alert_packet_received(struct sr_packet * packet)
@@ -120,13 +120,13 @@ void arp_cache_alert_packet_received(struct sr_packet * packet)
     struct sr_ethernet_hdr * eth_hdr = ETH_HDR(packet);
     struct arp_cache_entry * entry;
     struct arp_cache * cache = ROUTER(packet->sr)->a_cache;
-    pthread_mutex_lock(&cache->mutex);
+    mutex_lock(cache->mutex);
     entry = bi_assoc_array_read_2(cache->array,eth_hdr->ether_shost);
     if(entry != NULL)
     {
         entry->ttl = ARP_CACHE_TIMEOUT;
     }
-    pthread_mutex_unlock(&cache->mutex);
+    mutex_unlock(cache->mutex);
 }
 
 int arp_cache_print_entry(void * data, void * userdata)

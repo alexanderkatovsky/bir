@@ -575,6 +575,7 @@ void cli_ping_flood( gross_ip_int_t* data ) {
 void cli_shutdown() {
     cli_send_str( "Shutting down the router ...\n" );
     router_shutdown = 1;
+    sr_integ_destroy(get_sr());
 
     /* we could do a cleaner shutdown, but this is probably fine */
     exit(0);

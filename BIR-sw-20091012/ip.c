@@ -1,7 +1,7 @@
 #include "router.h"
 #include "debug.h"
 #include "arp_cache.h"
-#include <stdlib.h>
+#include "common.h"
 
 void sr_transport_input(uint8_t* packet /* borrowed */);
 
@@ -68,7 +68,8 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
     else
     {
         /* if packet is not for one of our interfaces then forward */
-        if(!interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_dst.s_addr))
+        if(!interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_dst.s_addr) &&
+           ntohl(ip_hdr->ip_dst.s_addr) != OSPF_AllSPFRouters)
         {
             ip_forward(packet);
         }
@@ -82,9 +83,49 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
             case IP_P_TCP:
                 sr_transport_input(packet->packet);
                 break;
+            case IP_P_OSPF:
+                ospf_handle_incoming_packet(packet);
+                break;
             default:
                 icmp_send_port_unreachable(packet);
             }
         }
     }    
+}
+
+static const char ZERO_MAC[ETHER_ADDR_LEN] = {0xff,0xff,0xff,0xff,0xff,0xff};
+
+void ip_construct_eth_header(uint8_t * packet, const char * dest_MAC, const char * src_MAC, uint16_t type)
+{
+    struct sr_ethernet_hdr * eth_hdr = B_ETH_HDR(packet);
+    dest_MAC = (dest_MAC == NULL) ? ZERO_MAC : dest_MAC;
+    src_MAC = (src_MAC == NULL) ? ZERO_MAC : src_MAC;
+
+    memcpy(eth_hdr->ether_dhost, dest_MAC, ETHER_ADDR_LEN);
+    memcpy(eth_hdr->ether_shost, src_MAC, ETHER_ADDR_LEN);
+    eth_hdr->ether_type = htons(type);
+}
+
+void ip_construct_ip_header(uint8_t * packet, uint16_t len,
+                            uint16_t id, uint8_t ttl,
+                            uint8_t p, uint32_t ip_src, uint32_t ip_dest)
+{
+    struct ip * ip_to = B_IP_HDR(packet);
+
+    struct in_addr src = {ip_src};
+    struct in_addr dst = {ip_dest};
+
+    uint16_t ip_len = len - sizeof(struct sr_ethernet_hdr);
+    
+    ip_to->ip_hl = 5;
+    ip_to->ip_v = 4;
+    ip_to->ip_tos = 0;
+    ip_to->ip_len = htons(ip_len);
+    ip_to->ip_id = htons(id);
+    ip_to->ip_off = 0;
+    ip_to->ip_src = src;
+    ip_to->ip_dst = dst;
+    ip_to->ip_p = p;
+    ip_to->ip_ttl = ttl;
+    ip_to->ip_sum = checksum_ipheader(ip_to);
 }

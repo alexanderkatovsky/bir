@@ -6,6 +6,7 @@
 #include "eth_headers.h"
 #include "bi_assoc_array.h"
 #include "debug.h"
+#include "mutex.h"
 
 struct sr_packet;
 
@@ -23,7 +24,7 @@ struct arp_cache
 {
     struct bi_assoc_array * array;
 
-    pthread_mutex_t mutex;
+    struct sr_mutex * mutex;
     int exit_signal;
 };
 

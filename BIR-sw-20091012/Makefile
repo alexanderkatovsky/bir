@@ -52,7 +52,8 @@ liblwtcp.a : $(LWTCP_OBJS)
 SR_BASE_SRCS = sr_base.c sr_dumper.c sr_integration.c sr_lwtcp_glue.c \
                sr_vns.c sr_cpu_extension_nf2.c real_socket_helper.c sr_rt.c \
                debug.c interface_list.c router.c assoc_array.c bi_assoc_array.c arp.c checksum.c ip.c \
-               forwarding_table.c arp_cache.c arp_reply_waiting_list.c fifo.c icmp_handle.c
+               forwarding_table.c arp_cache.c arp_reply_waiting_list.c fifo.c icmp_handle.c ospf.c \
+               neighbour_list.c mutex.c
 
 SR_BASE_OBJS = $(patsubst %.c,%.o,$(SR_BASE_SRCS))
 

@@ -15,7 +15,6 @@ void __delete_arwl(void * data)
     struct arwl_list_entry * l_entry;    
     while((l_entry = ((struct arwl_list_entry * )fifo_pop(entry->packet_list))))
     {
-        ip_forward_packet(l_entry->packet,l_entry->next_hop,entry->thru_interface);
         router_free_packet(l_entry->packet);
         free(l_entry);
     }
@@ -78,15 +77,15 @@ void arp_request_handler_thread(void * arg)
             return;
         }
         
-        pthread_mutex_lock(&list->mutex);
+        mutex_lock(list->mutex);
         assoc_array_walk_array(list->array,arp_handler_incr,delete_list);
-        pthread_mutex_unlock(&list->mutex);
         
         while((entry = fifo_pop(delete_list)))
         {
             arp_reply_waiting_list_alert_host_unreachable(entry);
             __delete_arwl(assoc_array_delete(list->array,&entry->next_hop));
         }
+        mutex_unlock(list->mutex);
     }
 }
 
@@ -95,7 +94,7 @@ struct arp_reply_waiting_list * arp_reply_waiting_list_create()
     NEW_STRUCT(ret,arp_reply_waiting_list);
     ret->array = assoc_array_create(arwl_key_get,assoc_array_key_comp_int);
     ret->exit_signal = 1;
-    pthread_mutex_init(&ret->mutex,NULL);
+    ret->mutex = mutex_create();
     
     sys_thread_new(arp_request_handler_thread,ret);
     
@@ -104,7 +103,7 @@ struct arp_reply_waiting_list * arp_reply_waiting_list_create()
 
 void arp_reply_waiting_list_destroy(struct arp_reply_waiting_list * list)
 {
-    pthread_mutex_destroy(&list->mutex);
+    mutex_destroy(list->mutex);
     list->exit_signal = 0;
     while(list->exit_signal == 0)
     {
@@ -118,7 +117,7 @@ void arp_reply_waiting_list_add(struct arp_reply_waiting_list * list, struct sr_
 {
     struct arwl_entry * entry;
     NEW_STRUCT(l_entry,arwl_list_entry);
-    pthread_mutex_lock(&list->mutex);
+    mutex_lock(list->mutex);
 
     l_entry->packet = router_copy_packet(packet);
     l_entry->next_hop = next_hop;
@@ -140,16 +139,15 @@ void arp_reply_waiting_list_add(struct arp_reply_waiting_list * list, struct sr_
 
     fifo_push(entry->packet_list,l_entry);
     
-    pthread_mutex_unlock(&list->mutex);
+    mutex_unlock(list->mutex);
 }
 
 void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint32_t ip)
 {
     struct arwl_entry * entry;
     struct arwl_list_entry * l_entry;
-    pthread_mutex_lock(&list->mutex);
+    mutex_lock(list->mutex);
     entry = (struct arwl_entry *)assoc_array_delete(list->array,&ip);
-    pthread_mutex_unlock(&list->mutex);
     
     if(entry)
     {
@@ -159,6 +157,7 @@ void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint3
         }
         __delete_arwl(entry);
     }
+    mutex_unlock(list->mutex);
 }
 
 

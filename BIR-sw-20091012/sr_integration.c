@@ -42,7 +42,7 @@ void sr_integ_init(struct sr_instance* sr)
     printf("sr_integ_init\n");
     struct sr_ifsys *subsystem = (struct sr_ifsys *) malloc(sizeof (struct sr_ifsys));
 
-    sr->router = router_create();
+    sr->router = router_create(sr);
     sr->interface_subsystem = subsystem;
 } /* -- sr_integ_init -- */
 
@@ -104,7 +104,7 @@ void sr_integ_input(struct sr_instance* sr,
 void sr_integ_add_interface(struct sr_instance* sr,
                             struct sr_vns_if* vns_if/* borrowed */)
 {
-    interface_list_add_interface(ROUTER(sr)->iflist,vns_if);
+    router_add_interface(sr,vns_if);
 } /* -- sr_integ_add_interface -- */
 
 /*-----------------------------------------------------------------------------
@@ -156,7 +156,6 @@ void sr_integ_destroy(struct sr_instance* sr)
 {
     printf(" ** sr_integ_destroy(..) called \n");
     router_destroy(ROUTER(sr));
-    free(ROUTER(sr));
 } /* -- sr_integ_destroy -- */
 
 /*-----------------------------------------------------------------------------

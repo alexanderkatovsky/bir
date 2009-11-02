@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include "eth_headers.h"
 #include "fifo.h"
+#include "mutex.h"
 
 #define ARP_REQUEST_MAX 5
 #define ARP_REQUEST_TIMEOUT 3
@@ -31,7 +32,7 @@ struct arwl_entry
 struct arp_reply_waiting_list
 {
     struct assoc_array * array;
-    pthread_mutex_t mutex;
+    struct sr_mutex * mutex;
     int exit_signal;
 };
 
