@@ -148,3 +148,28 @@ void forwarding_table_dynamic_show(struct forwarding_table * ft, print_t print)
     assoc_array_walk_array(ft->array_d,forwarding_table_show_a,print);
     mutex_unlock(ft->mutex);
 }
+
+struct __forwarding_table_static_loop_through_entries_i
+{
+    void (*fn)(struct forwarding_table_entry *, void *);
+    void * userdata;
+};
+
+int __forwarding_table_static_loop_through_entries_a(void * data, void * userdata)
+{
+    struct forwarding_table_entry * fte = (struct forwarding_table_entry *)data;
+    struct __forwarding_table_static_loop_through_entries_i * ftslte =
+        (struct __forwarding_table_static_loop_through_entries_i *)userdata;
+    ftslte->fn(fte,ftslte->userdata);
+    return 0;
+}
+
+void forwarding_table_static_loop_through_entries(struct forwarding_table * ft,
+                                                  void (*fn)(struct forwarding_table_entry *, void *),
+                                                  void * userdata)
+{
+    struct __forwarding_table_static_loop_through_entries_i ftslte = {fn,userdata};
+    mutex_lock(ft->mutex);
+    assoc_array_walk_array(ft->array_s,__forwarding_table_static_loop_through_entries_a,&ftslte);
+    mutex_unlock(ft->mutex);
+}

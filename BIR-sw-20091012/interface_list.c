@@ -14,9 +14,102 @@ int interface_list_send_hello_on_interface(void * data, void * userdata)
     return 0;
 }
 
+void __interface_list_get_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
+{
+    struct fifo * lsu_list = (struct fifo *)userdata;
+    NEW_STRUCT(lsu,ospfv2_lsu);
+    lsu->subnet = n->ip;
+    lsu->mask = n->nmask;
+    lsu->rid = n->router_id;
+
+    fifo_push(lsu_list,lsu);
+}
+
+void __interface_list_get_lsu_static_a(struct forwarding_table_entry * fte, void * userdata)
+{
+    struct fifo * lsu_list = (struct fifo *)userdata;
+    NEW_STRUCT(lsu,ospfv2_lsu);
+    lsu->subnet = fte->dest.subnet;
+    lsu->mask = fte->dest.mask;
+    lsu->rid = 0;
+
+    fifo_push(lsu_list,lsu);
+}
+
+struct __interface_list_send_i
+{
+    struct sr_instance * sr;
+    uint8_t * data;
+    int len;
+};
+
+void __interface_list_send_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
+{
+    struct __interface_list_send_i * ilsi = (struct __interface_list_send_i *)userdata;
+    struct sr_packet * packet = router_construct_packet(ilsi->sr,ilsi->data,ilsi->len,vns_if->name);
+
+    ospf_construct_ospf_header(packet->packet,OSPF_TYPE_LSU,ilsi->len,ROUTER(ilsi->sr)->rid,n->aid);
+    ip_construct_ip_header(packet->packet,ilsi->len,0,OSPF_MAX_LSU_TTL,IP_P_OSPF,vns_if->ip,n->ip);
+    ip_construct_eth_header(packet->packet,0,0,ETHERTYPE_IP);
+
+    ip_forward_packet(packet,n->ip,vns_if->name);
+
+    router_free_packet(packet);
+}
+
 void interface_list_send_flood(struct sr_instance * sr)
 {
+    struct fifo * lsu_list = fifo_create();
+    struct fifo * lsu_static = fifo_create();
+    struct ospfv2_lsu * lsu;
+    struct ospfv2_lsu * flood_data;
+    uint8_t * data;
+    int n,i = 0,len;
+    struct __interface_list_send_i ilsi;
+
+    mutex_lock(INTERFACE_LIST(sr)->mutex);
+
     printf("\n\n***Sending Flood***\n\n");
+    interface_list_loop_through_neighbours(INTERFACE_LIST(sr), __interface_list_get_lsu_a, lsu_list);
+    forwarding_table_static_loop_through_entries(FORWARDING_TABLE(sr), __interface_list_get_lsu_static_a, lsu_static);
+    n = fifo_length(lsu_list) + fifo_length(lsu_static);
+
+    len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)
+        + sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_lsu_hdr) + n*sizeof(struct ospfv2_lsu);
+
+    data = (uint8_t *)malloc(len);
+    flood_data = B_LSU_START(data);
+
+    while((lsu = fifo_pop(lsu_list)))
+    {
+        flood_data[i] = *lsu;
+        free(lsu);
+        i++;
+    }
+    
+    fifo_delete(lsu_list,0);
+    while((lsu = fifo_pop(lsu_static)))
+    {
+        flood_data[i] = *lsu;
+        free(lsu);
+        i++;
+    }
+
+    fifo_delete(lsu_static,0);
+
+    ROUTER(sr)->ospf_seq += 1;
+    
+    ospf_construct_lsu_header(data,ROUTER(sr)->ospf_seq, n);
+
+    ilsi.sr = sr;
+    ilsi.data = data;
+    ilsi.len = len;
+
+    interface_list_loop_through_neighbours(INTERFACE_LIST(sr), __interface_list_send_lsu_a, &ilsi);
+
+    free(data);
+
+    mutex_unlock(INTERFACE_LIST(sr)->mutex);
 }
 
 void interface_list_send_hello(struct interface_list * iflist)

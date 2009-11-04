@@ -35,6 +35,9 @@ void forwarding_table_add_dynamic(struct forwarding_table * ft, struct ip_addres
 void forwarding_table_start_dijkstra(struct forwarding_table * ft);
 void forwarding_table_end_dijkstra(struct forwarding_table * fwd_table);
 void forwarding_table_dynamic_show(struct forwarding_table * ft, print_t print);
+void forwarding_table_static_loop_through_entries(struct forwarding_table * ft,
+                                                  void (*fn)(struct forwarding_table_entry *, void *),
+                                                  void * userdata);
 
 #endif
 

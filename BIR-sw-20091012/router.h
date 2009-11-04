@@ -28,6 +28,7 @@ struct sr_router
     struct link_state_graph * lsg;
 
     uint32_t rid;
+    uint32_t ospf_seq;
 };
 
 
@@ -92,5 +93,7 @@ int router_cmp_MAC(void * k1, void * k2);
 
 void ospf_handle_incoming_packet(struct sr_packet * packet);
 void ospf_send_hello(struct sr_instance * sr, struct interface_list_entry * ifentry);
+void ospf_construct_ospf_header(uint8_t * packet, uint8_t type, uint16_t len, uint32_t rid, uint32_t aid);
+void ospf_construct_lsu_header(uint8_t * packet, uint16_t seq, uint32_t num_adv);
 
 #endif

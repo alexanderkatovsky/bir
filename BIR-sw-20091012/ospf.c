@@ -7,7 +7,7 @@ void ospf_construct_ospf_header(uint8_t * packet, uint8_t type, uint16_t len, ui
     ospf_hdr->version = 2;
     ospf_hdr->type = type;
     ospf_hdr->len = htons(ospf_len);
-    ospf_hdr->rid = htonl(rid);
+    ospf_hdr->rid = rid;
     ospf_hdr->aid = htonl(aid);
     ospf_hdr->csum = checksum_ospfheader((const uint8_t *)ospf_hdr,ospf_len);
     ospf_hdr->autype = 0;
@@ -22,16 +22,26 @@ void ospf_construct_hello_header(uint8_t * packet, uint32_t mask, uint16_t hello
     hdr->padding = 0;
 }
 
+void ospf_construct_lsu_header(uint8_t * packet, uint16_t seq, uint32_t num_adv)
+{
+    struct ospfv2_lsu_hdr * hdr = B_LSU_HDR(packet);
+    hdr->seq = htons(seq);
+    hdr->unused = 0;
+    hdr->ttl = OSPF_MAX_LSU_TTL;
+    hdr->num_adv = htonl(num_adv);
+}
+
 void ospf_send_hello(struct sr_instance * sr, struct interface_list_entry * ifentry)
 {
     int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) +
         sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_hello_hdr);
 
     uint8_t * packet = (uint8_t *)malloc(len);
-    ip_construct_eth_header(packet,0,ifentry->vns_if->addr,ETHERTYPE_IP);
-    ip_construct_ip_header(packet,len,0,OSPF_MAX_LSU_TTL,IP_P_OSPF,ifentry->vns_if->ip,htonl(OSPF_AllSPFRouters));
-    ospf_construct_ospf_header(packet,OSPF_TYPE_HELLO,len,htonl(ROUTER(sr)->rid),ifentry->aid);
     ospf_construct_hello_header(packet,ifentry->vns_if->mask,OSPF_DEFAULT_HELLOINT);
+    ospf_construct_ospf_header(packet,OSPF_TYPE_HELLO,len,ROUTER(sr)->rid,ifentry->aid);
+    ip_construct_ip_header(packet,len,0,OSPF_MAX_LSU_TTL,IP_P_OSPF,ifentry->vns_if->ip,htonl(OSPF_AllSPFRouters));
+    ip_construct_eth_header(packet,0,ifentry->vns_if->addr,ETHERTYPE_IP);
+
     if(sr_integ_low_level_output(sr,packet,len,ifentry->vns_if->name) == -1)
     {
         printf("\nfailed to send packet\n");

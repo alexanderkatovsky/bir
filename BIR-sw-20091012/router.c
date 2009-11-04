@@ -57,6 +57,7 @@ struct sr_router * router_create(struct sr_instance * sr)
     ret->arwl = arp_reply_waiting_list_create();
     ret->lsg = link_state_graph_create();
     ret->rid = 0;
+    ret->ospf_seq = 0;
     return ret;
 }
 
