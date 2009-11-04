@@ -184,6 +184,8 @@ int link_state_graph_update_links(struct sr_instance * sr,
     {
         ret = 0;
     }
+
+    lsn->seq = seq;
     
     if(ret)
     {

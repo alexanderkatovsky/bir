@@ -39,14 +39,28 @@ void ospf_send_hello(struct sr_instance * sr, struct interface_list_entry * ifen
     free(packet);
 }
 
+void __ospf_forward_incoming_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
+{
+    struct sr_packet * packet = (struct sr_packet *)userdata;
+    ip_forward_packet(packet,n->ip,vns_if->name);
+}
+
+void ospf_forward_incoming_lsu(struct sr_packet * packet)
+{
+    interface_list_loop_through_neighbours(INTERFACE_LIST(packet->sr), __ospf_forward_incoming_lsu_a, packet);
+}
+
 void ospf_handle_incoming_lsu(struct sr_packet * packet)
 {
     struct ospfv2_hdr * ospf_hdr = OSPF_HDR(packet);
     struct ospfv2_lsu_hdr * lsu_hdr = LSU_HDR(packet);
-    if(ospf_hdr->rid != 0)
+    if((ospf_hdr->rid != 0) && (ospf_hdr->rid != ROUTER(packet->sr)->rid))
     {
-        link_state_graph_update_links(packet->sr, ospf_hdr->rid,ntohs(lsu_hdr->seq),
-                                      ntohl(lsu_hdr->num_adv),LSU_START(packet));
+        if(link_state_graph_update_links(packet->sr, ospf_hdr->rid,ntohs(lsu_hdr->seq),
+                                         ntohl(lsu_hdr->num_adv),LSU_START(packet)))
+        {
+            ospf_forward_incoming_lsu(packet);
+        }
     }
 }
 

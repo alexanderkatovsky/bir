@@ -35,8 +35,6 @@ void interface_list_destroy(struct interface_list * list);
 int interface_list_ip_exists(struct interface_list * list, uint32_t ip);
 
 void interface_list_show(struct interface_list * list, print_t print);
-void interface_list_alert_new_neighbour(struct sr_instance * sr, struct neighbour * n);
-void interface_list_alert_neighbour_down(struct sr_instance * sr, struct neighbour * n);
 void interface_list_process_incoming_hello(struct sr_packet * packet, struct interface_list * iflist,
                                            char * interface,
                                            uint32_t ip, uint32_t rid, uint32_t aid,
@@ -45,4 +43,6 @@ void interface_list_process_incoming_hello(struct sr_packet * packet, struct int
 void interface_list_loop_through_neighbours(struct interface_list * iflist,
                                             void (*fn)(struct sr_vns_if *, struct neighbour *, void *),
                                             void * userdata);
+
+void interface_list_send_flood(struct sr_instance * sr);
 #endif

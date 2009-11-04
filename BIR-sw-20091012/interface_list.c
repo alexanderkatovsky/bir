@@ -14,7 +14,7 @@ int interface_list_send_hello_on_interface(void * data, void * userdata)
     return 0;
 }
 
-void interface_list_send_flood(struct interface_list * iflist)
+void interface_list_send_flood(struct sr_instance * sr)
 {
     printf("\n\n***Sending Flood***\n\n");
 }
@@ -64,7 +64,7 @@ void interface_list_thread(void * data)
 
         if(iflist->time_to_flood <= 0)
         {
-            interface_list_send_flood(iflist);
+            interface_list_send_flood(iflist->sr);
             iflist->time_to_flood = OSPF_DEFAULT_LSUINT;
         }
         else
@@ -230,16 +230,6 @@ void interface_list_process_incoming_hello(struct sr_packet * packet, struct int
         }
     }
     mutex_unlock(iflist->mutex);
-}
-
-void interface_list_alert_new_neighbour(struct sr_instance * sr, struct neighbour * n)
-{
-    printf("\n\n***Sending Flood To alert New Neighbour***\n\n");
-}
-
-void interface_list_alert_neighbour_down(struct sr_instance * sr, struct neighbour * n)
-{
-    printf("\n\n***Sending Flood To alert Neighbour Down***\n\n");
 }
 
 struct __neighbour_loop_i
