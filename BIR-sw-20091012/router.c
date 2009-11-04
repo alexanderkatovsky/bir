@@ -45,7 +45,6 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
     if(router->rid == 0)
     {
         router->rid = interface->ip;
-        router->aid = interface->ip & 0xff;
     }
 }
 
@@ -56,7 +55,7 @@ struct sr_router * router_create(struct sr_instance * sr)
     ret->fwd_table = forwarding_table_create();
     ret->a_cache = arp_cache_create();
     ret->arwl = arp_reply_waiting_list_create();
-    ret->aid = 0;
+    ret->lsg = link_state_graph_create();
     ret->rid = 0;
     return ret;
 }
@@ -67,7 +66,7 @@ void router_destroy(struct sr_router * router)
     forwarding_table_destroy(router->fwd_table);
     arp_cache_destroy(router->a_cache);
     arp_reply_waiting_list_destroy(router->arwl);
-
+    link_state_graph_destroy(router->lsg);
     free(router);
 }
 

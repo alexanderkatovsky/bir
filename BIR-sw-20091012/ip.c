@@ -93,9 +93,9 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
     }    
 }
 
-static const char ZERO_MAC[ETHER_ADDR_LEN] = {0xff,0xff,0xff,0xff,0xff,0xff};
+static const uint8_t ZERO_MAC[ETHER_ADDR_LEN] = {0xff,0xff,0xff,0xff,0xff,0xff};
 
-void ip_construct_eth_header(uint8_t * packet, const char * dest_MAC, const char * src_MAC, uint16_t type)
+void ip_construct_eth_header(uint8_t * packet, const uint8_t * dest_MAC, const uint8_t * src_MAC, uint16_t type)
 {
     struct sr_ethernet_hdr * eth_hdr = B_ETH_HDR(packet);
     dest_MAC = (dest_MAC == NULL) ? ZERO_MAC : dest_MAC;

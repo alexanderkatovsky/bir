@@ -32,4 +32,5 @@ void neighbour_list_scan_neighbours(struct sr_instance * sr, struct neighbour_li
 void neighbour_list_process_incoming_hello(struct sr_instance * sr, struct neighbour_list * n_list,
                                            uint32_t ip,uint32_t rid,uint32_t aid,uint32_t nmask,uint16_t helloint);
 
+void neighbour_list_loop(struct neighbour_list * nlist, void (*fn)(struct neighbour *, void *), void * userdata);
 #endif

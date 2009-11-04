@@ -12,6 +12,7 @@ struct interface_list_entry
 {
     struct neighbour_list * n_list;
     struct sr_vns_if * vns_if;
+    uint32_t aid;
 };
 
 struct interface_list
@@ -19,7 +20,10 @@ struct interface_list
     struct bi_assoc_array * array;
     struct sr_instance * sr;
     int time_to_hello;
+    int time_to_flood;
     int exit_signal;
+
+    struct sr_mutex * mutex;
 };
 
 void interface_list_add_interface(struct interface_list * list, struct sr_vns_if * interface);
@@ -37,4 +41,8 @@ void interface_list_process_incoming_hello(struct sr_packet * packet, struct int
                                            char * interface,
                                            uint32_t ip, uint32_t rid, uint32_t aid,
                                            uint32_t nmask, uint16_t helloint);
+
+void interface_list_loop_through_neighbours(struct interface_list * iflist,
+                                            void (*fn)(struct sr_vns_if *, struct neighbour *, void *),
+                                            void * userdata);
 #endif

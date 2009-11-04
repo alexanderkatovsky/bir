@@ -11,8 +11,8 @@ void * forwarding_table_get_key(void * data)
 struct forwarding_table * forwarding_table_create()
 {
     NEW_STRUCT(ret,forwarding_table);
-    ret->array_s = assoc_array_create(forwarding_table_get_key,assoc_array_key_comp_int);
-    ret->array_d = assoc_array_create(forwarding_table_get_key,assoc_array_key_comp_int);
+    ret->array_s = assoc_array_create(forwarding_table_get_key,ip_address_cmp);
+    ret->array_d = assoc_array_create(forwarding_table_get_key,ip_address_cmp);
     ret->mutex = mutex_create();
     return ret;
 }
@@ -34,10 +34,10 @@ void forwarding_table_add_static_route(struct forwarding_table * fwd_table, stru
 {
     NEW_STRUCT(e,forwarding_table_entry);
     mutex_lock(fwd_table->mutex);
-    
-    e->dest = rt_entry->dest.s_addr;
-    e->gw   = rt_entry->gw.s_addr;
-    e->mask = rt_entry->mask.s_addr;
+
+    e->dest.subnet = rt_entry->dest.s_addr;
+    e->dest.mask   = rt_entry->mask.s_addr;
+    e->next_hop    = rt_entry->gw.s_addr;
 
     memcpy(e->interface,rt_entry->interface,SR_NAMELEN);
 
@@ -61,14 +61,14 @@ int __LPMSearchFn(void * data, void * user_data)
     struct forwarding_table_entry * rt = (struct forwarding_table_entry *) data;
     int mask;
 
-    mask = rt->mask;
-    if((srch->ip & mask) == (rt->dest & mask))
+    mask = rt->dest.mask;
+    if((srch->ip & mask) == (rt->dest.subnet & mask))
     {
         if((mask & srch->max_mask) == srch->max_mask)
         {
             srch->found = 1;
             srch->max_mask = mask;
-            *srch->next_hop = rt->gw;
+            *srch->next_hop = rt->next_hop;
             memcpy(srch->thru,rt->interface,SR_NAMELEN);
         }
     }
@@ -97,4 +97,54 @@ int forwarding_table_lookup_next_hop(struct forwarding_table * fwd_table, uint32
     mutex_unlock(fwd_table->mutex);
 
     return srch.found;
+}
+
+int forwarding_table_dynamic_entry_exists(struct forwarding_table * ft, struct ip_address * ip)
+{
+    return (assoc_array_read(ft->array_d, ip) != NULL);
+}
+
+void forwarding_table_add_dynamic(struct forwarding_table * ft, struct ip_address * ip,
+                                  uint32_t next_hop, const char * interface)
+{
+    NEW_STRUCT(entry,forwarding_table_entry);
+    entry->dest = *ip;
+    entry->next_hop = next_hop;
+    strcpy(entry->interface,interface);
+
+    assoc_array_insert(ft->array_d,entry);
+}
+
+void forwarding_table_start_dijkstra(struct forwarding_table * fwd_table)
+{
+    assoc_array_delete_array(fwd_table->array_d,__delete_forwarding_table);
+    fwd_table->array_d = assoc_array_create(forwarding_table_get_key,ip_address_cmp);
+
+    mutex_lock(fwd_table->mutex);
+}
+
+void forwarding_table_end_dijkstra(struct forwarding_table * fwd_table)
+{
+    mutex_unlock(fwd_table->mutex);
+}
+
+int forwarding_table_show_a(void * data, void * userdata)
+{
+    struct forwarding_table_entry * fte = (struct forwarding_table_entry *)data;
+    print_t print = (print_t)userdata;
+
+    print_ip(fte->dest.subnet,print);print("\t");
+    print_ip(fte->dest.mask,print);print("\t");
+    print_ip(fte->next_hop,print);print("\t");
+    print("%s\n",fte->interface);
+    return 0;
+}
+
+void forwarding_table_dynamic_show(struct forwarding_table * ft, print_t print)
+{
+    print("Dynamic Forwarding Table:\n");
+    
+    mutex_lock(ft->mutex);
+    assoc_array_walk_array(ft->array_d,forwarding_table_show_a,print);
+    mutex_unlock(ft->mutex);
 }

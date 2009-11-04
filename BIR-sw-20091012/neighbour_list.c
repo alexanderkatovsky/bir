@@ -82,3 +82,24 @@ void neighbour_list_scan_neighbours(struct sr_instance * sr, struct neighbour_li
     mutex_unlock(nl->mutex);
 }
 
+struct __neighbour_list_loop_i
+{
+    void (*fn)(struct neighbour *, void *);
+    void * userdata;
+};
+
+int neighbour_list_loop_a(void * data, void * userdata)
+{
+    struct neighbour * n = (struct neighbour *)data;
+    struct __neighbour_list_loop_i * nlli = (struct __neighbour_list_loop_i *)userdata;
+    nlli->fn(n,nlli->userdata);
+    return 0;
+}
+
+void neighbour_list_loop(struct neighbour_list * nlist, void (*fn)(struct neighbour *, void *), void * userdata)
+{
+    mutex_lock(nlist->mutex);
+    struct __neighbour_list_loop_i nlli = {fn,userdata};
+    assoc_array_walk_array(nlist->array,neighbour_list_loop_a,&nlli);
+    mutex_unlock(nlist->mutex);
+}
