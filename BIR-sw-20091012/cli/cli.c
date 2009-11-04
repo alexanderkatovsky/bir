@@ -280,7 +280,8 @@ void cli_show_ip_intf() {
 }
 
 void cli_show_ip_route() {
-    cli_send_str( "not yet implemented: show routing table of SR\n" );
+    forwarding_table_dynamic_show(FORWARDING_TABLE(get_sr()),cli_printf);
+    forwarding_table_static_show(FORWARDING_TABLE(get_sr()),cli_printf);
 }
 
 void cli_show_opt() {
@@ -303,11 +304,11 @@ void cli_show_ospf() {
 }
 
 void cli_show_ospf_neighbors() {
-    cli_send_str( "not yet implemented: show list of neighbors for each interface of SR\n" );
+    interface_list_show_neighbours(INTERFACE_LIST(get_sr()),cli_printf);
 }
 
 void cli_show_ospf_topo() {
-    cli_send_str( "not yet implemented: show PWOSPF topology of SR (e.g., for each router, show its ID, last pwospf seq #, and a list of all its links (e.g., router ID + subnet))\n" );
+    link_state_graph_show_topology(LSG(get_sr()),cli_printf);
 }
 
 #ifndef _VNS_MODE_

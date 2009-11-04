@@ -84,7 +84,7 @@ int forwarding_table_lookup_next_hop(struct forwarding_table * fwd_table, uint32
     mutex_lock(fwd_table->mutex);
     
     assoc_array_walk_array(fwd_table->array_d,__LPMSearchFn,(void*)&srch);
-    if(srch.found == 0)
+    if(srch.found == 0 || srch.max_mask == 0)
     {
         srch.max_mask = 0;
         assoc_array_walk_array(fwd_table->array_s,__LPMSearchFn,(void*)&srch);
@@ -148,6 +148,16 @@ void forwarding_table_dynamic_show(struct forwarding_table * ft, print_t print)
     assoc_array_walk_array(ft->array_d,forwarding_table_show_a,print);
     mutex_unlock(ft->mutex);
 }
+
+void forwarding_table_static_show(struct forwarding_table * ft, print_t print)
+{
+    print("Static Forwarding Table:\n");
+    
+    mutex_lock(ft->mutex);
+    assoc_array_walk_array(ft->array_s,forwarding_table_show_a,print);
+    mutex_unlock(ft->mutex);
+}
+
 
 struct __forwarding_table_static_loop_through_entries_i
 {

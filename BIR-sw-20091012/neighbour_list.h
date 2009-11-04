@@ -17,6 +17,7 @@ struct neighbour
     uint16_t helloint;
 
     uint16_t ttl;
+    uint32_t ospf_seq;
 };
 
 struct neighbour_list

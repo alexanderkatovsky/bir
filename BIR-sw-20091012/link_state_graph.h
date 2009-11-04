@@ -6,6 +6,7 @@
 #include "pwospf_protocol.h"
 #include "sr_base_internal.h"
 #include "linked_list.h"
+#include "debug.h"
 
 struct dijkstra
 {
@@ -41,6 +42,7 @@ int link_state_graph_update_links(struct sr_instance * sr,
                                   uint32_t rid, uint16_t seq, uint32_t num, struct ospfv2_lsu * adv);
 
 void link_state_graph_update_forwarding_table(struct sr_instance * sr);
+void link_state_graph_show_topology(struct link_state_graph * lsg, print_t print);
 
 #endif
 

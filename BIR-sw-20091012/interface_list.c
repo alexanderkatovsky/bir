@@ -356,3 +356,24 @@ void interface_list_loop_through_neighbours(struct interface_list * iflist,
     bi_assoc_array_walk_array(iflist->array,interface_list_loop_through_neighbours_a,&nli);
     mutex_unlock(iflist->mutex);
 }
+
+void __interface_list_show_neighbours_a(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
+{
+    print_t print = (print_t)userdata;
+    print("interface     :   %s\n", vns_if->name);
+    print("router id     :   ");print_ip(n->router_id,print);print("\n");
+    print("area id       :   %d\n", n->aid);
+    print("ip            :   ");print_ip(n->ip,print);print("\n");
+    print("mask          :   ");print_ip(n->nmask,print);print("\n");
+    print("hello int     :   %d\n", n->helloint);
+    print("ttl           :   %d\n", n->ttl);
+    print("ttl           :   %d\n", n->ttl);
+    print("sequence num  :   %d\n", n->ospf_seq);
+    
+    print("\n");
+}
+
+void interface_list_show_neighbours(struct interface_list * iflist, print_t print)
+{
+    interface_list_loop_through_neighbours(iflist,__interface_list_show_neighbours_a,print);
+}

@@ -34,7 +34,7 @@ void arp_request(struct sr_instance * sr, uint32_t ip, char * interface)
         memcpy(arp_hdr->ar_tha,eth_hdr->ether_dhost,ETHER_ADDR_LEN);
         arp_hdr->ar_tip = ip;
 
-        printf("ARP request to "); dump_ip(ip);printf(" through interface %s\n", interface);
+/*        printf("ARP request to "); dump_ip(ip);printf(" through interface %s\n", interface);*/
 
         if(sr_integ_low_level_output(sr,data,len,interface) == -1)
         {

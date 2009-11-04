@@ -171,9 +171,11 @@ int link_state_graph_update_links(struct sr_instance * sr,
     struct link_state_node * lsn;
     struct link_state_graph * lsg = LSG(sr);
     int ret = 1;
+
     lsn = (struct link_state_node *)assoc_array_read(lsg->array,&rid);
     if(lsn == NULL)
     {
+        printf("\ncreating new lsn\n");
         lsn = (struct link_state_node *)malloc(sizeof(struct link_state_node));
         lsn->rid = rid;
         lsn->seq = seq;
@@ -182,6 +184,8 @@ int link_state_graph_update_links(struct sr_instance * sr,
     }
     else if(lsn->seq >= seq)
     {
+        printf("\nseq breach ");dump_ip(rid);printf("\n");
+        printf("\n%d,%d\n",lsn->seq,seq);
         ret = 0;
     }
 
@@ -222,4 +226,33 @@ struct link_state_graph * link_state_graph_create()
     return ret;
 }
 
+int __link_state_graph_show_link_a(void * data, void * userdata)
+{
+    struct link * l = (struct link *)data;
+    print_t print = (print_t)userdata;
+    print("     [");
+    print_ip(l->ip.subnet,print);print(", ");
+    print_ip(l->ip.mask,print);print(", ");
+    print_ip(l->rid,print);
+    print("]");
 
+    return 0;
+}
+
+int __link_state_graph_show_topology_a(void * data, void * userdata)
+{
+    struct link_state_node * lsn = (struct link_state_node *)data;
+    print_t print = (print_t)userdata;
+    print("  rid:  ");print_ip(lsn->rid,print);print("\n");
+    print("  last sequence number: %d\n", lsn->seq);
+
+    linked_list_walk_list(lsn->links,__link_state_graph_show_link_a,print);
+    print("\n");
+    
+    return 0;
+}
+
+void link_state_graph_show_topology(struct link_state_graph * lsg, print_t print)
+{
+    assoc_array_walk_array(lsg->array,__link_state_graph_show_topology_a,print);
+}

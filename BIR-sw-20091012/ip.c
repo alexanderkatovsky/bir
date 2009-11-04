@@ -10,8 +10,8 @@ void ip_forward_packet(struct sr_packet * packet, uint32_t next_hop, char * thru
     struct ip * ip_hdr = IP_HDR(packet);
     struct sr_ethernet_hdr * eth_hdr = ETH_HDR(packet);
     
-    Debug("forwarding packet to "); dump_ip(next_hop);
-    Debug(" through interface %s \n", thru_interface);
+/*    Debug("forwarding packet to "); dump_igp(next_hop);
+      Debug(" through interface %s \n", thru_interface);*/
 
     if(!arp_cache_get_MAC_from_ip(ROUTER(packet->sr)->a_cache, next_hop, eth_hdr->ether_dhost))
     {

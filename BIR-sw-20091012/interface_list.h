@@ -45,4 +45,5 @@ void interface_list_loop_through_neighbours(struct interface_list * iflist,
                                             void * userdata);
 
 void interface_list_send_flood(struct sr_instance * sr);
+void interface_list_show_neighbours(struct interface_list * iflist, print_t print);
 #endif

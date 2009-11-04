@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include "cli/cli_main.h"
 #include "sr_base.h"
+#include <string.h>
 
 /** run the command-line interface on CLI_PORT */
 #define CLI_PORT 2300
@@ -47,10 +48,21 @@ int main(int argc, char** argv)
      *        clean argv
      *                                            -- */
 
+    int i,port = CLI_PORT;
     sr_init_low_level_subystem(argc, argv);
 
+    for(i = 0; i < argc; i++)
+    {
+        if((strcmp(argv[i],"-P") == 0) && i+1 < argc)
+        {
+            port = atoi(argv[i+1]);
+        }
+    }
+
+    
+
     /* start the command-line interface (blocks until the router terminates) */
-    if( cli_main( CLI_PORT ) == CLI_ERROR )
+    if( cli_main( port ) == CLI_ERROR )
         fprintf( stderr, "Error: unable to setup the command-line interface server\n" );
 
     return 0;
