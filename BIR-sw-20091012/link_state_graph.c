@@ -230,9 +230,9 @@ int __link_state_graph_show_link_a(void * data, void * userdata)
 {
     struct link * l = (struct link *)data;
     print_t print = (print_t)userdata;
-    print("     [");
-    print_ip(l->ip.subnet,print);print(", ");
-    print_ip(l->ip.mask,print);print(", ");
+    print("[");
+    print_ip(l->ip.subnet,print);print(",");
+    print_ip(l->ip.mask,print);print(",");
     print_ip(l->rid,print);
     print("]");
 

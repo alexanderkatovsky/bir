@@ -38,7 +38,8 @@ void ip_forward(struct sr_packet * packet)
     uint32_t next_hop;
     char thru_interface[SR_NAMELEN];
     
-    if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table,ip_hdr->ip_dst.s_addr, &next_hop, thru_interface))
+    if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table,
+                                        ip_hdr->ip_dst.s_addr, &next_hop, thru_interface))
     {
         ip_forward_packet(packet,next_hop,thru_interface);
     }
@@ -67,8 +68,9 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
     }
     else
     {
-        /* if packet is not for one of our interfaces then forward */
+        /* if packet is not for (or from) one of our interfaces then forward */
         if(!interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_dst.s_addr) &&
+           !interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_src.s_addr) &&
            ntohl(ip_hdr->ip_dst.s_addr) != OSPF_AllSPFRouters)
         {
             ip_forward(packet);

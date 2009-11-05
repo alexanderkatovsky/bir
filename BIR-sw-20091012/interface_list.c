@@ -133,8 +133,6 @@ void interface_list_thread(void * data)
 
     while(1)
     {
-        usleep(1000000);
-
         mutex_lock(iflist->mutex);
 
         if(iflist->exit_signal == 0)
@@ -166,6 +164,8 @@ void interface_list_thread(void * data)
         }
 
         mutex_unlock(iflist->mutex);
+
+        usleep(1000000);
     }
 }
 
@@ -368,7 +368,6 @@ void __interface_list_show_neighbours_a(struct sr_vns_if * vns_if, struct neighb
     print("hello int     :   %d\n", n->helloint);
     print("ttl           :   %d\n", n->ttl);
     print("ttl           :   %d\n", n->ttl);
-    print("sequence num  :   %d\n", n->ospf_seq);
     
     print("\n");
 }
