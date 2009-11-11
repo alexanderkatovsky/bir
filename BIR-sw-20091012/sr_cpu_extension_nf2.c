@@ -21,6 +21,15 @@
 #include <assert.h>
 #include <string.h>
 
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <linux/netdevice.h>
+#include <linux/sockios.h>
+#include <netinet/in.h>
+#include <stdio.h>
+
+
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -39,6 +48,15 @@ static char*    copy_next_field(FILE* fp, char*  line, char* buf);
 static uint32_t asci_to_nboip(const char* ip);
 static void     asci_to_ether(const char* addr, uint8_t mac[6]);
 
+struct sr_cpu_port
+{
+    int socket;
+    char iface_name[SR_NAMELEN];
+};
+
+#define SR_MAX_PORTS 4
+struct sr_cpu_port cpu_ports[SR_MAX_PORTS];
+int nports = 0;
 
 /*-----------------------------------------------------------------------------
  * Method: sr_cpu_init_hardware(..)
@@ -64,6 +82,11 @@ int sr_cpu_init_hardware(struct sr_instance* sr, const char* hwfile)
     char line[1024];
     char buf[SR_NAMELEN];
     char *tmpptr;
+    int i = 0;
+    char iface_name[32] = "nf2c";
+    int s;
+    struct ifreq ifr;
+    struct sockaddr_ll saddr;
 
 
     if ( (fp = fopen(hwfile, "r") ) == 0 )
@@ -117,12 +140,48 @@ int sr_cpu_init_hardware(struct sr_instance* sr, const char* hwfile)
         Debug(" MAC [%s]\n", buf);
         asci_to_ether(buf, vns_if.addr);
 
+        if(nports < SR_MAX_PORTS)
+        {
+            strncpy(cpu_ports[i].iface_name, vns_if.name, SR_NAMELEN);
+            nports++;
+        }
+
         sr_integ_add_interface(sr, &vns_if);
 
     } /* -- while ( fgets ( .. ) ) -- */
     Debug(" < --                         -- >\n");
 
     fclose(fp);
+
+    for (i = 0; i < nports; ++i)
+    {
+        sprintf(&(iface_name[4]), "%i", i);
+        s = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+
+        bzero(&ifr, sizeof(struct ifreq));
+        strncpy(ifr.ifr_ifrn.ifrn_name, iface_name, IFNAMSIZ);
+
+        if (ioctl(s, SIOCGIFINDEX, &ifr) < 0)
+        {
+            perror("ioctl SIOCGIFINDEX");
+            exit(1);
+        }
+
+        bzero(&saddr, sizeof(struct sockaddr_ll));
+        saddr.sll_family = AF_PACKET;
+        saddr.sll_protocol = htons(ETH_P_ALL);
+        saddr.sll_ifindex = ifr.ifr_ifru.ifru_ivalue;
+
+        if (bind(s, (struct sockaddr*)(&saddr), sizeof(saddr)) < 0)
+        {
+            perror("bind error");
+            exit(1);
+        }
+
+        cpu_ports[i].socket = s;
+    }
+
+    
     return 0;
 
 } /* -- sr_cpu_init_hardware -- */
@@ -135,35 +194,37 @@ int sr_cpu_init_hardware(struct sr_instance* sr, const char* hwfile)
 
 int sr_cpu_input(struct sr_instance* sr)
 {
+#define SR_MAX_BUF 8192    
+    unsigned char buf[SR_MAX_BUF];
+    fd_set fds;
+    int i,rlen;
+    int ret = 0;
     /* REQUIRES */
     assert(sr);
 
-    fprintf(stderr, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-    fprintf(stderr, "!!!  sr_cpu_input(..) (sr_cpu_extension_nf2.c) called while running in cpu mode     !!!\n");
-    fprintf(stderr, "!!!  you need to implement this function to read from the hardware                  !!!\n");
-    fprintf(stderr, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+    FD_ZERO(&fds);
+    for(i = 0; i < nports; i++)
+    {
+        FD_SET(cpu_ports[i].socket, &fds);
+    }
 
-    assert(0);
+    Debug("\nReceiving data...");
+    if(select(FD_SETSIZE, &fds, NULL, NULL, NULL) >= 0)
+    {
+        for(i = 0; i < 4; i++)
+        {
+            if(FD_ISSET(cpu_ports[i].socket, &fds))
+            {
+                rlen = recvfrom(cpu_ports[i].socket,buf,SR_MAX_BUF,0,0,0);
+                Debug("Received %d bytes from socket %d\n", rlen, i);
+                sr_integ_input(sr, buf, rlen, cpu_ports[i].iface_name);
+            }
+        }
 
-    /*
-     * TODO: Read packet from the hardware and pass to sr_integ_input(..)
-     *       e.g.
-     *
-     *  sr_integ_input(sr,
-     *          packet,   * lent *
-     *          len,
-     *          "eth2" ); * lent *
-     */
+        ret = 1;
+    }
 
-    /*
-     * Note: To log incoming packets, use sr_log_packet from sr_dumper.[c,h]
-     */
-
-    /* RETURN 1 on success, 0 on failure.
-     * Note: With a 0 result, the router will shut-down
-     */
-    return 1;
-
+    return ret;
 } /* -- sr_cpu_input -- */
 
 /*-----------------------------------------------------------------------------
@@ -177,17 +238,23 @@ int sr_cpu_output(struct sr_instance* sr /* borrowed */,
                        unsigned int len,
                        const char* iface /* borrowed */)
 {
+    int i;
     /* REQUIRES */
     assert(sr);
     assert(buf);
     assert(iface);
 
-    fprintf(stderr, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-    fprintf(stderr, "!!! sr_cpu_output(..) (sr_cpu_extension_nf2.c) called while running in cpu mode !!!\n");
-    fprintf(stderr, "!!! you need to implement this function to write to the hardware                !!!\n");
-    fprintf(stderr, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	Debug("Sending %d bytes to %s...\n", len, iface);
 
-    assert(0);
+    for(i = 0; i < nports; i++)
+    {
+        if(strcmp(iface, cpu_ports[i].iface_name) == 0)
+        {
+            send(cpu_ports[i].socket, buf, len, 0);
+            return len;
+        }
+    }
+
 
     /* Return the length of the packet on success, -1 on failure */
     return -1;

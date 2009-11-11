@@ -369,3 +369,39 @@ void read_info( struct nf2device *nf2  )
   }
   nf2->info.nf2_device_str[DEVICE_STR_LEN - 1] = '\0';
 }
+/*
+void bind_to_socket()
+{
+    char iface_name[32] = "nf2c";
+    int i,s;
+    for (i = 0; i < 4; ++i)
+    {
+        sprintf(&(iface_name[4]), "%i", base+i);
+        s = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+
+        struct ifreq ifr;
+        bzero(&ifr, sizeof(struct ifreq));
+        strncpy(ifr.ifr_ifrn.ifrn_name, iface_name, IFNAMSIZ);
+        if (ioctl(s, SIOCGIFINDEX, &ifr) < 0)
+        {
+	        perror("ioctl SIOCGIFINDEX");
+	        exit(1);
+        }
+
+        struct sockaddr_ll saddr;
+        bzero(&saddr, sizeof(struct sockaddr_ll));
+        saddr.sll_family = AF_PACKET;
+        saddr.sll_protocol = htons(ETH_P_ALL);
+        saddr.sll_ifindex = ifr.ifr_ifru.ifru_ivalue;
+
+        if (bind(s, (struct sockaddr*)(&saddr), sizeof(saddr)) < 0)
+        {
+        	perror("bind error");
+	        exit(1);
+        }
+
+        // Do something with s here!!
+    }
+}
+
+*/
