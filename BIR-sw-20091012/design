@@ -48,13 +48,12 @@ The structure of (1) (i.e. its call graph) is determined by the TCP/IP specifica
                                                            | -----> ospf_handle_incoming_packet         
                                                            ---------->sr_transport_input
 
-== OSPF (not yet implemented) ==
+== OSPF ==
 
  -- Add a link-state graph to the data structures, including any extra information that is needed for OSPF (like sequence numbers). The module will include an implementation of Dijkstra's algorithm, and a method for updating the forwarding table.
  -- Add an ospf module that will handle receiving and sending of OSPF messages, and the logic that drives OSPF, using the link state graph.
  -- Add a thread to router.c that will periodically send Link State Update messages
 
 
-== Testing == 
-
-Valgrind
+== hardware integration  ==
+A change to the arp cache, forwarding table, or interface list will trigger writing the whole corresponding hardware table.
