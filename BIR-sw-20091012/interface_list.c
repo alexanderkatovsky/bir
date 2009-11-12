@@ -258,8 +258,6 @@ void interface_list_create(struct sr_instance * sr)
     ret->mutex = mutex_create();
 
     sys_thread_new(interface_list_thread,sr);
-
-    interface_list_update_hw(sr);
 }
 
 void __delete_interface_list(void * data)
@@ -291,6 +289,7 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     entry->aid = 0;
     mutex_lock(list->mutex);
     bi_assoc_array_insert(list->array,entry);
+    interface_list_update_hw(list->sr);
     mutex_unlock(list->mutex);    
 }
 
