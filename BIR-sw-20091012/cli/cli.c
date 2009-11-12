@@ -270,7 +270,7 @@ static uint32_t interface_list_mac_lo[4] = { ROUTER_OP_LUT_MAC_0_LO,
 void cli_show_hw_intf()
 {
     int i;
-    uint32_t reada[2];
+    uint32_t reada[2],rr;
     struct nf2device* device = &ROUTER(get_sr())->device; 
     for(i = 0; i < 4; i++)
     {
@@ -280,6 +280,14 @@ void cli_show_hw_intf()
         reada[0] = htonl(reada[0]);
 
         print_mac(((uint8_t *)reada)+2,cli_printf);cli_printf("\n");
+    }
+ 
+    for (i = 0; i < ROUTER_OP_LUT_DST_IP_FILTER_TABLE_DEPTH; i++)
+    {
+        writeReg(device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_RD_ADDR, i);
+        readReg(device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_ENTRY_IP, &rr);
+        rr = htonl(rr);
+        print_ip(rr,cli_printf);cli_printf("\n");
     }
 }
 
