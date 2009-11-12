@@ -37,10 +37,10 @@ int interface_list_hw_write_a(void * data, void * userdata)
 
     if(iluhs->count < 4)
     {
-         mac_lo = ntohl(*((uint32_t *)(ile->vns_if->addr+2)));
-         mac_hi = ntohl(*((uint32_t*)(ile->vns_if->addr))) >> 16;
-         writeReg(iluhs->device, interface_list_mac_lo[iluhs->count], mac_lo);
-         writeReg(iluhs->device, interface_list_mac_hi[iluhs->count], mac_hi);
+        mac_lo = ntohl(*((uint32_t *)(ile->vns_if->addr+2)));
+        mac_hi = ntohl(*((uint32_t *)(ile->vns_if->addr))) >> 16;
+        writeReg(iluhs->device, interface_list_mac_lo[iluhs->count], mac_lo);
+        writeReg(iluhs->device, interface_list_mac_hi[iluhs->count], mac_hi);
     }
 
     iluhs->count += 1;

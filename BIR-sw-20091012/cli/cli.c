@@ -276,10 +276,10 @@ void cli_show_hw_intf()
     {
         readReg(device, interface_list_mac_lo[i], &reada[1]);
         reada[1] = htonl(reada[1]);
-        readReg(device, interface_list_mac_lo[i], &reada[0]);
+        readReg(device, interface_list_mac_hi[i], &reada[0]);
         reada[0] = htonl(reada[0]);
 
-        print_mac((uint8_t *)reada,cli_printf);cli_printf("\n");
+        print_mac(((uint8_t *)reada)+2,cli_printf);cli_printf("\n");
     }
 }
 
