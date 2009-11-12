@@ -28,10 +28,10 @@ struct arp_cache
     int exit_signal;
 };
 
-struct arp_cache * arp_cache_create();
+void arp_cache_create(struct sr_instance * sr);
 void arp_cache_destroy(struct arp_cache * cache);
 int arp_cache_get_MAC_from_ip(struct arp_cache * cache, uint32_t ip, uint8_t * MAC);
-void arp_cache_add(struct arp_cache * cache, uint32_t ip, const uint8_t * MAC);
+void arp_cache_add(struct sr_instance * sr, uint32_t ip, const uint8_t * MAC);
 
 void arp_cache_show(struct arp_cache * cache,print_t print);
 void arp_cache_alert_packet_received(struct sr_packet * packet);

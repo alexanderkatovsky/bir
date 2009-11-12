@@ -10,6 +10,7 @@
 #include "pwospf_protocol.h"
 #include "common.h"
 #include "link_state_graph.h"
+#include "nf2util.h"
 
 struct sr_packet
 {
@@ -29,10 +30,16 @@ struct sr_router
 
     uint32_t rid;
     uint32_t ospf_seq;
+
+    int ready;
+
+#ifdef _CPUMODE_
+    struct nf2device device;
+#endif
 };
 
 
-struct sr_router * router_create(struct sr_instance * sr);
+void router_create(struct sr_instance * sr);
 void router_destroy(struct sr_router * router);
 void router_handle_incoming_packet(struct sr_packet * packet);
 struct sr_packet * router_construct_packet(struct sr_instance * sr, const uint8_t * packet,

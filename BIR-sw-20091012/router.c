@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "sr_ifsys.h"
+#include "nf2.h"
 
 struct sr_packet * router_construct_packet(struct sr_instance * sr, const uint8_t * packet, unsigned int len, const char* interface)
 {
@@ -48,17 +49,36 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
     }
 }
 
-struct sr_router * router_create(struct sr_instance * sr)
+void router_create(struct sr_instance * sr)
 {
     NEW_STRUCT(ret,sr_router);
-    ret->iflist = interface_list_create(sr);
-    ret->fwd_table = forwarding_table_create();
-    ret->a_cache = arp_cache_create();
-    ret->arwl = arp_reply_waiting_list_create();
-    ret->lsg = link_state_graph_create();
+    sr->router = ret;
+    ret->ready = 0;
+
+#ifdef _CPUMODE_
+    strcpy(ret->device.device_name,DEFAULT_IFACE);
+    if(check_iface(&ret->device) == 0)
+    {
+        if(openDescriptor(&ret->device) < 0)
+        {
+            fprintf(stderr, "Failed to open device %s", ret->device.device_name);
+            exit(1);
+        }
+    }
+    
+    writeReg(&ret->device, CPCI_REG_CTRL, 0x00010100);
+    usleep(2000);
+#endif
+    
+    interface_list_create(sr);
+    forwarding_table_create(sr);
+    arp_cache_create(sr);
+    arp_reply_waiting_list_create(sr);
+    link_state_graph_create(sr);
     ret->rid = 0;
     ret->ospf_seq = 0;
-    return ret;
+
+    ret->ready = 1;
 }
 
 void router_destroy(struct sr_router * router)
@@ -68,6 +88,11 @@ void router_destroy(struct sr_router * router)
     arp_cache_destroy(router->a_cache);
     arp_reply_waiting_list_destroy(router->arwl);
     link_state_graph_destroy(router->lsg);
+
+#ifdef _CPUMODE_
+    closeDescriptor(&router->device);
+#endif
+    
     free(router);
 }
 

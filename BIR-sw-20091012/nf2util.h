@@ -28,7 +28,7 @@ typedef struct {
  * Structure to represent an nf2 device to a user mode programs
  */
 struct nf2device {
-    char *device_name;
+    char device_name[16];
     int fd;
     int net_iface;
     nf2_device_info_t info;

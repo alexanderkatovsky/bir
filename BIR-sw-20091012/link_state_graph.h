@@ -37,7 +37,7 @@ struct link_state_graph
 };
 
 void link_state_graph_destroy(struct link_state_graph * lsg);
-struct link_state_graph * link_state_graph_create();
+void link_state_graph_create(struct sr_instance * sr);
 int link_state_graph_update_links(struct sr_instance * sr,
                                   uint32_t rid, uint16_t seq, uint32_t num,
                                   struct ospfv2_lsu * adv);

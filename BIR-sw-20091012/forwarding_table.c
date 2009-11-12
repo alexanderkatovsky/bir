@@ -8,13 +8,13 @@ void * forwarding_table_get_key(void * data)
     return &((struct forwarding_table_entry *)data)->dest;
 }
 
-struct forwarding_table * forwarding_table_create()
+void forwarding_table_create(struct sr_instance * sr)
 {
     NEW_STRUCT(ret,forwarding_table);
+    ROUTER(sr)->fwd_table = ret;
     ret->array_s = assoc_array_create(forwarding_table_get_key,ip_address_cmp);
     ret->array_d = assoc_array_create(forwarding_table_get_key,ip_address_cmp);
     ret->mutex = mutex_create();
-    return ret;
 }
 
 void __delete_forwarding_table(void * data)

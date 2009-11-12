@@ -62,43 +62,46 @@ int arp_handler_incr(void * data, void * user_data)
 
 void arp_request_handler_thread(void * arg)
 {
-    struct arp_reply_waiting_list * list = (struct arp_reply_waiting_list *)arg;
+    struct sr_instance * sr = (struct sr_instance *)arg;
+    struct arp_reply_waiting_list * list = ARWL(sr);
     struct fifo * delete_list = fifo_create();
     struct arwl_entry * entry;
 
     while(1)
     {
         usleep(1000000);
-        
-        if(list->exit_signal == 0)
+
+        if(ROUTER(sr)->ready)
         {
-            list->exit_signal = 1;
-            fifo_destroy(delete_list);
-            return;
-        }
+            if(list->exit_signal == 0)
+            {
+                list->exit_signal = 1;
+                fifo_destroy(delete_list);
+                return;
+            }
         
-        mutex_lock(list->mutex);
-        assoc_array_walk_array(list->array,arp_handler_incr,delete_list);
+            mutex_lock(list->mutex);
+            assoc_array_walk_array(list->array,arp_handler_incr,delete_list);
         
-        while((entry = fifo_pop(delete_list)))
-        {
-            arp_reply_waiting_list_alert_host_unreachable(entry);
-            __delete_arwl(assoc_array_delete(list->array,&entry->next_hop));
+            while((entry = fifo_pop(delete_list)))
+            {
+                arp_reply_waiting_list_alert_host_unreachable(entry);
+                __delete_arwl(assoc_array_delete(list->array,&entry->next_hop));
+            }
+            mutex_unlock(list->mutex);
         }
-        mutex_unlock(list->mutex);
     }
 }
 
-struct arp_reply_waiting_list * arp_reply_waiting_list_create()
+void arp_reply_waiting_list_create(struct sr_instance * sr)
 {
     NEW_STRUCT(ret,arp_reply_waiting_list);
+    ROUTER(sr)->arwl = ret;
     ret->array = assoc_array_create(arwl_key_get,assoc_array_key_comp_int);
     ret->exit_signal = 1;
     ret->mutex = mutex_create();
     
-    sys_thread_new(arp_request_handler_thread,ret);
-    
-    return ret;
+    sys_thread_new(arp_request_handler_thread,sr);
 }
 
 void arp_reply_waiting_list_destroy(struct arp_reply_waiting_list * list)
@@ -164,7 +167,7 @@ void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint3
 void arp_request_handler_process_reply(struct sr_packet * packet)
 {
     struct sr_arphdr * arp_hdr = ARP_HDR(packet);
-    arp_cache_add(ROUTER(packet->sr)->a_cache,arp_hdr->ar_sip,arp_hdr->ar_sha);
+    arp_cache_add(packet->sr,arp_hdr->ar_sip,arp_hdr->ar_sha);
     arp_reply_waiting_list_dispatch(ROUTER(packet->sr)->arwl, ARP_HDR(packet)->ar_sip);
 }
 

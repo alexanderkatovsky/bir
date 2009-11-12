@@ -175,7 +175,6 @@ int link_state_graph_update_links(struct sr_instance * sr,
     lsn = (struct link_state_node *)assoc_array_read(lsg->array,&rid);
     if(lsn == NULL)
     {
-        printf("\ncreating new lsn\n");
         lsn = (struct link_state_node *)malloc(sizeof(struct link_state_node));
         lsn->rid = rid;
         lsn->seq = seq;
@@ -184,8 +183,6 @@ int link_state_graph_update_links(struct sr_instance * sr,
     }
     else if(lsn->seq >= seq)
     {
-        printf("\nseq breach ");dump_ip(rid);printf("\n");
-        printf("\n%d,%d\n",lsn->seq,seq);
         ret = 0;
     }
 
@@ -219,11 +216,11 @@ void link_state_graph_destroy(struct link_state_graph * lsg)
     assoc_array_delete_array(lsg->array,link_state_graph_delete_node);
 }
 
-struct link_state_graph * link_state_graph_create()
+void link_state_graph_create(struct sr_instance * sr)
 {
     NEW_STRUCT(ret,link_state_graph);
+    ROUTER(sr)->lsg = ret;
     ret->array = assoc_array_create(link_state_graph_get_key,assoc_array_key_comp_int);
-    return ret;
 }
 
 int __link_state_graph_show_link_a(void * data, void * userdata)

@@ -142,7 +142,7 @@ int sr_cpu_init_hardware(struct sr_instance* sr, const char* hwfile)
 
         if(nports < SR_MAX_PORTS)
         {
-            strncpy(cpu_ports[i].iface_name, vns_if.name, SR_NAMELEN);
+            strncpy(cpu_ports[nports].iface_name, vns_if.name, SR_NAMELEN);
             nports++;
         }
 

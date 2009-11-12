@@ -5,6 +5,56 @@
 #include "fifo.h"
 #include "lwtcp/lwip/sys.h"
 #include "debug.h"
+#include "reg_defines.h"
+
+struct arp_cache_hw_write_s
+{
+    int count;
+    struct nf2device * device;
+};
+
+int arp_cache_hw_write_a(void * data, void * userdata)
+{
+    struct arp_cache_entry * ace = (struct arp_cache_entry *)data;
+    struct arp_cache_hw_write_s * achws = (struct arp_cache_hw_write_s *)userdata;
+    uint32_t mac_hi,mac_lo;
+
+    if(achws->count >= ROUTER_OP_LUT_ARP_TABLE_DEPTH)
+    {
+        return 1;
+    }
+
+    mac_lo = ntohl(*((uint32_t *)(ace->MAC+2)));
+    mac_hi = ntohl(*((uint32_t*)(ace->MAC))) >> 16;
+    
+    writeReg(achws->device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_MAC_LO, mac_lo);
+    writeReg(achws->device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_MAC_HI, mac_hi);
+    writeReg(achws->device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_NEXT_HOP_IP, ntohl(ace->ip));
+
+    writeReg(achws->device, ROUTER_OP_LUT_ARP_TABLE_WR_ADDR, achws->count);
+    achws->count += 1;
+    
+    return 0;
+}
+
+void arp_cache_hw_write(struct sr_instance * sr)
+{
+#ifdef _CPUMODE_
+    struct arp_cache_hw_write_s achws= {0,&ROUTER(sr)->device};
+    int i;
+    mutex_lock(ARP_CACHE(sr)->mutex);
+    bi_assoc_array_walk_array(ARP_CACHE(sr)->array, arp_cache_hw_write_a, &achws);
+
+    for(i = achws.count; i < ROUTER_OP_LUT_ARP_TABLE_DEPTH; i++)
+    {
+        writeReg(achws.device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_MAC_LO, 0);
+        writeReg(achws.device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_MAC_HI, 0);
+        writeReg(achws.device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_NEXT_HOP_IP, 0);
+        writeReg(achws.device, ROUTER_OP_LUT_ARP_TABLE_WR_ADDR, i);
+    }
+    mutex_unlock(ARP_CACHE(sr)->mutex);
+#endif
+}
 
 int arp_clear_cache(void * data, void * user_data)
 {
@@ -16,35 +66,46 @@ int arp_clear_cache(void * data, void * user_data)
     {
         fifo_push(delete_list,entry);
     }
-    
+
     return 0;
 }
 
 void arp_clear_cache_thread(void * arg)
 {
-    struct arp_cache * cache = (struct arp_cache *)arg;
+    struct sr_instance * sr = (struct sr_instance *)arg;
+    struct arp_cache * cache = ARP_CACHE(sr);
     struct fifo * delete_list = fifo_create();
     struct arp_cache_entry * entry;
+    int hw;
 
     while(1)
     {
         usleep(1000000);
-        
-        if(cache->exit_signal == 0)
+        if(ROUTER(sr)->ready)
         {
-            cache->exit_signal = 1;
-            fifo_destroy(delete_list);
-            return;
-        }
+            hw = 0;
         
-        mutex_lock(cache->mutex);
-        bi_assoc_array_walk_array(cache->array,arp_clear_cache,delete_list);
-        while((entry = fifo_pop(delete_list)))
-        {
-            Debug("deleting ip ");dump_ip(entry->ip);Debug(" from ARP cache\n");
-            free(bi_assoc_array_delete_1(cache->array,&entry->ip));
+            if(cache->exit_signal == 0)
+            {
+                cache->exit_signal = 1;
+                fifo_destroy(delete_list);
+                return;
+            }
+        
+            mutex_lock(cache->mutex);
+            bi_assoc_array_walk_array(cache->array,arp_clear_cache,delete_list);
+            while((entry = fifo_pop(delete_list)))
+            {
+                hw = 1;
+                Debug("deleting ip ");dump_ip(entry->ip);Debug(" from ARP cache\n");
+                free(bi_assoc_array_delete_1(cache->array,&entry->ip));
+            }
+            if(hw)
+            {
+                arp_cache_hw_write(sr);
+            }
+            mutex_unlock(cache->mutex);
         }
-        mutex_unlock(cache->mutex);
     }
 }
 
@@ -58,7 +119,7 @@ void * arp_cache_get_MAC(void * data)
     return ((struct arp_cache_entry *)data)->MAC;
 }
 
-struct arp_cache * arp_cache_create()
+void arp_cache_create(struct sr_instance * sr)
 {
     struct arp_cache * ret = (struct arp_cache *)malloc(sizeof(struct arp_cache));
     ret->array = bi_assoc_array_create(arp_cache_get_key,assoc_array_key_comp_int,
@@ -66,9 +127,9 @@ struct arp_cache * arp_cache_create()
     ret->exit_signal = 1;
     ret->mutex = mutex_create();
 
-    sys_thread_new(arp_clear_cache_thread,ret);
-    
-    return ret;
+    ROUTER(sr)->a_cache = ret;
+
+    sys_thread_new(arp_clear_cache_thread,sr);    
 }
 
 void __delete_arp_cache(void * data)
@@ -104,14 +165,16 @@ int arp_cache_get_MAC_from_ip(struct arp_cache * cache, uint32_t ip, uint8_t * M
     return ret;
 }
 
-void arp_cache_add(struct arp_cache * cache, uint32_t ip, const uint8_t * MAC)
+void arp_cache_add(struct sr_instance * sr, uint32_t ip, const uint8_t * MAC)
 {
-    struct arp_cache_entry * entry = (struct arp_cache_entry *)malloc(sizeof(struct arp_cache_entry));
+    struct arp_cache * cache = ARP_CACHE(sr);
+    NEW_STRUCT(entry,arp_cache_entry);
     mutex_lock(cache->mutex);
     entry->ip = ip;
     entry->ttl = ARP_CACHE_TIMEOUT;
     memcpy(entry->MAC,MAC,ETHER_ADDR_LEN);
     bi_assoc_array_insert(cache->array,entry);
+    arp_cache_hw_write(sr);
     mutex_unlock(cache->mutex);
 }
 

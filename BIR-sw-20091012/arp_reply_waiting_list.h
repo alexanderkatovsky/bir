@@ -36,7 +36,7 @@ struct arp_reply_waiting_list
     int exit_signal;
 };
 
-struct arp_reply_waiting_list * arp_reply_waiting_list_create();
+void arp_reply_waiting_list_create(struct sr_instance * sr);
 void arp_reply_waiting_list_destroy(struct arp_reply_waiting_list * list);
 void arp_reply_waiting_list_add(struct arp_reply_waiting_list * list, struct sr_packet * packet,
                                 uint32_t next_hop, const char * thru_interface);

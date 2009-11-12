@@ -3,6 +3,68 @@
 #include <string.h>
 #include "router.h"
 #include "lwtcp/lwip/sys.h"
+#include "reg_defines.h"
+
+
+static uint32_t interface_list_mac_hi[4] = { ROUTER_OP_LUT_MAC_0_HI,
+                                             ROUTER_OP_LUT_MAC_1_HI,
+                                             ROUTER_OP_LUT_MAC_2_HI,
+                                             ROUTER_OP_LUT_MAC_3_HI };
+static uint32_t interface_list_mac_lo[4] = { ROUTER_OP_LUT_MAC_0_LO,
+                                             ROUTER_OP_LUT_MAC_1_LO,
+                                             ROUTER_OP_LUT_MAC_2_LO,
+                                             ROUTER_OP_LUT_MAC_3_LO };
+
+struct interface_list_update_hw_s
+{
+    int count;
+    struct nf2device * device;
+};
+
+int interface_list_hw_write_a(void * data, void * userdata)
+{
+    struct interface_list_entry * ile = (struct interface_list_entry *)data;
+    struct interface_list_update_hw_s * iluhs = (struct interface_list_update_hw_s *)userdata;
+    uint32_t mac_hi,mac_lo;
+
+    if(iluhs->count >= ROUTER_OP_LUT_DST_IP_FILTER_TABLE_DEPTH)
+    {
+        return 1;
+    }
+
+    writeReg(iluhs->device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_ENTRY_IP, ntohl(ile->vns_if->ip));
+    writeReg(iluhs->device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_WR_ADDR, iluhs->count);
+
+    if(iluhs->count < 4)
+    {
+         mac_lo = ntohl(*((uint32_t *)(ile->vns_if->addr+2)));
+         mac_hi = ntohl(*((uint32_t*)(ile->vns_if->addr))) >> 16;
+         writeReg(iluhs->device, interface_list_mac_lo[iluhs->count], mac_lo);
+         writeReg(iluhs->device, interface_list_mac_hi[iluhs->count], mac_hi);
+    }
+
+    iluhs->count += 1;
+    
+    return 0;
+}
+
+void interface_list_update_hw(struct sr_instance * sr)
+{
+#ifdef _CPUMODE_
+    struct interface_list_update_hw_s iluhs = {0,&ROUTER(sr)->device};
+    int i;
+    mutex_lock(INTERFACE_LIST(sr)->mutex);
+    bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array, interface_list_hw_write_a, &iluhs);
+
+    for(i = iluhs.count; i < ROUTER_OP_LUT_DST_IP_FILTER_TABLE_DEPTH; i++)
+    {
+        writeReg(iluhs.device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_ENTRY_IP, 0);
+        writeReg(iluhs.device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_WR_ADDR, i);
+    }
+    mutex_unlock(INTERFACE_LIST(sr)->mutex);    
+#endif
+}
+
 
 int interface_list_send_hello_on_interface(void * data, void * userdata)
 {
@@ -129,42 +191,46 @@ int interface_list_scan_interfaces(void * data, void * user_data)
     
 void interface_list_thread(void * data)
 {
-    struct interface_list * iflist = (struct interface_list *)data;
+    struct sr_instance * sr = (struct sr_instance *)data;
+    struct interface_list * iflist = INTERFACE_LIST(sr);
 
     while(1)
     {
-        mutex_lock(iflist->mutex);
-
-        if(iflist->exit_signal == 0)
+        if(ROUTER(sr)->ready)
         {
-            iflist->exit_signal = 1;
-            return;
+            mutex_lock(iflist->mutex);
+
+            if(iflist->exit_signal == 0)
+            {
+                iflist->exit_signal = 1;
+                return;
+            }
+        
+            bi_assoc_array_walk_array(iflist->array,interface_list_scan_interfaces,iflist->sr);
+
+            if(iflist->time_to_hello <= 0)
+            {
+                interface_list_send_hello(iflist);
+                iflist->time_to_hello = OSPF_DEFAULT_HELLOINT;
+            }
+            else
+            {
+                iflist->time_to_hello -= 1;
+            }
+
+            if(iflist->time_to_flood <= 0)
+            {
+                interface_list_send_flood(iflist->sr);
+                iflist->time_to_flood = OSPF_DEFAULT_LSUINT;
+            }
+            else
+            {
+                iflist->time_to_flood -= 1;
+            }
+
+            mutex_unlock(iflist->mutex);
         }
         
-        bi_assoc_array_walk_array(iflist->array,interface_list_scan_interfaces,iflist->sr);
-
-        if(iflist->time_to_hello <= 0)
-        {
-            interface_list_send_hello(iflist);
-            iflist->time_to_hello = OSPF_DEFAULT_HELLOINT;
-        }
-        else
-        {
-            iflist->time_to_hello -= 1;
-        }
-
-        if(iflist->time_to_flood <= 0)
-        {
-            interface_list_send_flood(iflist->sr);
-            iflist->time_to_flood = OSPF_DEFAULT_LSUINT;
-        }
-        else
-        {
-            iflist->time_to_flood -= 1;
-        }
-
-        mutex_unlock(iflist->mutex);
-
         usleep(1000000);
     }
 }
@@ -179,10 +245,10 @@ void * interface_list_get_name(void * data)
     return ((struct interface_list_entry *)data)->vns_if->name;
 }
 
-
-struct interface_list * interface_list_create(struct sr_instance * sr)
+void interface_list_create(struct sr_instance * sr)
 {
     NEW_STRUCT(ret,interface_list);
+    ROUTER(sr)->iflist = ret;
     ret->array = bi_assoc_array_create(interface_list_get_IP,assoc_array_key_comp_int,
                                        interface_list_get_name,assoc_array_key_comp_str);
     ret->exit_signal = 1;
@@ -191,8 +257,9 @@ struct interface_list * interface_list_create(struct sr_instance * sr)
     ret->time_to_flood = OSPF_DEFAULT_LSUINT;
     ret->mutex = mutex_create();
 
-    sys_thread_new(interface_list_thread,ret);
-    return ret;
+    sys_thread_new(interface_list_thread,sr);
+
+    interface_list_update_hw(sr);
 }
 
 void __delete_interface_list(void * data)
