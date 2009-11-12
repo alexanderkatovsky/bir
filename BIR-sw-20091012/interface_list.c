@@ -33,14 +33,14 @@ int interface_list_hw_write_a(void * data, void * userdata)
     }
 
     writeReg(iluhs->device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_ENTRY_IP, ntohl(ile->vns_if->ip));
-    writeReg(iluhs->device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_WR_ADDR, iluhs->count);
+    writeReg(iluhs->device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_WR_ADDR, ile->i);
 
     if(iluhs->count < 4)
     {
         mac_lo = ntohl(*((uint32_t *)(ile->vns_if->addr+2)));
         mac_hi = ntohl(*((uint32_t *)(ile->vns_if->addr))) >> 16;
-        writeReg(iluhs->device, interface_list_mac_lo[iluhs->count], mac_lo);
-        writeReg(iluhs->device, interface_list_mac_hi[iluhs->count], mac_hi);
+        writeReg(iluhs->device, interface_list_mac_lo[ile->i], mac_lo);
+        writeReg(iluhs->device, interface_list_mac_hi[ile->i], mac_hi);
     }
 
     iluhs->count += 1;
@@ -251,6 +251,7 @@ void interface_list_create(struct sr_instance * sr)
     ROUTER(sr)->iflist = ret;
     ret->array = bi_assoc_array_create(interface_list_get_IP,assoc_array_key_comp_int,
                                        interface_list_get_name,assoc_array_key_comp_str);
+    ret->total = 0;
     ret->exit_signal = 1;
     ret->sr = sr;
     ret->time_to_hello = OSPF_DEFAULT_HELLOINT;
@@ -287,6 +288,8 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     entry->vns_if = interface_copy;
     entry->n_list = n_list;
     entry->aid = 0;
+    entry->i = list->total;
+    list->total += 1;
     mutex_lock(list->mutex);
     bi_assoc_array_insert(list->array,entry);
     interface_list_update_hw(list->sr);

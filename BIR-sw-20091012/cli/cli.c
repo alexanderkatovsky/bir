@@ -271,9 +271,11 @@ void cli_show_hw_intf()
 {
     int i;
     uint32_t reada[2],rr;
-    struct nf2device* device = &ROUTER(get_sr())->device; 
+    struct nf2device* device = &ROUTER(get_sr())->device;
+    cli_printf("\nMAC Addresses:\n");
     for(i = 0; i < 4; i++)
     {
+        cli_printf("%d: ",i);
         readReg(device, interface_list_mac_lo[i], &reada[1]);
         reada[1] = htonl(reada[1]);
         readReg(device, interface_list_mac_hi[i], &reada[0]);
@@ -281,6 +283,7 @@ void cli_show_hw_intf()
 
         print_mac(((uint8_t *)reada)+2,cli_printf);cli_printf("\n");
     }
+    cli_printf("\nIP Filter Table:\n");
  
     for (i = 0; i < ROUTER_OP_LUT_DST_IP_FILTER_TABLE_DEPTH; i++)
     {

@@ -13,6 +13,7 @@ struct interface_list_entry
     struct neighbour_list * n_list;
     struct sr_vns_if * vns_if;
     uint32_t aid;
+    int i;
 };
 
 struct interface_list
@@ -22,6 +23,7 @@ struct interface_list
     int time_to_hello;
     int time_to_flood;
     int exit_signal;
+    int total;
 
     struct sr_mutex * mutex;
 };
