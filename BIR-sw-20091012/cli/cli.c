@@ -12,6 +12,7 @@
 #include "socket_helper.h"       /* writenstr()                       */
 #include "../sr_base_internal.h" /* struct sr_instance                */
 #include "../router.h"
+#include "../reg_defines.h"
 
 /* temporary */
 #include "cli_stubs.h"
@@ -255,8 +256,31 @@ void cli_show_hw_arp() {
     cli_send_str( "not yet implemented: cli_show_hw_arp()\n" );
 }
 
-void cli_show_hw_intf() {
-    cli_send_str( "not yet implemented: cli_show_hw_intf()\n" );
+
+static uint32_t interface_list_mac_hi[4] = { ROUTER_OP_LUT_MAC_0_HI,
+                                             ROUTER_OP_LUT_MAC_1_HI,
+                                             ROUTER_OP_LUT_MAC_2_HI,
+                                             ROUTER_OP_LUT_MAC_3_HI };
+static uint32_t interface_list_mac_lo[4] = { ROUTER_OP_LUT_MAC_0_LO,
+                                             ROUTER_OP_LUT_MAC_1_LO,
+                                             ROUTER_OP_LUT_MAC_2_LO,
+                                             ROUTER_OP_LUT_MAC_3_LO };
+
+
+void cli_show_hw_intf()
+{
+    int i;
+    uint32_t reada[2];
+    struct nf2device* device = &ROUTER(get_sr())->device; 
+    for(i = 0; i < 4; i++)
+    {
+        readReg(device, interface_list_mac_lo[i], &reada[1]);
+        reada[1] = htonl(reada[1]);
+        readReg(device, interface_list_mac_lo[i], &reada[0]);
+        reada[0] = htonl(reada[0]);
+
+        print_mac((uint8_t *)reada,cli_printf);cli_printf("\n");
+    }
 }
 
 void cli_show_hw_route() {
