@@ -87,15 +87,17 @@ void __interface_list_get_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n,
     fifo_push(lsu_list,lsu);
 }
 
-void __interface_list_get_lsu_static_a(struct forwarding_table_entry * fte, void * userdata)
+int __interface_list_get_lsu_interfaces_a(void * data, void * userdata)
 {
+    struct interface_list_entry * ile = (struct interface_list_entry *)data;
     struct fifo * lsu_list = (struct fifo *)userdata;
     NEW_STRUCT(lsu,ospfv2_lsu);
-    lsu->subnet = fte->dest.subnet;
-    lsu->mask = fte->dest.mask;
+    lsu->subnet = (ile->vns_if->ip) & (ile->vns_if->mask);
+    lsu->mask = ile->vns_if->mask;
     lsu->rid = 0;
 
     fifo_push(lsu_list,lsu);
+    return 0;
 }
 
 struct __interface_list_send_i
@@ -122,7 +124,7 @@ void __interface_list_send_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n
 void interface_list_send_flood(struct sr_instance * sr)
 {
     struct fifo * lsu_list = fifo_create();
-    struct fifo * lsu_static = fifo_create();
+    struct fifo * lsu_ifs  = fifo_create();
     struct ospfv2_lsu * lsu;
     struct ospfv2_lsu * flood_data;
     uint8_t * data;
@@ -133,8 +135,8 @@ void interface_list_send_flood(struct sr_instance * sr)
 
     printf("\n\n***Sending Flood***\n\n");
     interface_list_loop_through_neighbours(INTERFACE_LIST(sr), __interface_list_get_lsu_a, lsu_list);
-    forwarding_table_static_loop_through_entries(FORWARDING_TABLE(sr), __interface_list_get_lsu_static_a, lsu_static);
-    n = fifo_length(lsu_list) + fifo_length(lsu_static);
+    bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array, __interface_list_get_lsu_interfaces_a, lsu_ifs);
+    n = fifo_length(lsu_list) + fifo_length(lsu_ifs);
 
     len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)
         + sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_lsu_hdr) + n*sizeof(struct ospfv2_lsu);
@@ -150,14 +152,14 @@ void interface_list_send_flood(struct sr_instance * sr)
     }
     
     fifo_delete(lsu_list,0);
-    while((lsu = fifo_pop(lsu_static)))
+    while((lsu = fifo_pop(lsu_ifs)))
     {
         flood_data[i] = *lsu;
         free(lsu);
         i++;
     }
 
-    fifo_delete(lsu_static,0);
+    fifo_delete(lsu_ifs,0);
 
     ROUTER(sr)->ospf_seq += 1;
     
@@ -426,6 +428,7 @@ void interface_list_loop_through_neighbours(struct interface_list * iflist,
     mutex_unlock(iflist->mutex);
 }
 
+
 void __interface_list_show_neighbours_a(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
 {
     print_t print = (print_t)userdata;
@@ -435,7 +438,6 @@ void __interface_list_show_neighbours_a(struct sr_vns_if * vns_if, struct neighb
     print("ip            :   ");print_ip(n->ip,print);print("\n");
     print("mask          :   ");print_ip(n->nmask,print);print("\n");
     print("hello int     :   %d\n", n->helloint);
-    print("ttl           :   %d\n", n->ttl);
     print("ttl           :   %d\n", n->ttl);
     
     print("\n");

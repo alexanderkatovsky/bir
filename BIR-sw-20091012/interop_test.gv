@@ -1,0 +1,12 @@
+graph G {
+edge [len=2, fontsize=8];
+node [shape=circle, width=.1, fontsize=10];
+r4 [label="R4"];
+r11 [label="R11"];
+r12 [label="R12"];
+linux [shape=box label="eth1"];
+r4 -- linux [len=1.3 headlabel="7.1", taillabel="7.2"]
+r4 -- r11 [headlabel="9.2", taillabel="9.1"]
+r11 -- r12 [headlabel="3.2", taillabel="3.1"]
+r12 -- r4 [headlabel="6.2", taillabel="6.1"]
+}

@@ -5,23 +5,30 @@
 
 == Data Structures ==
 The data structure <data-structure> is defined in <data-structure>.h and only accessible through the interface provided by <data-structure>.c.  The data structures marked "thread safe" have a mutex that is used by their interface functions to make them thread safe.  The data structures are encapsulated in sr_router, which contains:
-        o  interface_list
-                -- a map ip address -> sr_vns_if
+        o  interface_list (thread safe)
+                -- a bidirectional map <ip, name> -> [neighbour_list, sr_vns_if, area id]
+                -- thread for sending LSU flood
+        o  neighbour_list (thread safe)
+                -- list of neighbour routers
+                -- thread for expiring neighbours if no HELLO received after a period.
         o  forwarding_table (thread safe)
-                -- a map destination ip -> (gateway, mask, interface, type) where type is either static or dynamic
+                -- two maps destination ip -> (gateway, mask, interface) for static and dynamic routes resp.
         o  arp_cache (thread safe)
-                -- a map ip -> (MAC,ttl) where ttl is a timeout for the entry.  
+                -- a bidirectional map <ip,MAC> -> (ip,MAC,ttl) where ttl is a timeout for the entry.  
                    -- The ttl is monitored in a separate thread, which decrements ttl every second, deleting the entry when it hits zero.  When a packet is received the ttl for the entry for the MAC address of the sender is reinitialised.
         o  arp_reply_waiting_list (thread safe)
                 -- a map next hop ip -> (fifo queue of packets with this next hop id, number of arp request attempts, timeout for current request)
                    -- The number of arp requests and the timeout of the current arp request is managed by a seperate thread, which resends arp requests after a fixed time interval, and deletes the entry after a fixed number of attempts.
+        o  link_state_graph (thread safe)
+                -- a map router id --> [[subnet, mask], router id, sequence number]
+                -- performs Dijkstra 
                 
 == Module Decomposition ==
 There are four types of module (each is a collection of c files):
 (1) sending and receiving different types of ethernet packets that correspond to the TCP/IP specificatons (icmp.c, arp.c, ip.c, ospf.c)
 (2) utility functions (checksum.c, router.c)
 (3) reading, modifying and algorithms on the 'high level' data structures (interface_list.c, forwarding_table.c etc).  Examples of the algorithms are Least Prefix Matching for the forwarding table, and Dijkstra's algorithm. 
-(4) The underlying 'low level' data structures (assoc_array.c, fifo.c)
+(4) The underlying 'low level' data structures (assoc_array.c, fifo.c,etc)
 
 Their dependency relationships are:
 
@@ -48,12 +55,8 @@ The structure of (1) (i.e. its call graph) is determined by the TCP/IP specifica
                                                            | -----> ospf_handle_incoming_packet         
                                                            ---------->sr_transport_input
 
-== OSPF ==
-
- -- Add a link-state graph to the data structures, including any extra information that is needed for OSPF (like sequence numbers). The module will include an implementation of Dijkstra's algorithm, and a method for updating the forwarding table.
- -- Add an ospf module that will handle receiving and sending of OSPF messages, and the logic that drives OSPF, using the link state graph.
- -- Add a thread to router.c that will periodically send Link State Update messages
-
-
 == hardware integration  ==
 A change to the arp cache, forwarding table, or interface list will trigger writing the whole corresponding hardware table.
+
+== Interop testing ==
+We set up the routers as depicted in the diagram 

@@ -98,54 +98,74 @@ def make_mac(i, intf_num):
     """Creates the MAC address 00:00:00:00:i:intf_num"""
     return struct.pack('> 6B', 0, 0, 0, 0, i, intf_num)
 
-class Topology:
-    """Builds and stores a topology"""
-    def __init__(self):
-        def make_rtr_interfaces(i):
-            a = i
-            b = 4 if i==1 else i-1
-            return [
-                VNSInterface('eth0', make_mac(i, 0), make_ip('192.168.%u.%u' %(i,i)), make_ip('255.255.255.0')),
-                VNSInterface('eth1', make_mac(i, 1), make_ip('10.%u.0.%u  '  %(a,i)), make_ip('255.255.0.0')),
-                VNSInterface('eth2', make_mac(i, 2), make_ip('10.0.0.%u'     %i),     make_ip('255.255.0.0')),
-                VNSInterface('eth3', make_mac(i, 3), make_ip('10.%u.0.%u'    %(b,i)), make_ip('255.255.0.0'))
-                ]
+class TVNSNode:
+    def __init__(self,n):
+        self.__n = n
+        self.__interfaces = []
+    def AddInterface(self,ip,mac):
+        eth = "eth%u"%len(self.__interfaces)
+        ret = VNSInterface(eth,mac,ip.ip,ip.mask)
+        self.__interfaces.append(ret)
+        return ret
+    def Node(self):
+        if self.__node is None:
+            if self.__n[0] == 'r':
+                self.__node = VirtualNode(self.__n, self.__interfaces)
+            else:
+                self.__node = Host(self.__n, self.__interfaces)
+        return self.__node
+            
 
-        def make_host_interfaces(i):
-            return [VNSInterface('eth0', make_mac(i, 9), make_ip('192.168.%u.9' %i), make_ip('255.255.255.0'))]
-
-        # create the interfaces for our routers and hosts (1 indexed)
-        n = 4
-        rng = range(1, n+1)
-        rtr_interfaces = [None] + [make_rtr_interfaces(i) for i in rng]
-        host_interfaces = [None] + [make_host_interfaces(i) for i in rng]
-
-        # create the virtual nodes (routers) and hosts in the topology
-        vnodes = [VirtualNode('rtr%u'%i, rtr_interfaces[i]) for i in rng]
-        hosts = [Host('host%u'%i, host_interfaces[i]) for i in rng]
-
-        # create the hub (note: interfaces don't have MACs/IPs - just names)
-        hub_interfaces = [VNSInterface('eth%u' % i, '000000', 0, 0) for i in rng]
-        hub = Hub('hub', hub_interfaces)
-
-        # connect interfaces
+class TVNSTopology:
+    def __init__(self, top_file):
+        
         def connect_intfs(intf1, intf2):
             intf1.neighboring_interfaces.append(intf2)
             intf2.neighboring_interfaces.append(intf1)
+            
+        self.__hubs = []
+        self.__nodes = {}    # routers and servers
+        self.nodes = []
+        ipm = IPMaker()
+        macm = MACMaker()
+        for row in csv.reader(open(top_file)):
+            intfs = []
+            nintfs = len(row)
+            for n in row:
+                if n not in self.__nodes.keys():
+                    self.__nodes[n] = TVNSNode(n)
+                ip  = ipm.NextIP(nintfs)
+                mac = macm.NextMAC()
+                intfs.append(self.__nodes[n].AddInterface(ip,mac))
+            if nintfs > 2: 
+                hub_interfaces = [VNSInterface('eth%u' % i, '000000', 0, 0) for i in range(0,nintfs)]
+                hub = Hub('hub%u'%len(self.__hubs), hub_interfaces)
+                self.__hubs.append(hub)
+                for i in range(0,nintfs):
+                    connect_intfs(hub_interfaces[i], intfs[i])
+            elif len(intfs) == 2:
+                connect_intfs(intfs[0], intfs[1])
 
-        for i in rng:
-            # connect router eth0 to host eth0
-            connect_intfs(rtr_interfaces[i][0], host_interfaces[i][0])
-
-            # connect router eth1 to the next router's eth3
-            i2 = 1 if i==4 else i+1
-            connect_intfs(rtr_interfaces[i][1], rtr_interfaces[i2][3])
-
-            # connect router eth2 to the hub
-            connect_intfs(hub_interfaces[i-1], rtr_interfaces[i][2])
-
-        # store a list of all nodes in the topology
-        self.nodes = vnodes + hosts + [hub]
+    def Nodes(self):
+        return [n.Node() for n in self.__nodes] + self.__hubs
+     
+class Topology:
+    """Builds and stores a topology
+    VNSInterface('eth0', make_mac(i, 0), make_ip('192.168.%u.%u' %(i,i)), make_ip('255.255.255.0'))
+    vnodes = [VirtualNode('rtr%u'%i, rtr_interfaces[i]) for i in rng]
+    hosts = [Host('host%u'%i, host_interfaces[i]) for i in rng]
+    hub_interfaces = [VNSInterface('eth%u' % i, '000000', 0, 0) for i in rng]
+    hub = Hub('hub', hub_interfaces)
+        def connect_intfs(intf1, intf2):
+            intf1.neighboring_interfaces.append(intf2)
+            intf2.neighboring_interfaces.append(intf1)
+    self.nodes = vnodes + hosts + [hub]
+    """
+    def __init__(self):            
+        tf = TVNSTopology("tvns.top")
+        self.nodes = tf.Nodes()
+            
+                
 
 class SimpleVNS:
     """Handles incoming messages from each client"""
