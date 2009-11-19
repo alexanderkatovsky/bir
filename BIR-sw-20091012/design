@@ -59,4 +59,7 @@ The structure of (1) (i.e. its call graph) is determined by the TCP/IP specifica
 A change to the arp cache, forwarding table, or interface list will trigger writing the whole corresponding hardware table.
 
 == Interop testing ==
-We set up the routers as depicted in the diagram 
+   -- We set up the routers as depicted in the diagram interop_test.png.  
+   -- Pinging from eth1 (the Linux kernel on the same machine as R4) to R4.  
+   -- Sending pings to the other routers and from the other routers, which checks that OSPF works.  
+   -- Test with various configurations; e.g., running our router on R4 , and the reference router on R11 and R12.
