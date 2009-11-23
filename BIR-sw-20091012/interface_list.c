@@ -76,27 +76,48 @@ int interface_list_send_hello_on_interface(void * data, void * userdata)
     return 0;
 }
 
-void __interface_list_get_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
+struct __interface_list_get_lsus_from_neighbours_i
 {
-    struct fifo * lsu_list = (struct fifo *)userdata;
-    NEW_STRUCT(lsu,ospfv2_lsu);
-    lsu->subnet = n->ip;
-    lsu->mask = n->nmask;
-    lsu->rid = n->router_id;
+    uint32_t aid;
+    struct fifo * lsu_list;
+};
 
-    fifo_push(lsu_list,lsu);
+void __interface_list_get_lsus_from_neighbours_a(struct neighbour * n, void * userdata)
+{
+    struct __interface_list_get_lsus_from_neighbours_i * ilglfni =
+        (struct __interface_list_get_lsus_from_neighbours_i *)userdata;
+    struct ospfv2_lsu * lsu;
+
+    if(n->aid == ilglfni->aid)
+    {
+        lsu = (struct ospfv2_lsu *)malloc(sizeof(struct ospfv2_lsu));
+        lsu->subnet = (n->ip) & (n->nmask);
+        lsu->mask = n->nmask;
+        lsu->rid = n->router_id;
+        fifo_push(ilglfni->lsu_list,lsu);
+    }
 }
 
-int __interface_list_get_lsu_interfaces_a(void * data, void * userdata)
+int __interface_list_get_lsus_a(void * data, void * userdata)
 {
     struct interface_list_entry * ile = (struct interface_list_entry *)data;
     struct fifo * lsu_list = (struct fifo *)userdata;
-    NEW_STRUCT(lsu,ospfv2_lsu);
-    lsu->subnet = (ile->vns_if->ip) & (ile->vns_if->mask);
-    lsu->mask = ile->vns_if->mask;
-    lsu->rid = 0;
+    struct ospfv2_lsu * lsu;
+    struct __interface_list_get_lsus_from_neighbours_i ilglfni = {ile->aid,lsu_list};
 
-    fifo_push(lsu_list,lsu);
+    if(neighbour_list_empty(ile->n_list))
+    {
+        lsu = (struct ospfv2_lsu *)malloc(sizeof(struct ospfv2_lsu));
+        lsu->subnet = (ile->vns_if->ip) & (ile->vns_if->mask);
+        lsu->mask = ile->vns_if->mask;
+        lsu->rid = 0;
+        fifo_push(lsu_list,lsu);
+    }
+    else
+    {
+        neighbour_list_loop(ile->n_list, __interface_list_get_lsus_from_neighbours_a, &ilglfni);
+    }
+
     return 0;
 }
 
@@ -124,7 +145,6 @@ void __interface_list_send_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n
 void interface_list_send_flood(struct sr_instance * sr)
 {
     struct fifo * lsu_list = fifo_create();
-    struct fifo * lsu_ifs  = fifo_create();
     struct ospfv2_lsu * lsu;
     struct ospfv2_lsu * flood_data;
     uint8_t * data;
@@ -134,9 +154,8 @@ void interface_list_send_flood(struct sr_instance * sr)
     mutex_lock(INTERFACE_LIST(sr)->mutex);
 
     printf("\n\n***Sending Flood***\n\n");
-    interface_list_loop_through_neighbours(INTERFACE_LIST(sr), __interface_list_get_lsu_a, lsu_list);
-    bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array, __interface_list_get_lsu_interfaces_a, lsu_ifs);
-    n = fifo_length(lsu_list) + fifo_length(lsu_ifs);
+    bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array, __interface_list_get_lsus_a, lsu_list);
+    n = fifo_length(lsu_list);
 
     len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)
         + sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_lsu_hdr) + n*sizeof(struct ospfv2_lsu);
@@ -152,14 +171,6 @@ void interface_list_send_flood(struct sr_instance * sr)
     }
     
     fifo_delete(lsu_list,0);
-    while((lsu = fifo_pop(lsu_ifs)))
-    {
-        flood_data[i] = *lsu;
-        free(lsu);
-        i++;
-    }
-
-    fifo_delete(lsu_ifs,0);
 
     ROUTER(sr)->ospf_seq += 1;
     
@@ -256,7 +267,7 @@ void interface_list_create(struct sr_instance * sr)
     ret->total = 0;
     ret->exit_signal = 1;
     ret->sr = sr;
-    ret->time_to_hello = OSPF_DEFAULT_HELLOINT;
+    ret->time_to_hello = 0;
     ret->time_to_flood = OSPF_DEFAULT_LSUINT;
     ret->mutex = mutex_create();
 
@@ -356,10 +367,11 @@ int interface_list_print_entry(void * data, void * userdata)
     
     print_ip(vnsif->ip,print);
     print("  ");
+    print_ip(vnsif->mask,print);
+    print("  ");    
     print_mac(vnsif->addr,print);
     print("  ");
-    print("%s",vnsif->name);
-    print("\n");
+    print("%s   %d\n",vnsif->name,entry->aid);
     return 0;
 }
 
@@ -368,29 +380,33 @@ void interface_list_show(struct interface_list * list,print_t print)
 {
     mutex_lock(list->mutex);
     print("\nInterface List:\n");
-    print("%3s               %3s              %3s\n","ip","MAC","name");
+    print("%3s               %3s               %3s              %3s    %3s \n","ip","mask","MAC","name", "aid");
     bi_assoc_array_walk_array(list->array,interface_list_print_entry,print);
     print("\n\n");
     mutex_unlock(list->mutex);
 }
 
-void interface_list_process_incoming_hello(struct sr_packet * packet, struct interface_list * iflist,
-                                           char * interface,
+void interface_list_process_incoming_hello(struct sr_instance * sr, char * interface,
                                            uint32_t ip, uint32_t rid, uint32_t aid,
                                            uint32_t nmask, uint16_t helloint)
 {
+    struct interface_list * iflist = INTERFACE_LIST(sr);
     struct interface_list_entry * entry;
     mutex_lock(iflist->mutex);
     entry = bi_assoc_array_read_2(iflist->array, interface);
-    if(entry->aid == 0)
+    if(entry)
     {
-        entry->aid = aid;
-    }
-    if(entry->aid == aid)
-    {
-        if(entry && (nmask == entry->vns_if->mask))
+        if(entry->aid == 0)
         {
-            neighbour_list_process_incoming_hello(packet->sr, entry->n_list,ip,rid,aid,nmask,helloint);
+            entry->aid = aid;
+        }
+        if(entry->aid == aid)
+        {
+            if(neighbour_list_process_incoming_hello(sr, entry->n_list,ip,rid,aid,nmask,helloint))
+            {
+                ospf_send_hello(sr,entry);
+                interface_list_send_flood(sr);
+            }
         }
     }
     mutex_unlock(iflist->mutex);
@@ -446,4 +462,18 @@ void __interface_list_show_neighbours_a(struct sr_vns_if * vns_if, struct neighb
 void interface_list_show_neighbours(struct interface_list * iflist, print_t print)
 {
     interface_list_loop_through_neighbours(iflist,__interface_list_show_neighbours_a,print);
+}
+
+int interface_list_ip_in_network_on_interface(struct sr_instance * sr, struct ip_address * ip, char * interface)
+{
+    struct interface_list_entry * entry;
+    entry = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array,interface);
+    int ret = 0;
+
+    if(entry && (entry->vns_if->mask == ip->mask) &&
+       ((entry->vns_if->ip & entry->vns_if->mask) == (ip->subnet & ip->mask)))
+    {
+        ret = 1;
+    }
+    return ret;
 }

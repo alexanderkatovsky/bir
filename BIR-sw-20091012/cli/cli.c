@@ -581,7 +581,21 @@ int cli_ping_handle_self( uint32_t ip ) {
  * and whether it succeeds or not should be sent to the specified client_fd.
  */
 static void cli_send_ping( int client_fd, uint32_t ip ) {
-    fprintf( stderr, "not yet implmented: send an echo request\n" );
+    icmp_send_ping(get_sr(),ip,0);
+}
+
+void cli_dest_unreach(struct ip * iph)
+{
+    cli_printf("destination "); print_ip(iph->ip_dst.s_addr,cli_printf);
+    cli_printf(" unreachable");
+    cli_send_str("\n");
+}
+
+void cli_ping_reply(uint32_t ip)
+{
+    cli_printf("Ping from ");
+    print_ip(ip,cli_printf);
+    cli_send_str("\n");
 }
 
 void cli_ping( gross_ip_t* data ) {

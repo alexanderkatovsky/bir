@@ -41,12 +41,20 @@ void ip_forward(struct sr_packet * packet)
     if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table,
                                         ip_hdr->ip_dst.s_addr, &next_hop, thru_interface))
     {
+        if(next_hop == 0)
+        {
+            next_hop = ip_hdr->ip_dst.s_addr;
+        }
         ip_forward_packet(packet,next_hop,thru_interface);
     }
     else
     {
         dump_ip(ip_hdr->ip_dst.s_addr);Debug(" not in forwarding table\n");
-        icmp_send_host_unreachable(packet);
+        if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table,
+                                            ip_hdr->ip_src.s_addr, &next_hop, thru_interface))
+        {
+            icmp_send_host_unreachable(packet);
+        }
     }
 }
 
@@ -118,7 +126,7 @@ void ip_construct_ip_header(uint8_t * packet, uint16_t len,
     struct in_addr dst = {ip_dest};
 
     uint16_t ip_len = len - sizeof(struct sr_ethernet_hdr);
-    
+
     ip_to->ip_hl = 5;
     ip_to->ip_v = 4;
     ip_to->ip_tos = 0;

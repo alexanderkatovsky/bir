@@ -103,6 +103,8 @@ class VNSInterface:
         self.mac = str(mac)
         self.ip = int(ip)
         self.mask = int(mask)
+        self.neighboring_interfaces = []
+                    
 
     HWINTERFACE = 1  # string
     HWSPEED = 2      # uint32

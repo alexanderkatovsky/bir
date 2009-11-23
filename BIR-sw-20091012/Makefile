@@ -1,16 +1,32 @@
 # Makefile
 # Author: Martin Casado, David Underhill
 
-all : sr
+
+# MODE controls whether the router gets/sends packets from/to the NetFPGA or VNS
+MODE_NETFPGA = -D_CPUMODE_
+MODE_VNS     =
+
+all : .mode sr
+
+.mode :
+	@echo $(MODE_NETFPGA) >.mode
+cpu : clean
+	@echo Setting mode to CPU
+	@echo $(MODE_NETFPGA) >.mode
+	@$(MAKE)
+vns : clean
+	@echo Setting mode to VNS
+	@echo $(MODE_VNS) >.mode
+	@$(MAKE)
+
+
+MODE = `cat .mode`
+
 
 APP = sr
 APP_TPP = sr_tpp
 CC  = gcc
 
-# MODE controls whether the router gets/sends packets from/to the NetFPGA or VNS
-MODE_NETFPGA = -D_CPUMODE_
-MODE_VNS     =
-MODE = $(MODE_NETFPGA)
 
 include Makefile.common
 DEBUG = -g -D_DEBUG_ -O0

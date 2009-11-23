@@ -28,6 +28,6 @@ void * fifo_pop(struct fifo * list);
 void fifo_push(struct fifo * list, void * data);
 int fifo_length(struct fifo * list);
 void fifo_delete(struct fifo * list,void (* delete)(void *));
-
+int fifo_empty(struct fifo * list);
 
 #endif

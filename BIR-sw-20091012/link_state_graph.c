@@ -100,7 +100,7 @@ int link_state_graph_dijkstra_next(void * data, void * userdata)
     struct link_state_node * lsn = (struct link_state_node *)assoc_array_read(LSG(di->sr)->array,&d->rid);
     if(!forwarding_table_dynamic_entry_exists(FORWARDING_TABLE(di->sr),&d->address))
     {
-        forwarding_table_add_dynamic(FORWARDING_TABLE(di->sr),&d->address,d->next_hop,d->interface);
+        forwarding_table_add(di->sr,&d->address,d->next_hop,d->interface,1);
     }
     if((lsn != NULL) && (assoc_array_read(di->visited,&d->rid) == NULL))
     {
@@ -162,7 +162,7 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
 
     Debug("... Finished Updating forwarding table***\n\n");
 
-    forwarding_table_dynamic_show(FORWARDING_TABLE(sr),printf);
+/*    forwarding_table_dynamic_show(FORWARDING_TABLE(sr),printf);*/
 }
 
 int link_state_graph_update_links(struct sr_instance * sr,
@@ -228,10 +228,10 @@ int __link_state_graph_show_link_a(void * data, void * userdata)
     struct link * l = (struct link *)data;
     print_t print = (print_t)userdata;
     print("[");
-    print_ip(l->ip.subnet,print);print(",");
-    print_ip(l->ip.mask,print);print(",");
-    print_ip(l->rid,print);
-    print("]");
+    print("ip:   ");print_ip(l->ip.subnet,print);
+    print("mask: ");print_ip(l->ip.mask,print);
+    print("rid:  ");print_ip(l->rid,print);
+    print("]\n");
 
     return 0;
 }

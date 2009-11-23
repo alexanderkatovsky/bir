@@ -76,3 +76,7 @@ void fifo_delete(struct fifo * list,void (* delete)(void *))
     free(list);
 }
 
+int fifo_empty(struct fifo * list)
+{
+    return (list->length == 0);
+}

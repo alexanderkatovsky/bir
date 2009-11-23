@@ -4,7 +4,8 @@
 #include "sr_ifsys.h"
 #include "nf2.h"
 
-struct sr_packet * router_construct_packet(struct sr_instance * sr, const uint8_t * packet, unsigned int len, const char* interface)
+struct sr_packet * router_construct_packet(struct sr_instance * sr,
+                                           const uint8_t * packet, unsigned int len, const char* interface)
 {
     struct sr_packet * ret = (struct sr_packet *)malloc(sizeof(struct sr_packet));
 
@@ -41,7 +42,12 @@ void router_handle_incoming_packet(struct sr_packet * packet)
 void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 {
     struct sr_router * router = ROUTER(sr);
+    struct ip_address ip;
     interface_list_add_interface(router->iflist,interface);
+
+    ip.subnet = interface->ip & interface->mask;
+    ip.mask   = interface->mask;
+    forwarding_table_add(sr, &ip, 0, interface->name,0);
 
     if(router->rid == 0)
     {
@@ -118,11 +124,13 @@ void router_swap_eth_header_and_send(struct sr_packet * packet)
 void router_load_static_routes(struct sr_instance * sr)
 {
     struct sr_rt * rt_entry = sr->interface_subsystem->routing_table;
-    struct forwarding_table * fwd_table = ROUTER(sr)->fwd_table;
+    struct ip_address ip;
         
     while(rt_entry)
     {
-        forwarding_table_add_static_route(fwd_table,rt_entry);
+        ip.subnet = rt_entry->dest.s_addr;
+        ip.mask   = rt_entry->mask.s_addr;
+        forwarding_table_add(sr, &ip, rt_entry->gw.s_addr, rt_entry->interface,0);
         rt_entry = rt_entry->next;
     }
 }

@@ -11,6 +11,7 @@
 #include <stdint.h> /* uintX_t */
 #endif
 #include "cli_help.h"
+#include "../eth_headers.h"
 
 #define PROMPT "~> "
 #define STRLEN_PROMPT 3
@@ -162,6 +163,8 @@ void cli_exit();
 /** Send a ping to dest. */
 void cli_ping( gross_ip_t* data );
 void cli_ping_flood( gross_ip_int_t* data );
+void cli_ping_reply(uint32_t ip);
+void cli_dest_unreach(struct ip * iph);
 
 /** Processes a shutdown command from a client. */
 void cli_shutdown();
@@ -171,5 +174,6 @@ void cli_traceroute( gross_ip_t* data );
 
 /** set/unset/show the verbose mode */
 void cli_opt_verbose( gross_option_t* data );
+
 
 #endif /* CLI_H */

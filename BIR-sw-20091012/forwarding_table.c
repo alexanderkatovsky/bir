@@ -30,22 +30,6 @@ void forwarding_table_destroy(struct forwarding_table * fwd_table)
     free(fwd_table);    
 }
 
-void forwarding_table_add_static_route(struct forwarding_table * fwd_table, struct sr_rt * rt_entry)
-{
-    NEW_STRUCT(e,forwarding_table_entry);
-    mutex_lock(fwd_table->mutex);
-
-    e->dest.subnet = rt_entry->dest.s_addr;
-    e->dest.mask   = rt_entry->mask.s_addr;
-    e->next_hop    = rt_entry->gw.s_addr;
-
-    memcpy(e->interface,rt_entry->interface,SR_NAMELEN);
-
-    assoc_array_insert(fwd_table->array_s,e);
-
-    mutex_unlock(fwd_table->mutex);
-}
-
 struct __LPMSearch
 {
     int found;
@@ -104,15 +88,50 @@ int forwarding_table_dynamic_entry_exists(struct forwarding_table * ft, struct i
     return (assoc_array_read(ft->array_d, ip) != NULL);
 }
 
-void forwarding_table_add_dynamic(struct forwarding_table * ft, struct ip_address * ip,
-                                  uint32_t next_hop, const char * interface)
+int forwarding_table_static_entry_exists(struct forwarding_table * ft, struct ip_address * ip)
 {
+    return (assoc_array_read(ft->array_s, ip) != NULL);
+}
+
+void forwarding_table_add(struct sr_instance * sr, struct ip_address * ip,
+                          uint32_t nh, char * interface, int isDynamic)
+{
+    struct forwarding_table * ft = FORWARDING_TABLE(sr);
     NEW_STRUCT(entry,forwarding_table_entry);
+    struct forwarding_table_entry * old;
+    uint32_t next_hop = nh;
+
+    if(interface_list_ip_in_network_on_interface(sr,ip,interface))
+    {
+        next_hop = 0;
+    }
+
     entry->dest = *ip;
+    entry->dest.subnet &= ip->mask;
     entry->next_hop = next_hop;
     strcpy(entry->interface,interface);
 
-    assoc_array_insert(ft->array_d,entry);
+    mutex_lock(ft->mutex);
+
+    if(isDynamic == 1)
+    {
+        old = assoc_array_delete(ft->array_d,ip);
+        if(old != NULL)
+        {
+            free(old);
+        }
+        assoc_array_insert(ft->array_d,entry);
+    }
+    else
+    {
+        old = assoc_array_delete(ft->array_s,ip);
+        if(old != NULL)
+        {
+            free(old);
+        }
+        assoc_array_insert(ft->array_s,entry);
+    }
+    mutex_unlock(ft->mutex);
 }
 
 void forwarding_table_start_dijkstra(struct forwarding_table * fwd_table)

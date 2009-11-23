@@ -9,6 +9,7 @@
 #define ICMP_REPLY 0
 #define ICMP_REQUEST 8
 #define ICMP_TIME_EXCEEDED 11
+#define ICMP_DEST_UNREACH 3
 
 struct icmphdr
 {

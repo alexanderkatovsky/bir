@@ -28,16 +28,19 @@ void neighbour_list_destroy(struct neighbour_list * nl)
     free(nl);
 }
 
-void neighbour_list_process_incoming_hello(struct sr_instance * sr, struct neighbour_list * nl, uint32_t ip, uint32_t rid,
+int neighbour_list_process_incoming_hello(struct sr_instance * sr, struct neighbour_list * nl, uint32_t ip, uint32_t rid,
                                            uint32_t aid, uint32_t nmask, uint16_t helloint)
 {
     struct neighbour * n;
+    int ret = 0;
     mutex_lock(nl->mutex);
     
     n = assoc_array_read(nl->array,&rid);
 
     if(n == NULL)
     {
+        ret = 1;
+        Debug("\n\nAdding new Neighbour rid=%d\n\n",rid);
         n = (struct neighbour *)malloc(sizeof(struct neighbour));
         n->router_id = rid;
         n->ip = ip;
@@ -45,11 +48,11 @@ void neighbour_list_process_incoming_hello(struct sr_instance * sr, struct neigh
         n->nmask = nmask;
         n->helloint = helloint;
         assoc_array_insert(nl->array,n);
-        interface_list_send_flood(sr);
     }
     n->ttl = 3 * helloint;
 
     mutex_unlock(nl->mutex);
+    return ret;
 }
 
 int neighbour_list_scan_neighbour(void * data, void * user_data)
@@ -108,4 +111,13 @@ void neighbour_list_loop(struct neighbour_list * nlist, void (*fn)(struct neighb
     struct __neighbour_list_loop_i nlli = {fn,userdata};
     assoc_array_walk_array(nlist->array,neighbour_list_loop_a,&nlli);
     mutex_unlock(nlist->mutex);
+}
+
+int neighbour_list_empty(struct neighbour_list * nlist)
+{
+    int ret;
+    mutex_lock(nlist->mutex);
+    ret = assoc_array_empty(nlist->array);
+    mutex_unlock(nlist->mutex);
+    return ret;
 }

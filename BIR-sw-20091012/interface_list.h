@@ -5,6 +5,7 @@
 #include "sr_base_internal.h"
 #include "debug.h"
 #include "neighbour_list.h"
+#include "common.h"
 
 struct sr_packet;
 
@@ -37,8 +38,7 @@ void interface_list_destroy(struct interface_list * list);
 int interface_list_ip_exists(struct interface_list * list, uint32_t ip);
 
 void interface_list_show(struct interface_list * list, print_t print);
-void interface_list_process_incoming_hello(struct sr_packet * packet, struct interface_list * iflist,
-                                           char * interface,
+void interface_list_process_incoming_hello(struct sr_instance * sr, char * interface,
                                            uint32_t ip, uint32_t rid, uint32_t aid,
                                            uint32_t nmask, uint16_t helloint);
 
@@ -48,4 +48,5 @@ void interface_list_loop_through_neighbours(struct interface_list * iflist,
 
 void interface_list_send_flood(struct sr_instance * sr);
 void interface_list_show_neighbours(struct interface_list * iflist, print_t print);
+int interface_list_ip_in_network_on_interface(struct sr_instance * sr, struct ip_address * ip, char * interface);
 #endif

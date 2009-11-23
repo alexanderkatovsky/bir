@@ -1,90 +1,102 @@
 #include "router.h"
 #include <string.h>
 #include <stdlib.h>
+#include "eth_headers.h"
+#include "cli/cli.h"
 
-void icmp_construct_headers(uint8_t * data, struct sr_packet * packet, unsigned int ip_len)
+void icmp_construct_header(uint8_t * data, uint8_t type, uint8_t code, uint16_t id, uint16_t sequence)
 {
-    int start_ip = sizeof(struct sr_ethernet_hdr);
-    struct sr_ethernet_hdr * eth_from = (struct sr_ethernet_hdr *) (packet->packet);
-    struct sr_ethernet_hdr * eth_to = (struct sr_ethernet_hdr *) (data);
-    struct ip * ip_from = (struct ip *) (packet->packet + start_ip);
-    struct ip * ip_to = (struct ip *) (data + start_ip);
+    int start_icmp = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
+    struct icmphdr * icmp_h = (struct icmphdr *) (data + start_icmp);
 
-    interface_list_get_MAC_and_IP_from_name(ROUTER(packet->sr)->iflist,
-                                            packet->interface,eth_to->ether_shost,&ip_to->ip_src.s_addr);
-
-    memcpy(eth_to->ether_dhost,eth_from->ether_shost,ETHER_ADDR_LEN);
-    eth_to->ether_type = htons(ETHERTYPE_IP);
-
-    ip_to->ip_hl = 5;
-    ip_to->ip_v = 4;
-    ip_to->ip_tos = 0;
-    ip_to->ip_len = htons(ip_len);
-    ip_to->ip_id = ip_from->ip_id;
-    ip_to->ip_off = 0;
-    ip_to->ip_dst = ip_from->ip_src;
-    ip_to->ip_p = IP_P_ICMP;
-    ip_to->ip_ttl = 63;
-    ip_to->ip_sum = checksum_ipheader(ip_to);
+    icmp_h->type = type;
+    icmp_h->code = code;
+    icmp_h->id = id;
+    icmp_h->sequence = sequence;
+    icmp_h->checksum = checksum_icmpheader((uint8_t*)icmp_h,sizeof(struct icmphdr));
 }
 
-void icmp_basic(struct sr_packet * packet, int prot, int code)
+/* for icmp messages that require the first 64 bits of the original message */
+void icmp_basic_reply(struct sr_packet * packet, int prot, int code)
 {
     int len = sizeof(struct sr_ethernet_hdr) + 2*sizeof(struct ip) + sizeof(struct icmphdr) + 8;
     uint8_t * data = (uint8_t*)malloc(len);
-    int start_icmp = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
-    struct icmphdr * icmp_to = (struct icmphdr *) (data + start_icmp);
+    struct ip * iph = IP_HDR(packet);
+    struct sr_packet * packet2;
     int start_data = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct icmphdr);
-
-    icmp_construct_headers(data,packet,len - sizeof(struct sr_ethernet_hdr));
-    icmp_to->type = prot;
-    icmp_to->code = code;
-    icmp_to->checksum = checksum_icmpheader(data + start_icmp, len - start_icmp);
-    icmp_to->id = 0;
-    icmp_to->sequence = 0;
     memcpy(data + start_data,packet->packet + sizeof(struct sr_ethernet_hdr),len - start_data);
-
-    if(sr_integ_low_level_output(packet->sr,data,len,packet->interface) == -1)
-    {
-        printf("\nfailed to send packet\n");
-    }
+    icmp_construct_header(data, prot, code, 0, 0);
+    ip_construct_ip_header(data,len,0,63,IP_P_ICMP,iph->ip_dst.s_addr,iph->ip_src.s_addr);
+    ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
+    packet2 = router_construct_packet(packet->sr,data,len,"");
+    ip_forward(packet2);
+    router_free_packet(packet2);        
     
     free(data);
 }
 
 void icmp_send_port_unreachable(struct sr_packet * packet)
 {
-    icmp_basic(packet,3,3);
+    icmp_basic_reply(packet,ICMP_DEST_UNREACH,3);
 }
 
 void icmp_send_time_exceeded(struct sr_packet * packet)
 {
-    icmp_basic(packet,11,0);
+    icmp_basic_reply(packet,ICMP_TIME_EXCEEDED,0);
 }
 
 void icmp_send_host_unreachable(struct sr_packet * packet)
 {
-    icmp_basic(packet,3,1);
+    icmp_basic_reply(packet,ICMP_DEST_UNREACH,1);
 }
 
 
+void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num)
+{
+    int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) +
+        sizeof(struct icmphdr);
+    struct sr_packet * packet;
+
+    uint8_t * data = (uint8_t *)malloc(len);
+    icmp_construct_header(data,8,0,0,seq_num);
+    ip_construct_ip_header(data,len,0,63,IP_P_ICMP,ROUTER(sr)->rid,ip);
+    ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
+    packet = router_construct_packet(sr,data,len,"");
+    ip_forward(packet);
+    router_free_packet(packet);
+    free(data);
+}
+
 void icmp_reply(struct sr_packet * packet)
 {
-    uint8_t * data = (uint8_t*)malloc(packet->len);
-    int start_icmp = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
-    struct icmphdr * icmp_to = (struct icmphdr *) (data + start_icmp);
-    memcpy(data,packet->packet,packet->len);
-    icmp_construct_headers(data,packet,packet->len - sizeof(struct sr_ethernet_hdr));
-    icmp_to->type = ICMP_REPLY;
-    icmp_to->code = 0;
-    icmp_to->checksum = checksum_icmpheader(data + start_icmp, packet->len - start_icmp);
-
-    if(sr_integ_low_level_output(packet->sr,data,packet->len,packet->interface) == -1)
-    {
-        printf("\nfailed to send packet\n");
-    }
-
+    int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) +
+        sizeof(struct icmphdr);
+    uint8_t * data = (uint8_t*)malloc(len);
+    struct ip * iph = IP_HDR(packet);
+    struct icmphdr * icmp_h = ICMP_HDR(packet);
+    struct sr_packet * packet2;
+    
+    icmp_construct_header(data,ICMP_REPLY,0,icmp_h->id,icmp_h->sequence);
+    ip_construct_ip_header(data,packet->len,0,63,
+                           IP_P_ICMP,iph->ip_dst.s_addr,
+                           iph->ip_src.s_addr);
+    ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
+    packet2 = router_construct_packet(packet->sr,data,len,"");
+    ip_forward(packet2);
+    router_free_packet(packet2);
     free(data);
+}
+
+void icmp_handle_reply(struct sr_packet * packet)
+{
+    cli_ping_reply(IP_HDR(packet)->ip_src.s_addr);
+}
+
+void icmp_dest_unreach(struct sr_packet * packet)
+{
+    struct ip * iph = (struct ip *)(packet->packet + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) +
+                       sizeof(struct icmphdr));
+    cli_dest_unreach(iph);
 }
 
 void icmp_handle_incoming_packet(struct sr_packet * packet)
@@ -103,6 +115,12 @@ void icmp_handle_incoming_packet(struct sr_packet * packet)
         {
         case ICMP_REQUEST:
             icmp_reply(packet);
+            break;
+        case ICMP_REPLY:
+            icmp_handle_reply(packet);
+            break;
+        case ICMP_DEST_UNREACH:
+            icmp_dest_unreach(packet);
             break;
         }
     }

@@ -80,7 +80,7 @@ void ospf_handle_incoming_hello(struct sr_packet * packet)
     struct ospfv2_hdr * ospf_hdr = OSPF_HDR(packet);
     struct ospfv2_hello_hdr * hello_hdr = HELLO_HDR(packet);
 
-    interface_list_process_incoming_hello(packet, ROUTER(packet->sr)->iflist,
+    interface_list_process_incoming_hello(packet->sr,
                                           packet->interface, ip_hdr->ip_src.s_addr,
                                           ospf_hdr->rid,
                                           ntohl(ospf_hdr->aid),
