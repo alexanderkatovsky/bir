@@ -37,7 +37,7 @@ void ip_forward(struct sr_packet * packet)
     struct ip * ip_hdr = IP_HDR(packet);
     uint32_t next_hop;
     char thru_interface[SR_NAMELEN];
-    
+
     if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table,
                                         ip_hdr->ip_dst.s_addr, &next_hop, thru_interface))
     {

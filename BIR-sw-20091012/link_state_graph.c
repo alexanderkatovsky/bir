@@ -35,14 +35,19 @@ void link_state_graph_links_list_delete_link(void * data)
     free((struct link *)data);
 }
 
-int link_state_graph_update_links_list(struct linked_list ** links, uint32_t num, struct ospfv2_lsu * adv)
+void * __links_getter(void * data)
+{
+    return &((struct link *)data)->ip;
+}
+
+int link_state_graph_update_links_list(struct assoc_array ** links, uint32_t num, struct ospfv2_lsu * adv)
 {
     /*could check if there has been a change*/
     uint32_t i;
     int ret = 1;
     struct link * lk;
-    linked_list_delete_list(*links,link_state_graph_links_list_delete_link);
-    *links = linked_list_create();
+    assoc_array_delete_array(*links,link_state_graph_links_list_delete_link);
+    *links = assoc_array_create(__links_getter,ip_address_cmp);
 
     for(i = 0; i < num; i++)
     {
@@ -50,7 +55,7 @@ int link_state_graph_update_links_list(struct linked_list ** links, uint32_t num
         lk->ip.subnet = adv[i].subnet;
         lk->ip.mask = adv[i].mask;
         lk->rid = adv[i].rid;
-        linked_list_add(*links,lk);
+        assoc_array_insert(*links,lk);
     }
 
     return ret;
@@ -109,7 +114,7 @@ int link_state_graph_dijkstra_next(void * data, void * userdata)
         assoc_array_insert(di->visited, v);
         di->d = d;
 
-        linked_list_walk_list(lsn->links,link_state_graph_insert_links,di);
+        assoc_array_walk_array(lsn->links,link_state_graph_insert_links,di);
     }
     return 0;
 }
@@ -165,6 +170,18 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
 /*    forwarding_table_dynamic_show(FORWARDING_TABLE(sr),printf);*/
 }
 
+struct link_state_node * __link_state_graph_insert_node(struct link_state_graph * lsg, uint32_t rid)
+{
+    struct link_state_node * lsn;
+    lsn = (struct link_state_node *)malloc(sizeof(struct link_state_node));
+    lsn->rid = rid;
+    lsn->seq = -1;
+    lsn->links = assoc_array_create(__links_getter,ip_address_cmp);
+    lsn->n_neighbours = 0;
+    assoc_array_insert(lsg->array,lsn);
+    return lsn;
+}
+
 int link_state_graph_update_links(struct sr_instance * sr,
                                uint32_t rid, uint16_t seq, uint32_t num, struct ospfv2_lsu * adv)
 {
@@ -175,11 +192,7 @@ int link_state_graph_update_links(struct sr_instance * sr,
     lsn = (struct link_state_node *)assoc_array_read(lsg->array,&rid);
     if(lsn == NULL)
     {
-        lsn = (struct link_state_node *)malloc(sizeof(struct link_state_node));
-        lsn->rid = rid;
-        lsn->seq = seq;
-        lsn->links = linked_list_create();
-        assoc_array_insert(lsg->array,lsn);
+        lsn = __link_state_graph_insert_node(lsg, rid);
     }
     else if(lsn->seq >= seq)
     {
@@ -202,13 +215,36 @@ int link_state_graph_update_links(struct sr_instance * sr,
 void link_state_graph_delete_node(void * data)
 {
     struct link_state_node * lsn = (struct link_state_node *)data;
-    linked_list_delete_list(lsn->links,link_state_graph_links_list_delete_link);
+    assoc_array_delete_array(lsn->links,link_state_graph_links_list_delete_link);
     free(lsn);
 }
 
 void * link_state_graph_get_key(void * data)
 {
     return &((struct link_state_node *)data)->rid;
+}
+
+void link_state_graph_neighbour_up(struct sr_instance * sr, uint32_t rid, uint32_t ip)
+{
+    struct link_state_node * node = (struct link_state_node *) assoc_array_delete(LSG(sr)->array, &rid);
+    if(node == NULL)
+    {
+        node = __link_state_graph_insert_node(LSG(sr), rid);
+    }
+    node->n_neighbours += 1;
+}
+
+void link_state_graph_neighbour_down(struct sr_instance * sr, uint32_t rid, uint32_t ip)
+{
+    struct link_state_node * node = (struct link_state_node *) assoc_array_delete(LSG(sr)->array, &rid);
+    if(node)
+    {
+        node->n_neighbours -= 1;
+        if(node->n_neighbours <= 0)
+        {
+            link_state_graph_delete_node(node);
+        }
+    }
 }
 
 void link_state_graph_destroy(struct link_state_graph * lsg)
@@ -243,7 +279,7 @@ int __link_state_graph_show_topology_a(void * data, void * userdata)
     print("  rid:  ");print_ip(lsn->rid,print);print("\n");
     print("  last sequence number: %d\n", lsn->seq);
 
-    linked_list_walk_list(lsn->links,__link_state_graph_show_link_a,print);
+    assoc_array_walk_array(lsn->links,__link_state_graph_show_link_a,print);
     print("\n");
     
     return 0;

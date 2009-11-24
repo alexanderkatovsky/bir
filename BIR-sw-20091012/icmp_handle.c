@@ -22,15 +22,16 @@ void icmp_basic_reply(struct sr_packet * packet, int prot, int code)
     int len = sizeof(struct sr_ethernet_hdr) + 2*sizeof(struct ip) + sizeof(struct icmphdr) + 8;
     uint8_t * data = (uint8_t*)malloc(len);
     struct ip * iph = IP_HDR(packet);
-    struct sr_packet * packet2;
     int start_data = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct icmphdr);
     memcpy(data + start_data,packet->packet + sizeof(struct sr_ethernet_hdr),len - start_data);
     icmp_construct_header(data, prot, code, 0, 0);
     ip_construct_ip_header(data,len,0,63,IP_P_ICMP,iph->ip_dst.s_addr,iph->ip_src.s_addr);
-    ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
-    packet2 = router_construct_packet(packet->sr,data,len,"");
-    ip_forward(packet2);
-    router_free_packet(packet2);        
+    ip_construct_eth_header(data,ETH_HDR(packet)->ether_shost,ETH_HDR(packet)->ether_dhost,ETHERTYPE_IP);
+
+    if(sr_integ_low_level_output(packet->sr,data,len,packet->interface) == -1)
+    {
+        printf("\nfailed to send packet\n");
+    }
     
     free(data);
 }
@@ -61,7 +62,7 @@ void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num)
     icmp_construct_header(data,8,0,0,seq_num);
     ip_construct_ip_header(data,len,0,63,IP_P_ICMP,ROUTER(sr)->rid,ip);
     ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
-    packet = router_construct_packet(sr,data,len,"");
+    packet = router_construct_packet(sr,data,len,ROUTER(sr)->default_interface);
     ip_forward(packet);
     router_free_packet(packet);
     free(data);

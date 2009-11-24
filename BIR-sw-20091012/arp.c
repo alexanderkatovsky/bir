@@ -58,9 +58,13 @@ void arp_reply_to_request(struct sr_packet * packet)
         arp_hdr->ar_sip = temp;
         memcpy(arp_hdr->ar_tha,arp_hdr->ar_sha,ETHER_ADDR_LEN);
         memcpy(arp_hdr->ar_sha,vnsif->addr,ETHER_ADDR_LEN);
-        memcpy(eth_hdr->ether_dhost,vnsif->addr,ETHER_ADDR_LEN);
-        
-        router_swap_eth_header_and_send(packet);
+        memcpy(eth_hdr->ether_dhost,eth_hdr->ether_shost,ETHER_ADDR_LEN);
+        memcpy(eth_hdr->ether_shost,vnsif->addr,ETHER_ADDR_LEN);
+
+        if(sr_integ_low_level_output(packet->sr,packet->packet,packet->len,packet->interface) == -1)
+        {
+            printf("\nfailed to send packet\n");
+        }        
     }
 }
 

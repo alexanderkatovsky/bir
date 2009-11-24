@@ -28,6 +28,8 @@ struct sr_router
     struct arp_reply_waiting_list * arwl;
     struct link_state_graph * lsg;
 
+    char default_interface[SR_NAMELEN];
+
     uint32_t rid;
     uint32_t ospf_seq;
 

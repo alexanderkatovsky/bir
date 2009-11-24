@@ -28,6 +28,7 @@ void arp_reply_waiting_list_alert_host_unreachable(struct arwl_entry * entry)
     struct arwl_list_entry * pl_entry;
     while((pl_entry = fifo_pop(entry->packet_list)))
     {
+        dump_ip(entry->next_hop);
         icmp_send_host_unreachable(pl_entry->packet);
     }
 }

@@ -53,6 +53,8 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
     {
         router->rid = interface->ip;
     }
+
+    strcpy(router->default_interface,interface->name);
 }
 
 void router_create(struct sr_instance * sr)
@@ -102,24 +104,6 @@ void router_destroy(struct sr_router * router)
     free(router);
 }
 
-
-/*
- * Swaps destination and source MAC addresses and sends
- * */
-void router_swap_eth_header_and_send(struct sr_packet * packet)
-{
-    uint8_t buf[ETHER_ADDR_LEN];
-    struct sr_ethernet_hdr * eth_hdr = ETH_HDR(packet);
-
-    memcpy(buf,eth_hdr->ether_dhost,ETHER_ADDR_LEN);
-    memcpy(eth_hdr->ether_dhost,eth_hdr->ether_shost,ETHER_ADDR_LEN);
-    memcpy(eth_hdr->ether_shost,buf,ETHER_ADDR_LEN);
-
-    if(sr_integ_low_level_output(packet->sr,packet->packet,packet->len,packet->interface) == -1)
-    {
-        printf("\nfailed to send packet\n");
-    }
-}
 
 void router_load_static_routes(struct sr_instance * sr)
 {
