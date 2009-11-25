@@ -5,7 +5,7 @@
 #include "lwtcp/lwip/sys.h"
 #include "reg_defines.h"
 
-int output_ports[4] = { 1 << 0, 1 << 2, 1 << 4, 1 << 6 };
+static int output_ports[4] = { 1 << 0, 1 << 2, 1 << 4, 1 << 6 };
 
 
 static uint32_t interface_list_mac_hi[4] = { ROUTER_OP_LUT_MAC_0_HI,
