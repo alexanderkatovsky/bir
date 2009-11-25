@@ -45,5 +45,6 @@ void * assoc_array_read(struct assoc_array * array, void * key);
 void assoc_array_walk_array(struct assoc_array * array, int (* fn)(void *, void *), void * user_data);
 struct assoc_array * assoc_array_create(assoc_array_key_getter,assoc_array_key_comp);
 int assoc_array_validate(struct assoc_array * array);
+int assoc_array_empty(struct assoc_array * array);
 
 #endif

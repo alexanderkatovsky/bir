@@ -313,3 +313,7 @@ int assoc_array_validate(struct assoc_array * array)
     return __assoc_array_validate(array->root);
 }
 
+int assoc_array_empty(struct assoc_array * array)
+{
+    return (array->root == NULL);
+}

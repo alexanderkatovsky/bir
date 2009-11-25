@@ -209,14 +209,17 @@ void __assoc_array_walk(int * finished, struct AssocArrayNode * node,
 {
     if(node)
     {
-        *finished = fn(node->data,user_data);
-        if(*finished == 0)
-        {
-            __assoc_array_walk(finished,node->left,fn,user_data);
-        }
         if(*finished == 0)
         {
             __assoc_array_walk(finished,node->right,fn,user_data);
+        }
+        if(*finished == 0)
+        {
+            *finished = fn(node->data,user_data);
+        }
+        if(*finished == 0)
+        {
+            __assoc_array_walk(finished,node->left,fn,user_data);
         }
     }
 }

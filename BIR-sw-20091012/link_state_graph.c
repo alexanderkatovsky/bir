@@ -198,11 +198,10 @@ int link_state_graph_update_links(struct sr_instance * sr,
     {
         ret = 0;
     }
-
-    lsn->seq = seq;
     
     if(ret)
     {
+        lsn->seq = seq;
         if(link_state_graph_update_links_list(&lsn->links,num,adv))
         {
             link_state_graph_update_forwarding_table(sr);

@@ -13,9 +13,15 @@
 
 struct forwarding_table_entry
 {
-    struct ip_address dest;
+    struct ip_address ip;
     uint32_t next_hop;
     char   interface[SR_NAMELEN];
+};
+
+struct forwarding_table_subnet_list
+{
+    struct assoc_array * list;
+    uint32_t mask;
 };
 
 struct forwarding_table
