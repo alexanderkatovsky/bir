@@ -318,8 +318,36 @@ void cli_show_hw_intf()
     }
 }
 
+int output_ports[4] = { 1 << 0, 1 << 2, 1 << 4, 1 << 6 };
+
 void cli_show_hw_route() {
-    cli_send_str( "not yet implemented: cli_show_hw_route()\n" );
+    int i,j;
+    uint32_t ip, mask, next_hop, port;
+    cli_printf("Routing Table:%10s   %10s   %10s   %s\n","subnet","mask","next hop", "interface");
+    for(i = 0; i < ROUTER_OP_LUT_ROUTE_TABLE_DEPTH; i++)
+    {
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_WR_ADDR, i);
+        readReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_IP, &ip);
+        readReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_MASK, &mask);
+        readReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_NEXT_HOP_IP, &next_hop);
+        readReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_OUTPUT_PORT, &port);
+        if(ip == 0 && mask == 0xffffffff && mask == 0 && port == 0)
+        {
+            break;
+        }
+        print_ip(htonl(ip),cli_printf);cli_printf("   ");
+        print_ip(htonl(mask),cli_printf);cli_printf("   ");
+        print_ip(htonl(next_hop),cli_printf);cli_printf("   ");
+
+        for(j = 0; j < 4; j++)
+        {
+            if(port == output_ports[j])
+            {
+                cli_printf("%d",j);
+                break;
+            }
+        }
+    }
 }
 #endif
 
