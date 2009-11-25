@@ -155,17 +155,7 @@ void forwarding_table_add(struct sr_instance * sr, struct ip_address * ip,
         assoc_array_insert(array,ftsl);
     }
     assoc_array_insert(ftsl->list,entry);
-/*
-    if(__forwarding_table_get_entry(ft, array, ip, &ftsl, &fte))
-    {
-        Debug("\n");
-        dump_ip(fte->ip.subnet);
-        Debug("\t");
-        dump_ip(fte->ip.mask);
-        Debug("\t");
-        Debug("%s\n", fte->interface);
-    }
-*/
+
     mutex_unlock(ft->mutex);
 }
 
@@ -219,28 +209,3 @@ void forwarding_table_static_show(struct forwarding_table * ft, print_t print)
     mutex_unlock(ft->mutex);
 }
 
-
-/* struct __forwarding_table_static_loop_through_entries_i */
-/* { */
-/*     void (*fn)(struct forwarding_table_entry *, void *); */
-/*     void * userdata; */
-/* }; */
-
-/* int __forwarding_table_static_loop_through_entries_a(void * data, void * userdata) */
-/* { */
-/*     struct forwarding_table_entry * fte = (struct forwarding_table_entry *)data; */
-/*     struct __forwarding_table_static_loop_through_entries_i * ftslte = */
-/*         (struct __forwarding_table_static_loop_through_entries_i *)userdata; */
-/*     ftslte->fn(fte,ftslte->userdata); */
-/*     return 0; */
-/* } */
-
-/* void forwarding_table_static_loop_through_entries(struct forwarding_table * ft, */
-/*                                                   void (*fn)(struct forwarding_table_entry *, void *), */
-/*                                                   void * userdata) */
-/* { */
-/*     struct __forwarding_table_static_loop_through_entries_i ftslte = {fn,userdata}; */
-/*     mutex_lock(ft->mutex); */
-/*     assoc_array_walk_array(ft->array_s,__forwarding_table_static_loop_through_entries_a,&ftslte); */
-/*     mutex_unlock(ft->mutex); */
-/* } */

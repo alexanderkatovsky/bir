@@ -253,7 +253,28 @@ void cli_show_hw_about() {
 }
 
 void cli_show_hw_arp() {
-    cli_send_str( "not yet implemented: cli_show_hw_arp()\n" );
+    int i;
+    struct nf2device* device = &ROUTER(get_sr())->device;
+    uint32_t mac_hi,mac_lo,ip;
+    uint8_t mac[ETHER_ADDR_LEN];
+    cli_printf("\nARP table:\n");
+    for(i = 0; i < ROUTER_OP_LUT_ARP_TABLE_DEPTH; i++)
+    {
+        writeReg(device, ROUTER_OP_LUT_ARP_TABLE_WR_ADDR, i);
+        readReg(device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_MAC_LO, &mac_lo);
+        readReg(device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_MAC_HI, &mac_hi);
+        readReg(device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_NEXT_HOP_IP, &ip);
+        if((mac_lo == 0) && (mac_hi == 0))
+        {
+            break;
+        }
+        *((uint32_t *)mac) = htonl(mac_lo);
+        *((uint32_t *)mac + 4) = htonl(mac_hi);
+        print_mac(mac,cli_printf);
+        cli_printf("\t");
+        print_ip(htonl(ip),cli_printf);
+        cli_printf("\n");
+    }
 }
 
 
@@ -290,7 +311,10 @@ void cli_show_hw_intf()
         writeReg(device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_RD_ADDR, i);
         readReg(device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_ENTRY_IP, &rr);
         rr = htonl(rr);
-        print_ip(rr,cli_printf);cli_printf("\n");
+        if(rr != 0)
+        {
+            print_ip(rr,cli_printf);cli_printf("\n");
+        }
     }
 }
 
