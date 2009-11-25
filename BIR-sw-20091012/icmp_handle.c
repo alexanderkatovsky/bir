@@ -4,7 +4,7 @@
 #include "eth_headers.h"
 #include "cli/cli.h"
 
-void icmp_construct_header(uint8_t * data, uint8_t type, uint8_t code, uint16_t id, uint16_t sequence)
+void icmp_construct_header(uint8_t * data, uint8_t type, uint8_t code, uint16_t id, uint16_t sequence, int len)
 {
     int start_icmp = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
     struct icmphdr * icmp_h = (struct icmphdr *) (data + start_icmp);
@@ -13,7 +13,7 @@ void icmp_construct_header(uint8_t * data, uint8_t type, uint8_t code, uint16_t 
     icmp_h->code = code;
     icmp_h->id = id;
     icmp_h->sequence = sequence;
-    icmp_h->checksum = checksum_icmpheader((uint8_t*)icmp_h,sizeof(struct icmphdr));
+    icmp_h->checksum = checksum_icmpheader((uint8_t*)icmp_h,sizeof(struct icmphdr) + len);
 }
 
 /* for icmp messages that require the first 64 bits of the original message */
@@ -24,7 +24,7 @@ void icmp_basic_reply(struct sr_packet * packet, int prot, int code)
     struct ip * iph = IP_HDR(packet);
     int start_data = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct icmphdr);
     memcpy(data + start_data,packet->packet + sizeof(struct sr_ethernet_hdr),len - start_data);
-    icmp_construct_header(data, prot, code, 0, 0);
+    icmp_construct_header(data, prot, code, 0, 0, len - start_data);
     ip_construct_ip_header(data,len,0,63,IP_P_ICMP,iph->ip_dst.s_addr,iph->ip_src.s_addr);
     ip_construct_eth_header(data,ETH_HDR(packet)->ether_shost,ETH_HDR(packet)->ether_dhost,ETHERTYPE_IP);
 
@@ -59,7 +59,7 @@ void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num)
     struct sr_packet * packet;
 
     uint8_t * data = (uint8_t *)malloc(len);
-    icmp_construct_header(data,8,0,0,seq_num);
+    icmp_construct_header(data,8,0,0,seq_num,0);
     ip_construct_ip_header(data,len,0,63,IP_P_ICMP,ROUTER(sr)->rid,ip);
     ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
     packet = router_construct_packet(sr,data,len,ROUTER(sr)->default_interface);
@@ -77,7 +77,7 @@ void icmp_reply(struct sr_packet * packet)
     struct icmphdr * icmp_h = ICMP_HDR(packet);
     struct sr_packet * packet2;
     
-    icmp_construct_header(data,ICMP_REPLY,0,icmp_h->id,icmp_h->sequence);
+    icmp_construct_header(data,ICMP_REPLY,0,icmp_h->id,icmp_h->sequence,0);
     ip_construct_ip_header(data,packet->len,0,63,
                            IP_P_ICMP,iph->ip_dst.s_addr,
                            iph->ip_src.s_addr);
