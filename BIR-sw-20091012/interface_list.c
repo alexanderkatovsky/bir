@@ -5,6 +5,8 @@
 #include "lwtcp/lwip/sys.h"
 #include "reg_defines.h"
 
+int output_ports[4] = { 1 << 0, 1 << 2, 1 << 4, 1 << 6 };
+
 
 static uint32_t interface_list_mac_hi[4] = { ROUTER_OP_LUT_MAC_0_HI,
                                              ROUTER_OP_LUT_MAC_1_HI,
@@ -302,6 +304,7 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     entry->n_list = n_list;
     entry->aid = 0;
     entry->i = list->total;
+    entry->port = output_ports[entry->i];
     list->total += 1;
     mutex_lock(list->mutex);
     bi_assoc_array_insert(list->array,entry);
@@ -444,6 +447,30 @@ void interface_list_loop_through_neighbours(struct interface_list * iflist,
     mutex_unlock(iflist->mutex);
 }
 
+struct __interface_list_loop_interfaces_i
+{
+    void (*fn)(struct sr_vns_if *, void *);
+    void * userdata;
+};
+
+int __interface_list_loop_interfaces_a(void * data, void * userdata)
+{
+    struct __interface_list_loop_interfaces_i * lii = (struct __interface_list_loop_interfaces_i *)userdata;
+    struct interface_list_entry * ile = (struct interface_list_entry *)data;
+    lii->fn(ile->vns_if,lii->userdata);
+    return 0;
+}
+
+void interface_list_loop_interfaces(struct sr_instance * sr, void (*fn)(struct sr_vns_if *, void *),
+                                    void * userdata)
+{
+    struct __interface_list_loop_interfaces_i lii = {fn,userdata};
+    struct interface_list * iflist = INTERFACE_LIST(sr);
+    mutex_lock(iflist->mutex);
+    bi_assoc_array_walk_array(iflist->array,__interface_list_loop_interfaces_a,&lii);
+    mutex_unlock(iflist->mutex);
+}
+
 
 void __interface_list_show_neighbours_a(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
 {
@@ -474,6 +501,17 @@ int interface_list_ip_in_network_on_interface(struct sr_instance * sr, struct ip
        ((entry->vns_if->ip & entry->vns_if->mask) == (ip->subnet & ip->mask)))
     {
         ret = 1;
+    }
+    return ret;
+}
+
+uint32_t interface_list_get_output_port(struct sr_instance * sr, char * interface)
+{
+    struct interface_list_entry * entry = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array,interface);
+    uint32_t ret = 0;
+    if(entry != NULL)
+    {
+        ret = entry->port;
     }
     return ret;
 }

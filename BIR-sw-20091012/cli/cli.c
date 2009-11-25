@@ -291,29 +291,29 @@ static uint32_t interface_list_mac_lo[4] = { ROUTER_OP_LUT_MAC_0_LO,
 void cli_show_hw_intf()
 {
     int i;
-    uint32_t reada[2],rr;
+    uint32_t mac_hi,mac_lo,ip;
+    uint8_t mac[ETHER_ADDR_LEN];
     struct nf2device* device = &ROUTER(get_sr())->device;
     cli_printf("\nMAC Addresses:\n");
     for(i = 0; i < 4; i++)
     {
         cli_printf("%d: ",i);
-        readReg(device, interface_list_mac_lo[i], &reada[1]);
-        reada[1] = htonl(reada[1]);
-        readReg(device, interface_list_mac_hi[i], &reada[0]);
-        reada[0] = htonl(reada[0]);
-
-        print_mac(((uint8_t *)reada)+2,cli_printf);cli_printf("\n");
+        readReg(device, interface_list_mac_lo[i], &mac_lo);
+        readReg(device, interface_list_mac_hi[i], &mac_hi);
+        *((uint32_t *)mac) = htonl(mac_lo);
+        *((uint32_t *)mac + 4) = htonl(mac_hi);
+        print_mac(mac,cli_printf);cli_printf("\n");
     }
     cli_printf("\nIP Filter Table:\n");
  
     for (i = 0; i < ROUTER_OP_LUT_DST_IP_FILTER_TABLE_DEPTH; i++)
     {
         writeReg(device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_RD_ADDR, i);
-        readReg(device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_ENTRY_IP, &rr);
-        rr = htonl(rr);
-        if(rr != 0)
+        readReg(device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_ENTRY_IP, &ip);
+        ip = htonl(ip);
+        if(ip != 0)
         {
-            print_ip(rr,cli_printf);cli_printf("\n");
+            print_ip(ip,cli_printf);cli_printf("\n");
         }
     }
 }

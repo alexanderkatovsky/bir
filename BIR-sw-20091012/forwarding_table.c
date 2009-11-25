@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "router.h"
+#include "reg_defines.h"
 
 void * __forwarding_table_get_key_dest(void * data)
 {
@@ -159,53 +160,125 @@ void forwarding_table_add(struct sr_instance * sr, struct ip_address * ip,
     mutex_unlock(ft->mutex);
 }
 
-void forwarding_table_start_dijkstra(struct forwarding_table * fwd_table)
+void forwarding_table_start_dijkstra(struct sr_instance * sr)
 {
+    struct forwarding_table * fwd_table = FORWARDING_TABLE(sr);
     assoc_array_delete_array(fwd_table->array_d,__delete_forwarding_table);
     fwd_table->array_d = assoc_array_create(__forwarding_table_get_key_mask,assoc_array_key_comp_int);    
 
     mutex_lock(fwd_table->mutex);
 }
 
-void forwarding_table_end_dijkstra(struct forwarding_table * fwd_table)
+void forwarding_table_end_dijkstra(struct sr_instance * sr)
 {
+    struct forwarding_table * fwd_table = FORWARDING_TABLE(sr);
+    forwarding_table_hw_write(sr);
     mutex_unlock(fwd_table->mutex);
 }
 
-int forwarding_table_show_a(void * data, void * userdata)
+struct __forwarding_table_loop_i
+{
+    void * userdata;
+    int finished;
+    void (*fn)(uint32_t,uint32_t,uint32_t,char*,void*,int*);
+};
+
+int __forwarding_table_list_loop_a(void * data, void * userdata)
 {
     struct forwarding_table_entry * fte = (struct forwarding_table_entry *)data;
-    print_t print = (print_t)userdata;
-
-    print_ip(fte->ip.subnet,print);print("\t");
-    print_ip(fte->ip.mask,print);print("\t");
-    print_ip(fte->next_hop,print);print("\t");
-    print("%s\n",fte->interface);
-    return 0;
+    struct __forwarding_table_loop_i * li = (struct __forwarding_table_loop_i *)userdata;
+    li->fn(fte->ip.subnet, fte->ip.mask, fte->next_hop, fte->interface, li->userdata, &li->finished);
+    return li->finished;
 }
 
-int forwarding_table_show_list_a(void * data, void * userdata)
+int __forwarding_table_loop_a(void * data, void * userdata)
 {
     struct forwarding_table_subnet_list * sl = (struct forwarding_table_subnet_list *)data;
-    assoc_array_walk_array(sl->list,forwarding_table_show_a,userdata);
-    return 0;
+    struct __forwarding_table_loop_i * li = (struct __forwarding_table_loop_i *)userdata;
+    assoc_array_walk_array(sl->list,__forwarding_table_list_loop_a,userdata);
+    return li->finished;
+}
+
+void forwarding_table_loop(struct forwarding_table * ft,
+                           void (*fn)(uint32_t,uint32_t,uint32_t,char*,void*,int*),
+                           void * userdata, int isDynamic)
+{
+    struct __forwarding_table_loop_i li = {userdata,0,fn};
+    struct assoc_array * array = isDynamic ? ft->array_d : ft->array_s;
+    mutex_lock(ft->mutex);
+    assoc_array_walk_array(array, __forwarding_table_loop_a, &li);
+    mutex_unlock(ft->mutex);
+}
+
+
+void __forwarding_table_show_a(uint32_t subnet, uint32_t mask, uint32_t next_hop,
+                               char * interface, void * userdata, int * finished)
+{
+    print_t print = (print_t)userdata;
+
+    print_ip(subnet,print);print("\t");
+    print_ip(mask,print);print("\t");
+    print_ip(next_hop,print);print("\t");
+    print("%s\n",interface);
 }
 
 void forwarding_table_dynamic_show(struct forwarding_table * ft, print_t print)
 {
     print("Dynamic Forwarding Table:\n");
-    
-    mutex_lock(ft->mutex);
-    assoc_array_walk_array(ft->array_d,forwarding_table_show_list_a,print);
-    mutex_unlock(ft->mutex);
+    forwarding_table_loop(ft, __forwarding_table_show_a, print, 1);
 }
 
 void forwarding_table_static_show(struct forwarding_table * ft, print_t print)
 {
     print("Static Forwarding Table:\n");
-    
-    mutex_lock(ft->mutex);
-    assoc_array_walk_array(ft->array_s,forwarding_table_show_list_a,print);
-    mutex_unlock(ft->mutex);
+    forwarding_table_loop(ft, __forwarding_table_show_a, print, 0);
 }
 
+#ifdef _CPUMODE_
+
+struct __forwarding_table_hw_write_i
+{
+    int count;
+    struct sr_instance * sr;
+};
+
+void __forwarding_table_hw_write_a(uint32_t subnet, uint32_t mask, uint32_t next_hop,
+                             char * interface, void * userdata, int * finished)
+{
+    struct __forwarding_table_hw_write_i * hwi = (struct __forwarding_table_hw_write_i *)userdata;
+    struct nf2device * device = &ROUTER(hwi->sr)->device;
+    if(hwi->count >= ROUTER_OP_LUT_ROUTE_TABLE_DEPTH)
+    {
+        *finished = 1;
+    }
+    else
+    {
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_IP, ntohl(subnet));
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_MASK, ntohl(mask));
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_NEXT_HOP_IP, ntohl(next_hop));
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_OUTPUT_PORT,
+                 interface_list_get_output_port(hwi->sr, interface));
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_WR_ADDR, hwi->count);
+        hwi->count += 1;
+    }
+}
+#endif
+
+void forwarding_table_hw_write(struct sr_instance * sr)
+{
+#ifdef _CPUMODE_
+    struct __forwarding_table_hw_write_i  hwi = {0,sr};
+    struct nf2device * device = &ROUTER(sr)->device;
+    int i;
+    forwarding_table_loop(FORWARDING_TABLE(sr), __forwarding_table_hw_write_a, &hwi,1);
+
+    for(i = hwi.count; i < ROUTER_OP_LUT_ROUTE_TABLE_DEPTH; i++)
+    {
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_IP, 0);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_MASK, 0xffffffff);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_NEXT_HOP_IP, 0);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_OUTPUT_PORT, 0);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_WR_ADDR, i);
+    }
+#endif
+}

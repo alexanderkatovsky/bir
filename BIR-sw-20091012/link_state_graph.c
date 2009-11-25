@@ -134,6 +134,13 @@ void link_state_graph_delete_vistited(void * data)
     free((uint32_t *)data);
 }
 
+void __link_state_graph_add_if_routes_a(struct sr_vns_if * iface, void * userdata)
+{
+    struct sr_instance * sr = (struct sr_instance *)userdata;
+    struct ip_address ip = {iface->ip & iface->mask, iface->mask};
+    forwarding_table_add(sr, &ip, 0, iface->name,1);
+}
+
 void link_state_graph_update_forwarding_table(struct sr_instance * sr)
 {
 
@@ -144,7 +151,8 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
     Debug("\n\n***Updating forwarding table... ");
 
     /*clear dynamic entries and lock mutex*/
-    forwarding_table_start_dijkstra(FORWARDING_TABLE(sr));
+    forwarding_table_start_dijkstra(sr);
+    interface_list_loop_interfaces(sr, __link_state_graph_add_if_routes_a, sr);
     
     di.sr = sr;
     di.visited = assoc_array_create(link_state_graph_visited_get_key, assoc_array_key_comp_int);
@@ -163,7 +171,7 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
     assoc_array_delete_array(di.visited, link_state_graph_delete_vistited);
         
     /*unlock mutex*/
-    forwarding_table_end_dijkstra(FORWARDING_TABLE(sr));
+    forwarding_table_end_dijkstra(sr);
 
     Debug("... Finished Updating forwarding table***\n\n");
 

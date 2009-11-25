@@ -15,6 +15,7 @@ struct interface_list_entry
     struct sr_vns_if * vns_if;
     uint32_t aid;
     int i;
+    uint32_t port;
 };
 
 struct interface_list
@@ -45,8 +46,11 @@ void interface_list_process_incoming_hello(struct sr_instance * sr, char * inter
 void interface_list_loop_through_neighbours(struct interface_list * iflist,
                                             void (*fn)(struct sr_vns_if *, struct neighbour *, void *),
                                             void * userdata);
+void interface_list_loop_interfaces(struct sr_instance * sr, void (*fn)(struct sr_vns_if *, void *),
+                                    void * userdata);
 
 void interface_list_send_flood(struct sr_instance * sr);
 void interface_list_show_neighbours(struct interface_list * iflist, print_t print);
 int interface_list_ip_in_network_on_interface(struct sr_instance * sr, struct ip_address * ip, char * interface);
+uint32_t interface_list_get_output_port(struct sr_instance * sr, char * interface);
 #endif
