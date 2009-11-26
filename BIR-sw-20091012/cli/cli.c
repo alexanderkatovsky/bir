@@ -321,10 +321,11 @@ void cli_show_hw_intf()
 static int output_ports[4] = { 1 << 0, 1 << 2, 1 << 4, 1 << 6 };
 
 void cli_show_hw_route() {
-    int i,j;
+    int i;
     uint32_t ip, mask, next_hop, port;
+    char * name;
     struct nf2device* device = &ROUTER(get_sr())->device;
-    cli_printf("Routing Table:\n%10s   %10s   %10s   %s\n","subnet","mask","next hop", "interface");
+
     for(i = 0; i < ROUTER_OP_LUT_ROUTE_TABLE_DEPTH; i++)
     {
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_RD_ADDR, i);
@@ -337,16 +338,8 @@ void cli_show_hw_route() {
             print_ip(htonl(ip),cli_printf);cli_printf("   ");
             print_ip(htonl(mask),cli_printf);cli_printf("   ");
             print_ip(htonl(next_hop),cli_printf);cli_printf("   ");
-            
-            for(j = 0; j < 4; j++)
-            {
-                if(htonl(port) == output_ports[j])
-                {
-                    cli_printf("%d",j);
-                    break;
-                }
-            }
-            cli_printf("\n");
+            name = interface_list_get_ifname_from_port(get_sr(),port);
+            cli_printf("  %s (%d)\n",name ? name : "", port);
         }
     }
 }

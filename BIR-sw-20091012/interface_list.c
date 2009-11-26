@@ -515,3 +515,31 @@ uint32_t interface_list_get_output_port(struct sr_instance * sr, char * interfac
     }
     return ret;
 }
+
+struct __interface_list_get_ifname_from_port_i
+{
+    char * name;
+    uint32_t port;
+};
+
+int __interface_list_get_ifname_from_port_a(void * data, void * userdata)
+{
+    struct interface_list_entry * i = (struct interface_list_entry *)data;
+    struct __interface_list_get_ifname_from_port_i * pi =
+        (struct __interface_list_get_ifname_from_port_i *)userdata;
+    int ret = 0;
+
+    if(i->port == pi->port)
+    {
+        pi->name = i->vns_if->name;
+        ret = 1;
+    }
+    return ret;
+}
+
+char * interface_list_get_ifname_from_port(struct sr_instance * sr, uint32_t port)
+{
+    struct __interface_list_get_ifname_from_port_i i = {0,port};
+    bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array,__interface_list_get_ifname_from_port_a, &i);
+    return i.name;
+}
