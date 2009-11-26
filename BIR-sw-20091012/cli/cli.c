@@ -325,6 +325,7 @@ void cli_show_hw_route() {
     uint32_t ip, mask, next_hop, port;
     char * name;
     struct nf2device* device = &ROUTER(get_sr())->device;
+    cli_printf("\nRouting Table:\n");
 
     for(i = 0; i < ROUTER_OP_LUT_ROUTE_TABLE_DEPTH; i++)
     {
