@@ -318,8 +318,6 @@ void cli_show_hw_intf()
     }
 }
 
-static int output_ports[4] = { 1 << 0, 1 << 2, 1 << 4, 1 << 6 };
-
 void cli_show_hw_route() {
     int i;
     uint32_t ip, mask, next_hop, port;
