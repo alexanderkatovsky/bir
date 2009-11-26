@@ -260,7 +260,7 @@ void cli_show_hw_arp() {
     cli_printf("\nARP table:\n");
     for(i = 0; i < ROUTER_OP_LUT_ARP_TABLE_DEPTH; i++)
     {
-        writeReg(device, ROUTER_OP_LUT_ARP_TABLE_WR_ADDR, i);
+        writeReg(device, ROUTER_OP_LUT_ARP_TABLE_RD_ADDR, i);
         readReg(device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_MAC_LO, &mac_lo);
         readReg(device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_MAC_HI, &mac_hi);
         readReg(device, ROUTER_OP_LUT_ARP_TABLE_ENTRY_NEXT_HOP_IP, &ip);
@@ -268,8 +268,8 @@ void cli_show_hw_arp() {
         {
             break;
         }
-        *((uint32_t *)mac) = htonl(mac_lo);
-        *((uint32_t *)mac + 4) = htonl(mac_hi);
+        *((uint32_t *)(mac+2)) = htonl(mac_lo);
+        *((uint16_t *)(mac)) = htonl(mac_hi) >> 16;
         print_mac(mac,cli_printf);
         cli_printf("\t");
         print_ip(htonl(ip),cli_printf);
@@ -300,8 +300,8 @@ void cli_show_hw_intf()
         cli_printf("%d: ",i);
         readReg(device, interface_list_mac_lo[i], &mac_lo);
         readReg(device, interface_list_mac_hi[i], &mac_hi);
-        *((uint32_t *)mac) = htonl(mac_lo);
-        *((uint32_t *)mac + 4) = htonl(mac_hi);
+        *((uint32_t *)(mac+2)) = htonl(mac_lo);
+        *((uint16_t *)(mac)) = htonl(mac_hi) >> 16;
         print_mac(mac,cli_printf);cli_printf("\n");
     }
     cli_printf("\nIP Filter Table:\n");
@@ -324,31 +324,30 @@ void cli_show_hw_route() {
     int i,j;
     uint32_t ip, mask, next_hop, port;
     struct nf2device* device = &ROUTER(get_sr())->device;
-    cli_printf("Routing Table:%10s   %10s   %10s   %s\n","subnet","mask","next hop", "interface");
+    cli_printf("Routing Table:\n%10s   %10s   %10s   %s\n","subnet","mask","next hop", "interface");
     for(i = 0; i < ROUTER_OP_LUT_ROUTE_TABLE_DEPTH; i++)
     {
-        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_WR_ADDR, i);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_RD_ADDR, i);
         readReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_IP, &ip);
         readReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_MASK, &mask);
         readReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_NEXT_HOP_IP, &next_hop);
         readReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_OUTPUT_PORT, &port);
-        if(ip == 0 && mask == 0xffffffff && mask == 0 && port == 0)
+        if(port != 0)
         {
-            break;
-        }
-        print_ip(htonl(ip),cli_printf);cli_printf("   ");
-        print_ip(htonl(mask),cli_printf);cli_printf("   ");
-        print_ip(htonl(next_hop),cli_printf);cli_printf("   ");
-
-        for(j = 0; j < 4; j++)
-        {
-            if(port == output_ports[j])
+            print_ip(htonl(ip),cli_printf);cli_printf("   ");
+            print_ip(htonl(mask),cli_printf);cli_printf("   ");
+            print_ip(htonl(next_hop),cli_printf);cli_printf("   ");
+            
+            for(j = 0; j < 4; j++)
             {
-                cli_printf("%d",j);
-                break;
+                if(htonl(port) == output_ports[j])
+                {
+                    cli_printf("%d",j);
+                    break;
+                }
             }
+            cli_printf("\n");
         }
-        cli_printf("\n");
     }
 }
 #endif
