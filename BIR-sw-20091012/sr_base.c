@@ -401,7 +401,7 @@ static void sr_destroy_instance(struct sr_instance* sr)
 
 static void usage(char* argv0)
 {
-    printf("Simple Router Client\n");
+    printf("Simple Router Client (%s %s)\n", __TIME__, __DATE__);
     printf("Format: %s [-h] [-v host] [-s server] [-p VNS port] \n",argv0);
     printf("           [-t topo id] [-P cli port] [-i cpu config file]\n");
 } /* -- usage -- */

@@ -249,7 +249,7 @@ void cli_show_hw() {
 }
 
 void cli_show_hw_about() {
-    cli_send_str( "not yet implemented: cli_show_hw_about()\n" );
+    cli_printf("\nCompilation Time: %s %s\n", __DATE__, __TIME__);
 }
 
 void cli_show_hw_arp() {
