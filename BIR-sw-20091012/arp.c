@@ -49,22 +49,34 @@ void arp_reply_to_request(struct sr_packet * packet)
     struct sr_ethernet_hdr * eth_hdr = ETH_HDR(packet);
     struct sr_vns_if * vnsif = interface_list_get_interface_by_ip(ROUTER(packet->sr)->iflist, arp_hdr->ar_tip);
     uint32_t temp;
+    char name[SR_NAMELEN];
     
-    if(vnsif)
+    if(vnsif || (OPTIONS(packet->sr)->arp_proxy &&
+                 forwarding_table_lookup_next_hop(FORWARDING_TABLE(packet->sr), arp_hdr->ar_tip, &temp, name)))
     {
         arp_hdr->ar_op = htons(ARP_REPLY);
         temp = arp_hdr->ar_tip;
         arp_hdr->ar_tip = arp_hdr->ar_sip;
         arp_hdr->ar_sip = temp;
         memcpy(arp_hdr->ar_tha,arp_hdr->ar_sha,ETHER_ADDR_LEN);
-        memcpy(arp_hdr->ar_sha,vnsif->addr,ETHER_ADDR_LEN);
         memcpy(eth_hdr->ether_dhost,eth_hdr->ether_shost,ETHER_ADDR_LEN);
-        memcpy(eth_hdr->ether_shost,vnsif->addr,ETHER_ADDR_LEN);
+
+        if(vnsif == NULL)
+        {
+            interface_list_get_MAC_and_IP_from_name(INTERFACE_LIST(packet->sr), packet->interface,
+                                                                   arp_hdr->ar_sha, &temp);
+            memcpy(eth_hdr->ether_shost,arp_hdr->ar_sha,ETHER_ADDR_LEN);
+        }
+        else
+        {
+            memcpy(arp_hdr->ar_sha,vnsif->addr,ETHER_ADDR_LEN);
+            memcpy(eth_hdr->ether_shost,vnsif->addr,ETHER_ADDR_LEN);
+        }
 
         if(sr_integ_low_level_output(packet->sr,packet->packet,packet->len,packet->interface) == -1)
         {
             printf("\nfailed to send packet\n");
-        }        
+        }
     }
 }
 

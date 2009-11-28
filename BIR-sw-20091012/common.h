@@ -18,6 +18,11 @@ struct ip_address
 
 int ip_address_cmp(void * k1, void * k2);
 
+struct sr_options
+{
+    /* arp proxy (respond to arp request if the destination address is in the forwarding table) */
+    int arp_proxy;
+};
 
 #endif
 

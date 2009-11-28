@@ -87,6 +87,9 @@ void router_create(struct sr_instance * sr)
     ret->rid = 0;
     ret->ospf_seq = 0;
 
+    /* default options  */
+    ret->opt.arp_proxy = 1;
+    
     ret->ready = 1;
 }
 

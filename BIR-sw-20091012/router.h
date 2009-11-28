@@ -35,6 +35,8 @@ struct sr_router
 
     int ready;
 
+    struct sr_options opt;
+
 #ifdef _CPUMODE_
     struct nf2device device;
 #endif
@@ -59,6 +61,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 #define ARP_CACHE(sr) ((struct arp_cache *)(ROUTER(sr)->a_cache))
 #define ARWL(sr) ((struct arp_reply_waiting_list *)(ROUTER(sr)->arwl))
 #define LSG(sr) ((struct link_state_graph *)(ROUTER(sr)->lsg))
+#define OPTIONS(sr) (&(ROUTER(sr)->opt))
 
 
 #define B_ETH_HDR(packet) ((struct sr_ethernet_hdr *) ((packet)))

@@ -69,6 +69,11 @@ static void sr_init_instance(struct sr_instance* sr);
 static void sr_low_level_network_subsystem(void *arg);
 static void sr_destroy_instance(struct sr_instance* sr);
 
+
+/** run the command-line interface on CLI_PORT */
+#define CLI_PORT 2300
+
+
 /*----------------------------------------------------------------------------
  * sr_init_low_level_subystem
  *
@@ -94,6 +99,9 @@ int sr_init_low_level_subystem(int argc, char **argv)
     char  *client = 0;
     char  *logfile = 0;
 
+    char * cpu_hw_file_name = CPU_HW_FILENAME;
+    int ret = CLI_PORT;
+
     /* -- singleton instance of router, passed to sr_get_global_instance
           to become globally accessible                                  -- */
     static struct sr_instance* sr = 0;
@@ -110,7 +118,7 @@ int sr_init_low_level_subystem(int argc, char **argv)
     sr = (struct sr_instance*) malloc(sizeof(struct sr_instance));
     sr_get_global_instance(sr); /* actually *sets* global instance! */
 
-    while ((c = getopt(argc, argv, "hs:v:p:P:c:t:r:l:")) != EOF)
+    while ((c = getopt(argc, argv, "hs:v:p:P:c:t:r:l:i:")) != EOF)
     {
         switch (c)
         {
@@ -120,6 +128,9 @@ int sr_init_low_level_subystem(int argc, char **argv)
                 break;
             case 'p':
                 port = atoi((char *) optarg);
+                break;
+            case 'P':
+                ret = atoi((char *) optarg);
                 break;
             case 't':
                 topo = atoi((char *) optarg);
@@ -139,6 +150,9 @@ int sr_init_low_level_subystem(int argc, char **argv)
             case 'l':
                 logfile = optarg;
                 break;
+            case 'i':
+                cpu_hw_file_name = optarg;
+                break;            
         } /* switch */
     } /* -- while -- */
 
@@ -177,7 +191,7 @@ int sr_init_low_level_subystem(int argc, char **argv)
     strncpy(sr->vhost,  "cpu",    SR_NAMELEN);
     strncpy(sr->rtable, rtable, SR_NAMELEN);
 
-    if ( sr_cpu_init_hardware(sr, CPU_HW_FILENAME) )
+    if ( sr_cpu_init_hardware(sr, cpu_hw_file_name) )
     { exit(1); }
     sr_integ_hw_setup(sr);
 #else
@@ -227,7 +241,7 @@ int sr_init_low_level_subystem(int argc, char **argv)
     /* -- start low-level network thread, dissown sr -- */
     sys_thread_new(sr_low_level_network_subsystem, (void*)sr /* dissown */);
 
-    return 0;
+    return ret;
 }/* -- main -- */
 
 /*-----------------------------------------------------------------------------
