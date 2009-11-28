@@ -58,7 +58,7 @@ void interface_list_update_hw(struct sr_instance * sr)
     mutex_lock(INTERFACE_LIST(sr)->mutex);
     bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array, interface_list_hw_write_a, &iluhs);
 
-    writeReg(iluhs.device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_ENTRY_IP, ntohl(OSPF_AllSPFRouters));
+    writeReg(iluhs.device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_ENTRY_IP, OSPF_AllSPFRouters);
     writeReg(iluhs.device, ROUTER_OP_LUT_DST_IP_FILTER_TABLE_WR_ADDR, iluhs.count);
     iluhs.count += 1;
 
