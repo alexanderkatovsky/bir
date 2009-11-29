@@ -23,9 +23,11 @@ void icmp_basic_reply(struct sr_packet * packet, int prot, int code)
     uint8_t * data = (uint8_t*)malloc(len);
     struct ip * iph = IP_HDR(packet);
     int start_data = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct icmphdr);
+    uint32_t ip;
+    interface_list_get_MAC_and_IP_from_name(INTERFACE_LIST(packet->sr), packet->interface,0,&ip);
     memcpy(data + start_data,packet->packet + sizeof(struct sr_ethernet_hdr),len - start_data);
     icmp_construct_header(data, prot, code, 0, 0, len - start_data);
-    ip_construct_ip_header(data,len,0,63,IP_P_ICMP,iph->ip_dst.s_addr,iph->ip_src.s_addr);
+    ip_construct_ip_header(data,len,0,63,IP_P_ICMP,ip,iph->ip_src.s_addr);
     ip_construct_eth_header(data,ETH_HDR(packet)->ether_shost,ETH_HDR(packet)->ether_dhost,ETHERTYPE_IP);
 
     if(sr_integ_low_level_output(packet->sr,data,len,packet->interface) == -1)
