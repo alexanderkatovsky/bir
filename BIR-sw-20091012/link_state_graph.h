@@ -26,8 +26,8 @@ struct link
 struct link_state_node
 {
     uint32_t rid;
-    int n_neighbours;
     struct assoc_array * links;
+    int n_ref; /* number of references to this router  */
     int seq;
 };
 
@@ -42,8 +42,9 @@ void link_state_graph_create(struct sr_instance * sr);
 int link_state_graph_update_links(struct sr_instance * sr,
                                   uint32_t rid, uint16_t seq, uint32_t num,
                                   struct ospfv2_lsu * adv);
-void link_state_graph_neighbour_down(struct sr_instance * sr, uint32_t rid, uint32_t ip);
-void link_state_graph_neighbour_up(struct sr_instance * sr, uint32_t rid, uint32_t ip);
+void link_state_graph_neighbours_down(struct sr_instance * sr);
+void link_state_graph_neighbour_down(struct sr_instance * sr, uint32_t rid);
+void link_state_graph_neighbour_up(struct sr_instance * sr, uint32_t rid);
 
 void link_state_graph_update_forwarding_table(struct sr_instance * sr);
 void link_state_graph_show_topology(struct link_state_graph * lsg, print_t print);

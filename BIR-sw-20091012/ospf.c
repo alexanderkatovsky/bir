@@ -52,6 +52,10 @@ void ospf_send_hello(struct sr_instance * sr, struct interface_list_entry * ifen
 void __ospf_forward_incoming_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
 {
     struct sr_packet * packet = (struct sr_packet *)userdata;
+    struct in_addr src = {vns_if->ip};
+    struct in_addr dst = {n->ip};
+    IP_HDR(packet)->ip_src = src;
+    IP_HDR(packet)->ip_dst = dst;
     ip_forward_packet(packet,n->ip,vns_if->name);
 }
 

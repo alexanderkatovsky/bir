@@ -38,22 +38,30 @@ void ip_forward(struct sr_packet * packet)
     uint32_t next_hop;
     char thru_interface[SR_NAMELEN];
 
-    if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table,
-                                        ip_hdr->ip_dst.s_addr, &next_hop, thru_interface))
+    /* if the destination is to one of our ports, then just forward it there  */
+    if(interface_list_get_interface_by_ip(INTERFACE_LIST(packet->sr), ip_hdr->ip_dst.s_addr))
     {
-        if(next_hop == 0)
-        {
-            next_hop = ip_hdr->ip_dst.s_addr;
-        }
-        ip_forward_packet(packet,next_hop,thru_interface);
+        ip_handle_incoming_packet(packet);
     }
     else
     {
-        dump_ip(ip_hdr->ip_dst.s_addr);Debug(" not in forwarding table\n");
         if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table,
-                                            ip_hdr->ip_src.s_addr, &next_hop, thru_interface))
+                                            ip_hdr->ip_dst.s_addr, &next_hop, thru_interface))
         {
-            icmp_send_host_unreachable(packet);
+            if(next_hop == 0)
+            {
+                next_hop = ip_hdr->ip_dst.s_addr;
+            }
+            ip_forward_packet(packet,next_hop,thru_interface);
+        }
+        else
+        {
+            dump_ip(ip_hdr->ip_dst.s_addr);Debug(" not in forwarding table\n");
+            if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table,
+                                                ip_hdr->ip_src.s_addr, &next_hop, thru_interface))
+            {
+                icmp_send_host_unreachable(packet);
+            }
         }
     }
 }
@@ -70,10 +78,6 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
     {
         printf("\nip version is %d; only accepting 4\n",ip_hdr->ip_v);
     }
-    else if(ip_hdr->ip_ttl <= 1)
-    {
-        icmp_send_time_exceeded(packet);
-    }
     else
     {
         /* if packet is not for (or from) one of our interfaces then forward */
@@ -81,7 +85,14 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
            !interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_src.s_addr) &&
            ntohl(ip_hdr->ip_dst.s_addr) != OSPF_AllSPFRouters)
         {
-            ip_forward(packet);
+            if(ip_hdr->ip_ttl <= 1)
+            {
+                icmp_send_time_exceeded(packet);
+            }
+            else
+            {
+                ip_forward(packet);
+            }
         }
         else
         {

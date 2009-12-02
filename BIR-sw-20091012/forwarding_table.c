@@ -62,8 +62,14 @@ int __LPMSearchFn(void * data, void * user_data)
     {    
         srch->found = 1;
         srch->mask = dl->mask;
-        *srch->next_hop = te->next_hop;
-        memcpy(srch->thru,te->interface,SR_NAMELEN);
+        if(srch->next_hop)
+        {
+            *srch->next_hop = te->next_hop;
+        }
+        if(srch->thru)
+        {
+            memcpy(srch->thru,te->interface,SR_NAMELEN);
+        }
     }
     return srch->found;
 }
@@ -82,7 +88,7 @@ int forwarding_table_lookup_next_hop(struct forwarding_table * fwd_table, uint32
         srch.found = 0;
         assoc_array_walk_array(fwd_table->array_s,__LPMSearchFn,(void*)&srch);
     }
-    if(*next_hop == 0)
+    if(next_hop && *next_hop == 0)
     {
         *next_hop = ip;
     }

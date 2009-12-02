@@ -58,14 +58,14 @@
 #endif
 
 #include "sr_rt.h"
-
+#include "../common.h"
 
 extern char* optarg;
 
 static void usage(char* );
 static int  sr_lwip_transport_startup(void);
 static void sr_set_user(struct sr_instance* sr);
-static void sr_init_instance(struct sr_instance* sr);
+static void sr_init_instance(struct sr_instance* sr, struct sr_options *);
 static void sr_low_level_network_subsystem(void *arg);
 static void sr_destroy_instance(struct sr_instance* sr);
 
@@ -105,6 +105,16 @@ int sr_init_low_level_subystem(int argc, char **argv)
     /* -- singleton instance of router, passed to sr_get_global_instance
           to become globally accessible                                  -- */
     static struct sr_instance* sr = 0;
+    struct sr_options opt;
+    int option_index = 0;
+    
+    const struct option long_options[] = {
+        { "arp_proxy",   1, &opt.arp_proxy, 0 },
+        { "aid"      ,   1, &opt.aid, 0 },
+        { NULL       ,   0, NULL, 0 }
+    };
+    
+    sr_router_default_options(&opt);
 
     int c;
 
@@ -118,10 +128,21 @@ int sr_init_low_level_subystem(int argc, char **argv)
     sr = (struct sr_instance*) malloc(sizeof(struct sr_instance));
     sr_get_global_instance(sr); /* actually *sets* global instance! */
 
-    while ((c = getopt(argc, argv, "hs:v:p:P:c:t:r:l:i:")) != EOF)
+    while ((c = getopt_long(argc, argv, "hs:v:p:P:c:t:r:l:i:", long_options, &option_index)) != EOF)
     {
+        if(c == -1)
+        {
+            usage("./sr");
+            exit(0);
+        }
         switch (c)
         {
+        case 0:
+            if(optarg)
+            {
+                *(long_options[option_index].flag) = atoi((char *) optarg);
+            }
+            break;
             case 'h':
                 usage(argv[0]);
                 exit(0);
@@ -169,7 +190,7 @@ int sr_init_low_level_subystem(int argc, char **argv)
     sys_thread_init();
 
     /* -- zero out sr instance and set default configurations -- */
-    sr_init_instance(sr);
+    sr_init_instance(sr,&opt);
 
     /* -- set up routing table from file -- */
     if(sr_load_rt(sr->interface_subsystem, rtable) != 0)
@@ -361,7 +382,7 @@ static void sr_set_user(struct sr_instance* sr)
  *----------------------------------------------------------------------------*/
 
 static
-void sr_init_instance(struct sr_instance* sr)
+void sr_init_instance(struct sr_instance* sr, struct sr_options * opt)
 {
     /* REQUIRES */
     assert(sr);
@@ -377,7 +398,7 @@ void sr_init_instance(struct sr_instance* sr)
 
     pthread_mutex_init(&(sr->send_lock), 0);
 
-    sr_integ_init(sr);
+    sr_integ_init(sr,opt);
 } /* -- sr_init_instance -- */
 
 /*-----------------------------------------------------------------------------
@@ -401,7 +422,10 @@ static void sr_destroy_instance(struct sr_instance* sr)
 
 static void usage(char* argv0)
 {
-    printf("Simple Router Client (%s %s)\n", __TIME__, __DATE__);
+    printf("Simple Router Client\n Compile Time: (%s %s)\n", __TIME__, __DATE__);
     printf("Format: %s [-h] [-v host] [-s server] [-p VNS port] \n",argv0);
     printf("           [-t topo id] [-P cli port] [-i cpu config file]\n");
+    printf("\nLong Options:\n");
+    printf("  --arp_proxy if 1 perform arp proxying; if 0 don't\n");
+    printf("  --aid router area id\n");
 } /* -- usage -- */

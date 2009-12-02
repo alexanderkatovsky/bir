@@ -164,7 +164,8 @@ void cli_exit();
 void cli_ping( gross_ip_t* data );
 void cli_ping_flood( gross_ip_int_t* data );
 void cli_ping_reply(uint32_t ip);
-void cli_dest_unreach(struct ip * iph);
+void cli_dest_unreach(struct icmphdr * , uint32_t);
+void cli_time_exceeded(struct icmphdr * , uint32_t);
 
 /** Processes a shutdown command from a client. */
 void cli_shutdown();

@@ -37,12 +37,12 @@
  *
  *---------------------------------------------------------------------------*/
 
-void sr_integ_init(struct sr_instance* sr)
+void sr_integ_init(struct sr_instance* sr, struct sr_options * opt)
 {
     printf("sr_integ_init\n");
     struct sr_ifsys *subsystem = (struct sr_ifsys *) malloc(sizeof (struct sr_ifsys));
 
-    router_create(sr);
+    router_create(sr,opt);
     sr->interface_subsystem = subsystem;
 } /* -- sr_integ_init -- */
 

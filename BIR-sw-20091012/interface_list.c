@@ -306,7 +306,7 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     *interface_copy = *interface;
     entry->vns_if = interface_copy;
     entry->n_list = n_list;
-    entry->aid = 0;
+    entry->aid = OPTIONS(list->sr)->aid;
     entry->i = list->total;
     entry->port = output_ports[entry->i];
     list->total += 1;

@@ -208,7 +208,6 @@ int sr_cpu_input(struct sr_instance* sr)
         FD_SET(cpu_ports[i].socket, &fds);
     }
 
-    Debug("\nReceiving data...");
     if(select(FD_SETSIZE, &fds, NULL, NULL, NULL) >= 0)
     {
         for(i = 0; i < 4; i++)

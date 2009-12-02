@@ -58,7 +58,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
     strcpy(router->default_interface,interface->name);
 }
 
-void router_create(struct sr_instance * sr)
+void router_create(struct sr_instance * sr, struct sr_options * opt)
 {
     NEW_STRUCT(ret,sr_router);
     sr->router = ret;
@@ -87,8 +87,7 @@ void router_create(struct sr_instance * sr)
     ret->rid = 0;
     ret->ospf_seq = 0;
 
-    /* default options  */
-    ret->opt.arp_proxy = 1;
+    ret->opt = *opt;
     
     ret->ready = 1;
 }
@@ -152,3 +151,8 @@ int router_cmp_MAC(void * k1, void * k2)
     return ASSOC_ARRAY_KEY_EQ;
 }
 
+void sr_router_default_options(struct sr_options * opt)
+{
+    opt->arp_proxy = 1;
+    opt->aid = 0;
+}

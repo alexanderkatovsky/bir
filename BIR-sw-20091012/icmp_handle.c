@@ -54,15 +54,15 @@ void icmp_send_host_unreachable(struct sr_packet * packet)
 }
 
 
-void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num)
+void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num, int id, int ttl)
 {
     int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) +
         sizeof(struct icmphdr);
     struct sr_packet * packet;
 
     uint8_t * data = (uint8_t *)malloc(len);
-    icmp_construct_header(data,8,0,0,seq_num,0);
-    ip_construct_ip_header(data,len,0,63,IP_P_ICMP,ROUTER(sr)->rid,ip);
+    icmp_construct_header(data,8,0,id,seq_num,0);
+    ip_construct_ip_header(data,len,0,ttl,IP_P_ICMP,ROUTER(sr)->rid,ip);
     ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
     packet = router_construct_packet(sr,data,len,ROUTER(sr)->default_interface);
     ip_forward(packet);
@@ -74,17 +74,20 @@ void icmp_reply(struct sr_packet * packet)
 {
     int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) +
         sizeof(struct icmphdr);
-    uint8_t * data = (uint8_t*)malloc(len);
+    int xtra_len = packet->len - len;
+    uint8_t * data = (uint8_t*)malloc(packet->len);
     struct ip * iph = IP_HDR(packet);
     struct icmphdr * icmp_h = ICMP_HDR(packet);
     struct sr_packet * packet2;
+
+    memcpy(data + len, packet->packet + len, xtra_len);
     
-    icmp_construct_header(data,ICMP_REPLY,0,icmp_h->id,icmp_h->sequence,0);
+    icmp_construct_header(data,ICMP_REPLY,0,icmp_h->id,icmp_h->sequence,xtra_len);
     ip_construct_ip_header(data,packet->len,0,63,
                            IP_P_ICMP,iph->ip_dst.s_addr,
                            iph->ip_src.s_addr);
     ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
-    packet2 = router_construct_packet(packet->sr,data,len,"");
+    packet2 = router_construct_packet(packet->sr,data,len + xtra_len,"");
     ip_forward(packet2);
     router_free_packet(packet2);
     free(data);
@@ -97,9 +100,25 @@ void icmp_handle_reply(struct sr_packet * packet)
 
 void icmp_dest_unreach(struct sr_packet * packet)
 {
-    struct ip * iph = (struct ip *)(packet->packet + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) +
-                       sizeof(struct icmphdr));
-    cli_dest_unreach(iph);
+    int start_h = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
+    struct icmphdr * icmp;
+    if(packet->len >= start_h + sizeof(struct icmphdr))
+    {
+        icmp = (struct icmphdr *)(packet->packet + start_h);
+        cli_dest_unreach(icmp, IP_HDR(packet)->ip_src.s_addr); 
+    }
+}
+
+void icmp_time_exceeded(struct sr_packet * packet)
+{
+    int start_h = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
+    struct icmphdr * icmp;
+    int ip = IP_HDR(packet)->ip_src.s_addr;
+    if(packet->len >= start_h + sizeof(struct icmphdr))
+    {
+        icmp = (struct icmphdr *)(packet->packet + start_h);
+        cli_time_exceeded(icmp, ip);
+    }
 }
 
 void icmp_handle_incoming_packet(struct sr_packet * packet)
@@ -124,6 +143,9 @@ void icmp_handle_incoming_packet(struct sr_packet * packet)
             break;
         case ICMP_DEST_UNREACH:
             icmp_dest_unreach(packet);
+            break;
+        case ICMP_TIME_EXCEEDED:
+            icmp_time_exceeded(packet);
             break;
         }
     }

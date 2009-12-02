@@ -22,7 +22,10 @@ struct sr_options
 {
     /* arp proxy (respond to arp request if the destination address is in the forwarding table) */
     int arp_proxy;
+    int aid;
 };
+
+void sr_router_default_options(struct sr_options * opt);
 
 #endif
 

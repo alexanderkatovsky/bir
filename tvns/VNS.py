@@ -199,9 +199,10 @@ class TVNSTopology:
 class Topology:
     """Builds and stores a topology
     """
-    def __init__(self):            
-        self.tf = TVNSTopology("tvns.top")
+    def __init__(self,top_file):            
+        self.tf = TVNSTopology(top_file)
         self.nodes = self.tf.Nodes()
+        self.CreateHWFiles()
     def CreateHWFiles(self):
         for n in self.tf.Routers():
             fd = open("hw-"+n.name,"w")
@@ -212,8 +213,8 @@ class Topology:
                 
 class SimpleVNS:
     """Handles incoming messages from each client"""
-    def __init__(self):
-        self.topo = Topology()
+    def __init__(self,top_file):
+        self.topo = Topology(top_file)
         self.server = create_vns_server(VNS_DEFAULT_PORT, self.handle_recv_msg)
 
     def handle_recv_msg(self, conn, vns_msg):
@@ -264,8 +265,14 @@ class SimpleVNS:
         print 'Unable to find the node associated with this connection??  Disconnecting it: %s' % str(conn)
         conn.loseConnection()
 
+
 def main():
-    SimpleVNS()
+    import sys
+    if len(sys.argv) < 2:
+        top_file = "tvns.top"
+    else:
+        top_file = sys.argv[1]
+    SimpleVNS(top_file)
     reactor.run()
 
 if __name__ == "__main__":

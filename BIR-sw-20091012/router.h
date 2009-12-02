@@ -43,7 +43,7 @@ struct sr_router
 };
 
 
-void router_create(struct sr_instance * sr);
+void router_create(struct sr_instance * sr, struct sr_options * opt);
 void router_destroy(struct sr_router * router);
 void router_handle_incoming_packet(struct sr_packet * packet);
 struct sr_packet * router_construct_packet(struct sr_instance * sr, const uint8_t * packet,
@@ -101,7 +101,7 @@ void icmp_handle_incoming_packet(struct sr_packet * packet);
 void icmp_send_port_unreachable(struct sr_packet * packet);
 void icmp_send_time_exceeded(struct sr_packet * packet);
 void icmp_send_host_unreachable(struct sr_packet * packet);
-void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num);
+void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num, int id, int ttl);
 
 int router_cmp_MAC(void * k1, void * k2);
 

@@ -10,6 +10,7 @@
  *   .
  * */
 
+
 void * link_state_graph_links_array_get_key(void * data)
 {
     return data;
@@ -40,14 +41,95 @@ void * __links_getter(void * data)
     return &((struct link *)data)->ip;
 }
 
-int link_state_graph_update_links_list(struct assoc_array ** links, uint32_t num, struct ospfv2_lsu * adv)
+
+void link_state_graph_free_node(void * data)
 {
-    /*could check if there has been a change*/
+    struct link_state_node * lsn = (struct link_state_node *)data;
+    assoc_array_delete_array(lsn->links,link_state_graph_links_list_delete_link);
+    free(lsn);
+}
+
+
+struct link_state_node * __link_state_graph_insert_node(struct link_state_graph * lsg, uint32_t rid)
+{
+    struct link_state_node * lsn;
+    lsn = (struct link_state_node *)malloc(sizeof(struct link_state_node));
+    lsn->rid = rid;
+    lsn->seq = -1;
+    lsn->n_ref = 0;
+    lsn->links = assoc_array_create(__links_getter,ip_address_cmp);
+    assoc_array_insert(lsg->array,lsn);
+    return lsn;
+}
+
+void __link_state_graph_decrement_node(struct sr_instance * sr, struct link_state_node * lsn);
+
+/* decrement n_ref for the rids connected to this node  */
+int __link_state_graph_decrement_node_a(void * data, void * userdata)
+{
+    struct link * lk = (struct link * )data;
+    struct sr_instance * sr = (struct sr_instance *)userdata;
+    struct link_state_node * lsn = assoc_array_read(LSG(sr)->array, &lk->rid);
+
+    __link_state_graph_decrement_node(sr,lsn);
+    
+    return 0;
+}
+
+
+void __link_state_graph_decrement_node(struct sr_instance * sr, struct link_state_node * lsn)
+{
+    if(lsn)
+    {
+        lsn->n_ref -= 1;
+        if(lsn->n_ref == 0)
+        {
+            assoc_array_walk_array(lsn->links, __link_state_graph_decrement_node_a, sr);
+            assoc_array_delete(LSG(sr)->array, &lsn->rid);
+            link_state_graph_free_node(lsn);
+        }
+    }    
+}
+
+int __link_state_graph_insert_links_a(void * data, void * userdata)
+{
+    struct link * lk = (struct link *)data;
+    struct sr_instance * sr = (struct sr_instance *)userdata;
+
+    struct link_state_node * lsn = assoc_array_read(LSG(sr)->array,&lk->rid);
+    if((lsn == NULL) && (lk->rid != 0) && (lk->rid != ROUTER(sr)->rid))
+    {
+        lsn = __link_state_graph_insert_node(LSG(sr), lk->rid);
+    }
+    if(lsn)
+    {
+        lsn->n_ref += 1;
+    }
+    
+    return 0;
+}
+
+int __link_state_graph_deprecate_links_a(void * data, void * userdata)
+{
+    struct link * lk = (struct link *)data;
+    struct sr_instance * sr = (struct sr_instance *)userdata;
+            
+    struct link_state_node * lsn = assoc_array_read(LSG(sr)->array,&lk->rid);
+    if(lsn)
+    {
+        __link_state_graph_decrement_node(sr,lsn);
+    }
+    
+    return 0;
+}
+
+
+int link_state_graph_update_links_list(struct sr_instance * sr,
+                                       struct assoc_array ** links, uint32_t num, struct ospfv2_lsu * adv)
+{
     uint32_t i;
-    int ret = 1;
+    struct assoc_array * links2 = assoc_array_create(__links_getter,ip_address_cmp);
     struct link * lk;
-    assoc_array_delete_array(*links,link_state_graph_links_list_delete_link);
-    *links = assoc_array_create(__links_getter,ip_address_cmp);
 
     for(i = 0; i < num; i++)
     {
@@ -55,10 +137,15 @@ int link_state_graph_update_links_list(struct assoc_array ** links, uint32_t num
         lk->ip.subnet = adv[i].subnet;
         lk->ip.mask = adv[i].mask;
         lk->rid = adv[i].rid;
-        assoc_array_insert(*links,lk);
+        assoc_array_insert(links2,lk);
     }
 
-    return ret;
+    assoc_array_walk_array(links2, __link_state_graph_insert_links_a, sr);
+    assoc_array_walk_array(*links, __link_state_graph_deprecate_links_a, sr);
+
+    assoc_array_delete_array(*links,link_state_graph_links_list_delete_link);
+    *links = links2;
+    return 1;
 }
 
 void link_state_graph_dijkstra_initial(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
@@ -178,18 +265,6 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
 /*    forwarding_table_dynamic_show(FORWARDING_TABLE(sr),printf);*/
 }
 
-struct link_state_node * __link_state_graph_insert_node(struct link_state_graph * lsg, uint32_t rid)
-{
-    struct link_state_node * lsn;
-    lsn = (struct link_state_node *)malloc(sizeof(struct link_state_node));
-    lsn->rid = rid;
-    lsn->seq = -1;
-    lsn->links = assoc_array_create(__links_getter,ip_address_cmp);
-    lsn->n_neighbours = 0;
-    assoc_array_insert(lsg->array,lsn);
-    return lsn;
-}
-
 int link_state_graph_update_links(struct sr_instance * sr,
                                uint32_t rid, uint16_t seq, uint32_t num, struct ospfv2_lsu * adv)
 {
@@ -210,7 +285,7 @@ int link_state_graph_update_links(struct sr_instance * sr,
     if(ret)
     {
         lsn->seq = seq;
-        if(link_state_graph_update_links_list(&lsn->links,num,adv))
+        if(link_state_graph_update_links_list(sr, &lsn->links, num, adv))
         {
             link_state_graph_update_forwarding_table(sr);
         }
@@ -219,44 +294,96 @@ int link_state_graph_update_links(struct sr_instance * sr,
     return ret;
 }
 
-void link_state_graph_delete_node(void * data)
-{
-    struct link_state_node * lsn = (struct link_state_node *)data;
-    assoc_array_delete_array(lsn->links,link_state_graph_links_list_delete_link);
-    free(lsn);
-}
-
 void * link_state_graph_get_key(void * data)
 {
     return &((struct link_state_node *)data)->rid;
 }
 
-void link_state_graph_neighbour_up(struct sr_instance * sr, uint32_t rid, uint32_t ip)
+struct __link_state_graph_check_fwd_table_i
 {
-    struct link_state_node * node = (struct link_state_node *) assoc_array_delete(LSG(sr)->array, &rid);
-    if(node == NULL)
+    int del;
+    struct fifo * delete;
+    struct sr_instance * sr;
+};
+
+int __link_state_graph_fwd_table_links_a(void * data, void * userdata)
+{
+    struct link * lk = (struct link *)data;
+    struct __link_state_graph_check_fwd_table_i * i = (struct __link_state_graph_check_fwd_table_i *)userdata;
+
+    if(forwarding_table_lookup_next_hop(FORWARDING_TABLE(i->sr), lk->ip.subnet, 0, 0))
     {
-        node = __link_state_graph_insert_node(LSG(sr), rid);
+        i->del = 0;
     }
-    node->n_neighbours += 1;
+    
+    return i->del == 0;
 }
 
-void link_state_graph_neighbour_down(struct sr_instance * sr, uint32_t rid, uint32_t ip)
+int __link_state_graph_check_fwd_table_a(void * data, void * userdata)
 {
-    struct link_state_node * node = (struct link_state_node *) assoc_array_delete(LSG(sr)->array, &rid);
-    if(node)
+    struct link_state_node * lsn = (struct link_state_node *)data;
+    struct __link_state_graph_check_fwd_table_i * i = (struct __link_state_graph_check_fwd_table_i *)userdata;
+
+    i->del = 1;
+    assoc_array_walk_array(lsn->links, __link_state_graph_fwd_table_links_a, i);
+
+    if(i->del)
     {
-        node->n_neighbours -= 1;
-        if(node->n_neighbours <= 0)
-        {
-            link_state_graph_delete_node(node);
-        }
+        fifo_push(i->delete, lsn);
     }
+    
+    return 0;
+}
+
+/* called after forwarding table has been updated after some neighbours have gone down  */
+/* for each rid, if we can't reach any of its interfaces, remove it from the list of rids in the LSG*/
+void link_state_graph_neighbours_down(struct sr_instance * sr)
+{
+    struct fifo * delete = fifo_create();
+    struct __link_state_graph_check_fwd_table_i i = {1,delete,sr};
+    assoc_array_walk_array(LSG(sr)->array, __link_state_graph_check_fwd_table_a, &i);
+
+    struct link_state_node * lsn;
+    
+    while((lsn = fifo_pop(delete)))
+    {
+        assoc_array_delete(LSG(sr)->array, &lsn->rid);
+        link_state_graph_free_node(lsn);
+    }
+
+    fifo_delete(delete,0);
+}
+
+
+void __link_state_graph_delete_node(struct sr_instance * sr, uint32_t rid)
+{
+    struct link_state_node * lsn = assoc_array_delete(LSG(sr)->array, &rid);
+    if(lsn)
+    {
+        assoc_array_walk_array(lsn->links, __link_state_graph_decrement_node_a, sr);
+        link_state_graph_free_node(lsn);
+    }
+}
+
+void link_state_graph_neighbour_down(struct sr_instance * sr, uint32_t rid)
+{
+    __link_state_graph_delete_node(sr,rid);
+}
+
+void link_state_graph_neighbour_up(struct sr_instance * sr, uint32_t rid)
+{
+    struct link_state_node * lsn = (struct link_state_node *)assoc_array_read(LSG(sr)->array,&rid);
+    if(lsn == NULL)
+    {
+        lsn = __link_state_graph_insert_node(LSG(sr), rid);
+    }
+    lsn->n_ref += 1;
 }
 
 void link_state_graph_destroy(struct link_state_graph * lsg)
 {
-    assoc_array_delete_array(lsg->array,link_state_graph_delete_node);
+    assoc_array_delete_array(lsg->array,link_state_graph_free_node);
+    free(lsg);
 }
 
 void link_state_graph_create(struct sr_instance * sr)
@@ -271,9 +398,9 @@ int __link_state_graph_show_link_a(void * data, void * userdata)
     struct link * l = (struct link *)data;
     print_t print = (print_t)userdata;
     print("[");
-    print("ip:   ");print_ip(l->ip.subnet,print);
-    print("mask: ");print_ip(l->ip.mask,print);
-    print("rid:  ");print_ip(l->rid,print);
+    print(" ip:    ");print_ip(l->ip.subnet,print);
+    print(" mask:  ");print_ip(l->ip.mask,print);
+    print(" rid:   ");print_ip(l->rid,print);
     print("]\n");
 
     return 0;
@@ -285,6 +412,7 @@ int __link_state_graph_show_topology_a(void * data, void * userdata)
     print_t print = (print_t)userdata;
     print("  rid:  ");print_ip(lsn->rid,print);print("\n");
     print("  last sequence number: %d\n", lsn->seq);
+    print("  n_ref:  %d\n",lsn->n_ref);
 
     assoc_array_walk_array(lsn->links,__link_state_graph_show_link_a,print);
     print("\n");

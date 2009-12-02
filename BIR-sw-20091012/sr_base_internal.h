@@ -36,6 +36,8 @@
 #include <sys/time.h>
 #include <netinet/in.h>
 
+#include "common.h"
+
 #define SR_NAMELEN 32
 
 #define CPU_HW_FILENAME "cpuhw"
@@ -111,7 +113,7 @@ struct sr_instance* sr_get_global_instance(struct sr_instance* sr);
  * sr_instance.
  * -------------------------------------------------------------------------*/
 
-void sr_integ_init(struct sr_instance* );
+void sr_integ_init(struct sr_instance* , struct sr_options *);
 void sr_integ_hw_setup(struct sr_instance* ); /* called after hwinfo */
 void sr_integ_destroy(struct sr_instance* );
 void sr_integ_close(struct sr_instance* sr);

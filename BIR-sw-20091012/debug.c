@@ -190,9 +190,16 @@ void dump_ip_hdr(const uint8_t * packet, unsigned int len)
     }
 }
 
+
+#include <sys/time.h>
 void dump_raw(const uint8_t * packet, unsigned int len)
 {
+#ifdef _DEBUG_
     struct sr_ethernet_hdr * eth_hdr = (struct sr_ethernet_hdr *)packet;
+    struct timeval tv;
+    gettimeofday(&tv,0);
+    printf("\n%ld:%ld\n", tv.tv_sec, tv.tv_usec);
+
     dump_packet(packet,len);
     dump_ethernet_hdr(eth_hdr);
 
@@ -205,4 +212,6 @@ void dump_raw(const uint8_t * packet, unsigned int len)
         dump_ip_hdr(packet,len);
         break;
     }
+#endif
 }
+
