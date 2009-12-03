@@ -8,7 +8,9 @@ from VNSProtocol import VNS_DEFAULT_PORT, create_vns_server
 from VNSProtocol import VNSOpen, VNSClose, VNSPacket, VNSInterface, VNSHardwareInfo
 
 from IPMaker import IPMakerWithBase, IP, SubnetToString
-import csv
+import csv,array
+
+zeromac = struct.pack('> 6B', 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)
 
 class Node:
     """A node in a topology"""
@@ -24,7 +26,7 @@ class Node:
     def send_packet(self, departing_intf, packet):
         for intf in departing_intf.neighboring_interfaces:
             intf.owner.handle_packet(intf, packet)
-
+                
 class VirtualNode(Node):
     """A node which a user can take control of (i.e., handle packets for)"""
     def __init__(self, name, interfaces):
@@ -47,18 +49,34 @@ class VirtualNode(Node):
 
     def handle_packet(self, intf, packet):
         """Forwards to the user responsible for handling packets for this virtual node"""
-        if self.conn is not None:
-            self.conn.send(VNSPacket(intf.name, packet))
+        if (intf.mac == packet[0:6]) or (packet[0:6] == zeromac):
+            if self.conn is not None:
+                self.conn.send(VNSPacket(intf.name, packet))
+
+
+def cksum(s):
+    if len(s) & 1:
+        s = s + '\0'
+    words = array.array('h', s)
+    sum = 0
+    for word in words:
+        sum = sum + (word & 0xffff)
+    hi = sum >> 16
+    lo = sum & 0xffff
+    sum = hi + lo
+    sum = sum + (sum >> 16)
+    return (~sum) & 0xffff
 
 class Host(Node):
     """A host in the network which replies to echo requests"""
     def __init__(self, name, interfaces):
         Node.__init__(self, name, interfaces)
+        self.conn = None
 
     def connect(self, _):
         print 'Rejecting connection to %s - may not control a Host node' % self.name
         return False
-
+        
     def handle_packet(self, intf, packet):
         """Replies to echo requests"""
         eth_type = struct.unpack('> H', packet[12:14])[0]
@@ -69,14 +87,25 @@ class Host(Node):
                 if icmp_type == 8:
                     eth = packet[6:12] + packet[0:6] + packet[12:14]   # reverse MAC SA, DA
                     ip = packet[14:26] + packet[30:34] + packet[26:30] # reverse IP SA, DA
-                    icmp = struct.pack('> B', 0) + packet[31:]         # change to echo reply type
+                    ip = ip[0:10] + struct.pack('> H', 0) + ip[12:]
+                    ip = ip[0:10] + struct.pack('< H', cksum(ip)) + ip[12:]
+                    icmp = struct.pack('> H', 0) + packet[31:]         # change to echo reply type
+                    icmp = icmp[0:2] + struct.pack('> H', 0) + icmp[4:]
+                    icmp = icmp[0:2] + struct.pack('< H', cksum(icmp)) + icmp[4:]
                     echo_reply = eth + ip + icmp
                     self.send_packet(intf, echo_reply)
+        elif eth_type == 0x806:
+            eth = packet[6:12] + intf.mac + packet[12:14]
+            arp = packet[14:20] + struct.pack('> H',2) + \
+                intf.mac + struct.pack('> I', intf.ip) + packet[6:12] + packet[28:32]
+            self.send_packet(intf, eth + arp)
+            
 
 class Hub(Node):
     """A hub"""
     def __init__(self, name, interfaces):
         Node.__init__(self, name, interfaces)
+        self.conn = None
 
     def connect(self, _):
         print 'Rejecting connection to %s - may not control a Hub node' % self.name
@@ -189,6 +218,8 @@ class TVNSTopology:
             elif len(intfs) == 2:
                 connect_intfs(intfs[0], intfs[1])
 
+    def Hubs(self):
+        return self.__hubs
     def Nodes(self):
         return [n.Node() for n in self.__nodes.values()] + self.__hubs
     def Routers(self):
@@ -202,14 +233,44 @@ class Topology:
     def __init__(self,top_file):            
         self.tf = TVNSTopology(top_file)
         self.nodes = self.tf.Nodes()
-        self.CreateHWFiles()
-    def CreateHWFiles(self):
-        for n in self.tf.Routers():
-            fd = open("hw-"+n.name,"w")
+        self.CreateHWFile()
+        self.GenerateGVFile()
+        
+    def CreateHWFile(self):
+        fd = open("topology.generated","w")
+        for n in self.tf.Routers() + self.tf.Servers():
+            fd.write("%s:\n"%n.name)
             for intf in n.interfaces:
-                fd.write("%s %s %s %s\n"%(intf.name,SubnetToString(intf.ip),
+                fd.write("  %s %s %s %s\n"%(intf.name,SubnetToString(intf.ip),
                                           SubnetToString(intf.mask), MACToString(intf.mac)))
-            fd.close()
+            fd.write("\n")
+        fd.close()
+        
+    def GenerateGVFile(self):
+        fd = open("topology.gv","w")
+        pre = """// compile with: neato topology.gv -Tpng > topology.png
+graph G {
+edge [len=2, fontsize=8, style=dotted];
+node [shape=circle, width=.1, fontsize=10];
+"""
+        fd.write(pre)
+        done = []
+        for n in self.tf.Nodes():
+            fd.write("%s [label=\"%s\"];\n"%(n.name,n.name))
+        for n in self.tf.Routers() + self.tf.Servers() + self.tf.Hubs():
+            for intf in n.interfaces:
+                for n_intf in intf.neighboring_interfaces:
+                    if n_intf not in self.tf.Hubs():
+                        if (intf.ip, n_intf.ip) not in done:
+                            fd.write("%s -- %s [headlabel=\"%s\", taillabel=\"%s\"];\n"
+                                     %(intf.owner.name,n_intf.owner.name,SubnetToString(n_intf.ip)[8:],
+                                       SubnetToString(intf.ip)[8:]))
+                            done.append((intf.ip,n_intf.ip))
+                            done.append((n_intf.ip,intf.ip))
+        fd.write("}")
+        fd.close()
+
+
                 
 class SimpleVNS:
     """Handles incoming messages from each client"""
