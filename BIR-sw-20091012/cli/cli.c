@@ -564,13 +564,11 @@ void cli_manip_ip_ospf_up() {
 }
 
 void cli_manip_ip_route_add( gross_route_t* data ) {
-    void *intf;
-    intf = router_lookup_interface_via_name( SR, data->intf_name );
-    if( !intf )
+    if( !interface_list_get_MAC_and_IP_from_name(INTERFACE_LIST(get_sr()),(char*)data->intf_name,0,0) )
         cli_send_strs( 3, "Error: no interface with the name ",
                        data->intf_name, " exists.\n" );
     else {
-        rtable_route_add(SR, data->dest, data->gw, data->mask, intf, 1);
+        rtable_route_add(SR, data->dest, data->gw, data->mask, (char *)data->intf_name, 1);
         cli_send_str( "The route has been added.\n" );
     }
 }

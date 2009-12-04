@@ -8,6 +8,7 @@
 #ifndef CLI_STUBS_H
 #define CLI_STUBS_H
 
+
 /**
  * Add a static entry to the static ARP cache.
  * @return 1 if succeeded (fails if the max # of static entries are already
@@ -65,8 +66,7 @@ int router_interface_set_enabled( struct sr_instance* sr, const char* name, int 
  */
 void* router_lookup_interface_via_ip( struct sr_instance* sr,
                                       uint32_t ip ) {
-    fprintf( stderr, "not yet implemented: router_lookup_interface_via_ip\n" );
-    return NULL;
+    return interface_list_get_interface_by_ip(INTERFACE_LIST(sr), ip);
 }
 
 /**
@@ -107,9 +107,10 @@ void router_set_ospf_enabled( struct sr_instance* sr, int enabled ) {
 /** Adds a route to the appropriate routing table. */
 void rtable_route_add( struct sr_instance* sr,
                        uint32_t dest, uint32_t gw, uint32_t mask,
-                       void* intf,
+                       char * intf,
                        int is_static_route ) {
-    fprintf( stderr, "not yet implemented: rtable_route_add\n" );
+    struct ip_address ip = {dest,mask};
+    forwarding_table_add(sr,&ip,gw,intf,!is_static_route);
 }
 
 /** Removes the specified route from the routing table, if present. */
@@ -117,7 +118,7 @@ int rtable_route_remove( struct sr_instance* sr,
                          uint32_t dest, uint32_t mask,
                          int is_static ) {
     fprintf( stderr, "not yet implemented: rtable_route_remove\n" );
-    return 0 /* fail */;
+    return 1;
 }
 
 /** Remove all routes from the router. */
