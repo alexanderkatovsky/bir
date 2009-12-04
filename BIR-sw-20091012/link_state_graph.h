@@ -27,7 +27,6 @@ struct link_state_node
 {
     uint32_t rid;
     struct assoc_array * links;
-    int n_ref; /* number of references to this router  */
     int seq;
 };
 

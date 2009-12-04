@@ -48,7 +48,6 @@ int neighbour_list_process_incoming_hello(struct sr_instance * sr, struct neighb
         n->nmask = nmask;
         n->helloint = helloint;
         assoc_array_insert(nl->array,n);
-        link_state_graph_neighbour_up(sr,rid);
     }
     n->ttl = 3 * helloint;
 
@@ -82,7 +81,6 @@ void neighbour_list_scan_neighbours(struct sr_instance * sr, struct neighbour_li
     while((n = fifo_pop(delete_list)))
     {
         flood = 1;
-        link_state_graph_neighbour_down(sr,n->router_id);
         assoc_array_delete(nl->array,&n->router_id);
     }
 
@@ -91,7 +89,6 @@ void neighbour_list_scan_neighbours(struct sr_instance * sr, struct neighbour_li
     if(flood)
     {
         link_state_graph_update_forwarding_table(sr);
-        link_state_graph_neighbours_down(sr);
         interface_list_send_flood(sr);
     }
     mutex_unlock(nl->mutex);
