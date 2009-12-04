@@ -309,6 +309,7 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     entry->aid = OPTIONS(list->sr)->aid;
     entry->i = list->total;
     entry->port = output_ports[entry->i];
+    entry->up = 1;
     list->total += 1;
     mutex_lock(list->mutex);
     bi_assoc_array_insert(list->array,entry);
@@ -378,7 +379,7 @@ int interface_list_print_entry(void * data, void * userdata)
     print("  ");    
     print_mac(vnsif->addr,print);
     print("  ");
-    print("%s   %d\n",vnsif->name,entry->aid);
+    print("%s    %d     %d\n",vnsif->name,entry->aid, entry->up);
     return 0;
 }
 
@@ -387,7 +388,7 @@ void interface_list_show(struct interface_list * list,print_t print)
 {
     mutex_lock(list->mutex);
     print("\nInterface List:\n");
-    print("%3s               %3s               %3s              %3s    %3s \n","ip","mask","MAC","name", "aid");
+    print("%3s               %3s               %3s              %3s    %3s    %3s\n","ip","mask","MAC","name", "aid", "up?");
     bi_assoc_array_walk_array(list->array,interface_list_print_entry,print);
     print("\n\n");
     mutex_unlock(list->mutex);
@@ -546,4 +547,36 @@ char * interface_list_get_ifname_from_port(struct sr_instance * sr, uint32_t por
     struct __interface_list_get_ifname_from_port_i i = {0,port};
     bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array,__interface_list_get_ifname_from_port_a, &i);
     return i.name;
+}
+
+int interface_list_interface_up(struct sr_instance * sr, char * iface)
+{
+    struct interface_list_entry * ile = (struct interface_list_entry *)
+        bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, iface);
+    int ret = 0;
+    if(ile && ile->up)
+    {
+        ret = 1;
+    }
+    return ret;
+}
+
+int interface_list_set_enabled(struct sr_instance * sr, char * iface, int enabled)
+{
+    struct interface_list_entry * ile = (struct interface_list_entry *)
+        bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, iface);
+    int ret = -1;
+    if(ile)
+    {
+        if(ile->up == enabled)
+        {
+            ret = 1;
+        }
+        else
+        {
+            ile->up = enabled;
+            ret = 0;
+        }
+    }
+    return ret;
 }

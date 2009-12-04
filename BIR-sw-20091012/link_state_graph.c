@@ -299,59 +299,19 @@ void * link_state_graph_get_key(void * data)
     return &((struct link_state_node *)data)->rid;
 }
 
-struct __link_state_graph_check_fwd_table_i
-{
-    int del;
-    struct fifo * delete;
-    struct sr_instance * sr;
-};
-
-int __link_state_graph_fwd_table_links_a(void * data, void * userdata)
-{
-    struct link * lk = (struct link *)data;
-    struct __link_state_graph_check_fwd_table_i * i = (struct __link_state_graph_check_fwd_table_i *)userdata;
-
-    if(forwarding_table_lookup_next_hop(FORWARDING_TABLE(i->sr), lk->ip.subnet, 0, 0))
-    {
-        i->del = 0;
-    }
-    
-    return i->del == 0;
-}
-
-int __link_state_graph_check_fwd_table_a(void * data, void * userdata)
+int __link_state_graph_reset_seq_num_a(void * data, void * userdata)
 {
     struct link_state_node * lsn = (struct link_state_node *)data;
-    struct __link_state_graph_check_fwd_table_i * i = (struct __link_state_graph_check_fwd_table_i *)userdata;
-
-    i->del = 1;
-    assoc_array_walk_array(lsn->links, __link_state_graph_fwd_table_links_a, i);
-
-    if(i->del)
-    {
-        fifo_push(i->delete, lsn);
-    }
-    
+    lsn->seq = -1;
     return 0;
 }
 
 /* called after forwarding table has been updated after some neighbours have gone down  */
-/* for each rid, if we can't reach any of its interfaces, remove it from the list of rids in the LSG*/
+/* reset the seq_nums to -1 in case any of the routers goes down before this interface comes
+ * back up*/
 void link_state_graph_neighbours_down(struct sr_instance * sr)
 {
-    struct fifo * delete = fifo_create();
-    struct __link_state_graph_check_fwd_table_i i = {1,delete,sr};
-    assoc_array_walk_array(LSG(sr)->array, __link_state_graph_check_fwd_table_a, &i);
-
-    struct link_state_node * lsn;
-    
-    while((lsn = fifo_pop(delete)))
-    {
-        assoc_array_delete(LSG(sr)->array, &lsn->rid);
-        link_state_graph_free_node(lsn);
-    }
-
-    fifo_delete(delete,0);
+    assoc_array_walk_array(LSG(sr)->array, __link_state_graph_reset_seq_num_a, sr);
 }
 
 
@@ -367,7 +327,11 @@ void __link_state_graph_delete_node(struct sr_instance * sr, uint32_t rid)
 
 void link_state_graph_neighbour_down(struct sr_instance * sr, uint32_t rid)
 {
-    __link_state_graph_delete_node(sr,rid);
+    struct link_state_node * lsn = assoc_array_read(LSG(sr)->array, &rid);
+    if(lsn)
+    {
+        __link_state_graph_decrement_node(sr,lsn);
+    }
 }
 
 void link_state_graph_neighbour_up(struct sr_instance * sr, uint32_t rid)

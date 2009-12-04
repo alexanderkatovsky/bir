@@ -628,6 +628,11 @@ int cli_ping_handle_self( uint32_t ip ) {
 }
 
 static int ping_outstanding = 0;
+static int trace_outstanding = 0;
+
+static int traceroute_seq;
+static uint32_t traceroute_ip;
+
 
 /**
  * Sends a ping to the specified IP address.  Information about it being sent
@@ -640,13 +645,21 @@ static void cli_send_ping( int client_fd, uint32_t ip ) {
 
 void cli_dest_unreach(struct icmphdr * icmp, uint32_t ip)
 {
-    if(ping_outstanding)
+    if(ping_outstanding || trace_outstanding)
     {
         cli_printf("destination "); print_ip(ip,cli_printf);
         cli_printf(" unreachable\n");
         cli_send_prompt();
         ping_outstanding = 0;
+        trace_outstanding = 0;
     }
+}
+
+
+void cli_traceroute_print(uint32_t ip, int seq)
+{
+    cli_printf("%d:  ",seq-1);print_ip(ip,cli_printf);
+    cli_printf("\n");
 }
 
 void cli_ping_reply(uint32_t ip)
@@ -658,6 +671,12 @@ void cli_ping_reply(uint32_t ip)
         cli_printf("\n");
         cli_send_prompt();
         ping_outstanding = 0;
+    }
+    if(trace_outstanding)
+    {
+        cli_traceroute_print(ip,traceroute_seq);
+        cli_send_prompt();
+        trace_outstanding = 0;
     }
 }
 
@@ -689,40 +708,31 @@ void cli_shutdown() {
     cli_send_str( "Shutting down the router ...\n" );
     router_shutdown = 1;
     sr_integ_destroy(get_sr());
-    /*traceroute_destroy(tr);*/
+
     /* we could do a cleaner shutdown, but this is probably fine */
     exit(0);
 }
 
 void cli_traceroute( gross_ip_t* data )
-{/*
-    int i;
-    struct sr_instance * sr = get_sr();
-    uint32_t ip = data->ip;
-
-    traceroute_reset(tr,ip);
-    
-    for(i = 1; i < 63; i++)
-    {
-        icmp_send_ping(sr,ip,i,1,i);
-    }
- */
-}
-/*
-void cli_traceroute_print(uint32_t ip, int seq)
 {
-    cli_printf("%d:  ",seq);print_ip(ip,cli_printf);
-    cli_printf("\n");
+    trace_outstanding = 1;
+    traceroute_seq = 2;
+    traceroute_ip = data->ip;
+    icmp_send_ping(get_sr(), data->ip, 1, 0, traceroute_seq);
+    skip_next_prompt = 1;
 }
-*/
+
+
 void cli_time_exceeded(struct icmphdr * icmp, uint32_t ip)
-{/*
-    if(traceroute_reply(tr,icmp->sequence,ip))
+{
+    if(trace_outstanding)
     {
-        traceroute_loop_through_entries(tr,cli_traceroute_print);
-        cli_send_prompt();
-        }*/
+        cli_traceroute_print(ip,traceroute_seq);
+        traceroute_seq++;
+        icmp_send_ping(get_sr(), traceroute_ip, 1, 0, traceroute_seq);
+    }
 }
+
 
 void cli_opt_verbose( gross_option_t* data ) {
     if( data->on ) {

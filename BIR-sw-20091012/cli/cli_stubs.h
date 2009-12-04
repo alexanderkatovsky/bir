@@ -54,8 +54,7 @@ unsigned arp_cache_dynamic_purge( struct sr_instance* sr ) {
  *         1 if already set to enabled
  */
 int router_interface_set_enabled( struct sr_instance* sr, const char* name, int enabled ) {
-    fprintf( stderr, "not yet implemented: router_interface_set_enabled\n" );
-    return -1;
+    return interface_list_set_enabled(sr,(char *)name,enabled);
 }
 
 /**
