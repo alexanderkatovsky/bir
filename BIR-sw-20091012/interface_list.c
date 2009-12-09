@@ -159,7 +159,6 @@ void interface_list_send_flood(struct sr_instance * sr)
 
     mutex_lock(INTERFACE_LIST(sr)->mutex);
 
-    printf("\n\n***Sending Flood***\n\n");
     bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array, __interface_list_get_lsus_a, lsu_list);
     n = fifo_length(lsu_list);
 

@@ -9,6 +9,7 @@ from VNSProtocol import VNSOpen, VNSClose, VNSPacket, VNSInterface, VNSHardwareI
 
 from IPMaker import IPMakerWithBase, IP, SubnetToString
 import csv,array
+import os,fcntl
 
 zeromac = struct.pack('> 6B', 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)
 
@@ -49,9 +50,9 @@ class VirtualNode(Node):
 
     def handle_packet(self, intf, packet):
         """Forwards to the user responsible for handling packets for this virtual node"""
-        if (intf.mac == packet[0:6]) or (packet[0:6] == zeromac):
-            if self.conn is not None:
-                self.conn.send(VNSPacket(intf.name, packet))
+        #if (intf.mac == packet[0:6]) or (packet[0:6] == zeromac):
+        if self.conn is not None:
+            self.conn.send(VNSPacket(intf.name, packet))
 
 
 def cksum(s):
@@ -67,8 +68,9 @@ def cksum(s):
     sum = sum + (sum >> 16)
     return (~sum) & 0xffff
 
+from threading import Thread
+
 class Host(Node):
-    """A host in the network which replies to echo requests"""
     def __init__(self, name, interfaces):
         Node.__init__(self, name, interfaces)
         self.conn = None
@@ -99,6 +101,37 @@ class Host(Node):
             arp = packet[14:20] + struct.pack('> H',2) + \
                 intf.mac + struct.pack('> I', intf.ip) + packet[6:12] + packet[28:32]
             self.send_packet(intf, eth + arp)
+
+            
+class TunHost(Node, Thread):
+    """A tunnel to a linux network interface -- requires superuser privilages"""
+    def __init__(self, name, interfaces):
+        Thread.__init__(self)
+        Node.__init__(self, name, interfaces)
+        self.__fd = os.open("/dev/net/tun", os.O_RDWR)
+        fcntl.ioctl(self.__fd, 0x400454ca, struct.pack("16sH", name, 2))
+        self.conn = None
+        if len(interfaces) > 0:
+            import commands
+            commands.getoutput("ifconfig %s up"%(name))
+            commands.getoutput("ifconfig %s %s netmask %s"%(name, SubnetToString(interfaces[0].ip),
+                                                            SubnetToString(interfaces[0].mask)))
+            commands.getoutput("route add -net 192.168.0.0 netmask 255.255.0.0 dev %s"%name)
+        self.start()
+
+    def run(self):
+        while 1:
+            buf = os.read(self.__fd,1500)
+            for intf in self.interfaces:
+                self.send_packet(intf,buf[4:])
+
+    def connect(self, _):
+        print 'Rejecting connection to %s - may not control a Host node' % self.name
+        return False
+
+    def handle_packet(self,intf,packet):
+        os.write(self.__fd, struct.pack("l",0) + packet);
+
             
 
 class Hub(Node):
@@ -149,6 +182,7 @@ class MACMaker:
 class TVNSNode:
     SERVER = 0
     ROUTER = 1
+    TUNNEL = 2
     def __init__(self,n):
         self.__n = n
         self.__interfaces = []
@@ -156,6 +190,8 @@ class TVNSNode:
         self.__node = None
         if n[0] == 'r':
             self.__type = self.ROUTER
+        if n[0] == 't':
+            self.__type = self.TUNNEL
     def AddInterface(self,ip,mask,mac):
         eth = "eth%u"%len(self.__interfaces)
         ret = VNSInterface(eth,mac,ip,mask)
@@ -165,6 +201,8 @@ class TVNSNode:
         if self.__node is None:
             if self.__type == self.ROUTER:
                 self.__node = VirtualNode(self.__n, self.__interfaces)
+            elif self.__type == self.TUNNEL:
+                self.__node = TunHost(self.__n, self.__interfaces)
             else:
                 self.__node = Host(self.__n, self.__interfaces)
         return self.__node

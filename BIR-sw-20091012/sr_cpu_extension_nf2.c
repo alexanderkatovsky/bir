@@ -163,7 +163,7 @@ int sr_cpu_init_hardware(struct sr_instance* sr, const char* hwfile)
 
         if (ioctl(s, SIOCGIFINDEX, &ifr) < 0)
         {
-            perror("ioctl SIOCGIFINDEX");
+            perror("ioctl error");
             exit(1);
         }
 
