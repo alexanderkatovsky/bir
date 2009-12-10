@@ -81,27 +81,34 @@ class Host(Node):
         
     def handle_packet(self, intf, packet):
         """Replies to echo requests"""
-        eth_type = struct.unpack('> H', packet[12:14])[0]
-        if eth_type == 0x0800:
-            ip_proto = struct.unpack('> B', packet[23:24])[0]
-            if ip_proto == 1:
-                icmp_type = struct.unpack('> B', packet[34:35])[0]
-                if icmp_type == 8:
-                    eth = packet[6:12] + packet[0:6] + packet[12:14]   # reverse MAC SA, DA
-                    ip = packet[14:26] + packet[30:34] + packet[26:30] # reverse IP SA, DA
-                    ip = ip[0:10] + struct.pack('> H', 0) + ip[12:]
-                    ip = ip[0:10] + struct.pack('< H', cksum(ip)) + ip[12:]
-                    icmp = struct.pack('> H', 0) + packet[31:]         # change to echo reply type
-                    icmp = icmp[0:2] + struct.pack('> H', 0) + icmp[4:]
-                    icmp = icmp[0:2] + struct.pack('< H', cksum(icmp)) + icmp[4:]
-                    echo_reply = eth + ip + icmp
-                    self.send_packet(intf, echo_reply)
-        elif eth_type == 0x806:
-            eth = packet[6:12] + intf.mac + packet[12:14]
-            arp = packet[14:20] + struct.pack('> H',2) + \
-                intf.mac + struct.pack('> I', intf.ip) + packet[6:12] + packet[28:32]
-            self.send_packet(intf, eth + arp)
-
+        import IPConstructor,socket
+        try:
+            pkt = IPConstructor.eth_packet.parse(packet)
+            if pkt.ethernet_header.type == 'ARP':
+                pkt.ethernet_header.dest = pkt.ethernet_header.src
+                pkt.ethernet_header.src = intf.mac
+                pkt.next.dst_ip = pkt.next.src_ip
+                pkt.next.src_ip = intf.ip
+                pkt.next.dst_mac = pkt.next.src_mac
+                pkt.next.src_mac = intf.mac
+                self.send_packet(intf, IPConstructor.eth_packet.build(pkt))
+            elif pkt.ethernet_header.type == 'IP':
+                pkt.next.icmp_header.type = 0
+                pkt.next.icmp_header.cksum = 0
+                pkt.next.ip_header.cksum = 0
+                src = pkt.next.ip_header.ip_dst
+                pkt.next.ip_header.ip_dst = pkt.next.ip_header.ip_src
+                pkt.next.ip_header.ip_src = src
+                src = pkt.ethernet_header.dest
+                pkt.ethernet_header.dest = pkt.ethernet_header.src
+                pkt.ethernet_header.src = src
+                ethsize = len(IPConstructor.ethernet_header.build(pkt.ethernet_header))
+                ipsize = len(IPConstructor.ip_header.build(pkt.next.ip_header))
+                pkt.next.icmp_header.cksum = socket.htons(cksum(IPConstructor.eth_packet.build(pkt)[ethsize + ipsize:]))
+                pkt.next.ip_header.cksum = socket.htons(cksum(IPConstructor.eth_packet.build(pkt)[ethsize:]))
+                self.send_packet(intf, IPConstructor.eth_packet.build(pkt))
+        except IPConstructor.ConstructError, e:
+            pass
             
 class TunHost(Node, Thread):
     """A tunnel to a linux network interface -- requires superuser privilages"""
