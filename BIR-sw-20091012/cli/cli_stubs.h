@@ -85,8 +85,7 @@ void* router_lookup_interface_via_name( struct sr_instance* sr,
  * Returns 1 if the specified interface is up and 0 otherwise.
  */
 int router_is_interface_enabled( struct sr_instance* sr, void* intf ) {
-    fprintf( stderr, "not yet implemented: router_is_interface_enabled\n" );
-    return 0;
+    return interface_list_interface_up(sr, intf);
 }
 
 /**
