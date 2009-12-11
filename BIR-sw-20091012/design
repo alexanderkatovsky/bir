@@ -12,7 +12,7 @@ The data structure <data-structure> is defined in <data-structure>.h and only ac
                    -- sends OSPF HELLO packets every 5s
                    -- deletes neighbours that have not sent a HELLO after 15s
                       -- calls link_state_graph_update_forwarding_table, and sends LSU flood
-                -- mac addressed of the interfaces are described by a hardware file, which is passed on the command line to the router.  At start up, these are written to hardware and their ip addresses are written to the hardware 
+                -- mac addresses of the interfaces are described by a hardware file, which is passed on the command line to the router.  At start up, these are written to hardware and their ip addresses are written to the hardware ip filter table, along with the OSPF hello ip address
         o  neighbour_list (thread safe)
                 -- a map <router id> --> <neighbouring router info>
                    -- used in interface_list
