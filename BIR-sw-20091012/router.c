@@ -155,4 +155,5 @@ void sr_router_default_options(struct sr_options * opt)
 {
     opt->arp_proxy = 0;
     opt->aid = 0;
+    opt->debug_show = 1;
 }

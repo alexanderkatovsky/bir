@@ -84,11 +84,15 @@ void sr_integ_input(struct sr_instance* sr,
         unsigned int len,
         const char* interface/* borrowed */)
 {
-
+#ifdef _DEBUG_
+    char buf[255];
+#endif
     if(interface_list_interface_up(sr,(char *)interface))
     {
-        Debug("\n>>>> Received packet of length %d from interface %s \n",len,interface);
-        dump_raw(packet,len);
+#ifdef _DEBUG_
+        sprintf(buf,">>>> Receiving packet of length %d on interface %s",len,interface);
+        dump_raw(OPTIONS(sr),packet,len,buf);
+#endif
         struct sr_packet * p = router_construct_packet(sr,packet,len,interface);
         router_handle_incoming_packet(p);
         router_free_packet(p);
@@ -134,18 +138,23 @@ struct sr_instance* get_sr() {
  *---------------------------------------------------------------------------*/
 
 int sr_integ_low_level_output(struct sr_instance* sr /* borrowed */,
-                             uint8_t* buf /* borrowed */ ,
+                             uint8_t* packet /* borrowed */ ,
                              unsigned int len,
                              const char* iface /* borrowed */)
 {
+#ifdef _DEBUG_
+    char buf[255];
+#endif
     if(interface_list_interface_up(sr,(char *)iface))
     {
-        Debug("\n<<<< Sending packet of length %d on interface %s \n",len,iface);
-        dump_raw(buf,len);
+#ifdef _DEBUG_
+        sprintf(buf,"<<<< Sending packet of length %d on interface %s",len,iface);
+        dump_raw(OPTIONS(sr),packet,len,buf);
+#endif
 #ifdef _CPUMODE_
-        return sr_cpu_output(sr, buf /*lent*/, len, iface);
+        return sr_cpu_output(sr, packet /*lent*/, len, iface);
 #else
-        return sr_vns_send_packet(sr, buf /*lent*/, len, iface);
+        return sr_vns_send_packet(sr, packet /*lent*/, len, iface);
 #endif /* _CPUMODE_ */
     }
     return 0;

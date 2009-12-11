@@ -190,27 +190,38 @@ void dump_ip_hdr(const uint8_t * packet, unsigned int len)
     }
 }
 
+int __debug_validate(struct sr_options * opt, const uint8_t * packet)
+{
+    return opt->debug_show;
+}
 
 #include <sys/time.h>
-void dump_raw(const uint8_t * packet, unsigned int len)
+void dump_raw(struct sr_options * opt, const uint8_t * packet, unsigned int len, const char * message)
 {
 #ifdef _DEBUG_
-    struct sr_ethernet_hdr * eth_hdr = (struct sr_ethernet_hdr *)packet;
-    struct timeval tv;
-    gettimeofday(&tv,0);
-    printf("\n%ld:%ld\n", tv.tv_sec, tv.tv_usec);
-
-    dump_packet(packet,len);
-    dump_ethernet_hdr(eth_hdr);
-
-    switch(ntohs(eth_hdr->ether_type))
+    if(__debug_validate(opt,packet))
     {
-    case ETHERTYPE_ARP:
-        dump_arp_hdr(packet,len);
-        break;
-    case ETHERTYPE_IP:
-        dump_ip_hdr(packet,len);
-        break;
+        if(message)
+        {
+            printf("\n%s\n",message);
+        }
+        struct sr_ethernet_hdr * eth_hdr = (struct sr_ethernet_hdr *)packet;
+        struct timeval tv;
+        gettimeofday(&tv,0);
+        printf("\n%ld:%ld\n", tv.tv_sec, tv.tv_usec);
+
+        dump_packet(packet,len);
+        dump_ethernet_hdr(eth_hdr);
+
+        switch(ntohs(eth_hdr->ether_type))
+        {
+        case ETHERTYPE_ARP:
+            dump_arp_hdr(packet,len);
+            break;
+        case ETHERTYPE_IP:
+            dump_ip_hdr(packet,len);
+            break;
+        }
     }
 #endif
 }
