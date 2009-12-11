@@ -56,6 +56,8 @@ Their dependency relationships are:
 The structure of (1) (i.e. its call graph) is determined by the TCP/IP specifications and (3) is driven by the demands of (1).  At the moment, maps are all AA trees, but the intention is to implement the forwarding table as a trie. 
 
 == Packet Flow ==
+                                        from hardware using select
+                          to read from the sockets connected to HW interfaces
                                                    |
                                                    |
                                                    V 
