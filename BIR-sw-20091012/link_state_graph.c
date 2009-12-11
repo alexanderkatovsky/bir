@@ -205,8 +205,6 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
     struct dijkstra_i di;
     struct __link_state_graph_deprecate_non_visited_nodes_i vni;
     struct link_state_node * lsn;
-    
-    Debug("\n\n***Updating forwarding table... ");
 
     /*clear dynamic entries and lock mutex*/
     forwarding_table_start_dijkstra(sr);

@@ -6,22 +6,37 @@
 == Data Structures ==
 The data structure <data-structure> is defined in <data-structure>.h and only accessible through the interface provided by <data-structure>.c.  The data structures marked "thread safe" have a mutex that is used by their interface functions to make them thread safe.  The data structures are encapsulated in sr_router, which contains:
         o  interface_list (thread safe)
-                -- a bidirectional map <ip, name> -> [neighbour_list, sr_vns_if, area id]
-                -- thread for sending LSU flood
+                -- a bidirectional map <ip address of interface, name of interface> --> <list of neighbours (neighbour_list), interface info>
+                -- thread 
+                   -- sends LSU flood every 30s
+                   -- sends OSPF HELLO packets every 5s
+                   -- deletes neighbours that have not sent a HELLO after 15s
+                      -- calls link_state_graph_update_forwarding_table, and sends LSU flood
+                -- mac addressed of the interfaces are described by a hardware file, which is passed on the command line to the router.  At start up, these are written to hardware and their ip addresses are written to the hardware 
         o  neighbour_list (thread safe)
-                -- list of neighbour routers
-                -- thread for expiring neighbours if no HELLO received after a period.
+                -- a map <router id> --> <neighbouring router info>
+                   -- used in interface_list
         o  forwarding_table (thread safe)
-                -- two maps destination ip -> (gateway, mask, interface) for static and dynamic routes resp.
+                -- two maps <subnet mask> --> <[ip address]> for static and dynamic
+                -- Largest Prefix Matching
+                -- writes to hardware whenever modified (entries are written in order of subnet mask; big to low; i.e. most specific to least specific prefix)
         o  arp_cache (thread safe)
-                -- a bidirectional map <ip,MAC> -> (ip,MAC,ttl) where ttl is a timeout for the entry.  
-                   -- The ttl is monitored in a separate thread, which decrements ttl every second, deleting the entry when it hits zero.  When a packet is received the ttl for the entry for the MAC address of the sender is reinitialised.
+                -- a bidirectional map <ip,MAC> --> <ip,MAC,ttl> where ttl is a timeout for the entry.  
+                   -- thread
+                      -- deletes arp cache entries after 15s.  When a packet is received the ttl for the entry for the MAC address of the sender is reinitialised.
+                -- writes arp cache to hardware whenever it is modified
         o  arp_reply_waiting_list (thread safe)
-                -- a map next hop ip -> (fifo queue of packets with this next hop id, number of arp request attempts, timeout for current request)
-                   -- The number of arp requests and the timeout of the current arp request is managed by a seperate thread, which resends arp requests after a fixed time interval, and deletes the entry after a fixed number of attempts.
+                -- a map <next hop ip> --> <fifo queue of packets with this next hop id, number of arp request attempts, timeout for current request>
+                -- thread
+                   -- resends arp requests after a fixed time interval, deletes the entry after a fixed number of attempts when it sends a destination unreachable message for each packet.
         o  link_state_graph (thread safe)
-                -- a map router id --> [[subnet, mask], router id, sequence number]
-                -- performs Dijkstra 
+                -- a map <router id> --> <rid, seq num, [link]> where [link] is a list of links <subnet, mask, rid>
+                -- link_state_graph_update_forwarding_table
+                   -- performs Dijkstra, which updates the dynamic forwarding_table, starting with the neighbouring routers
+                      -- delete rids in the link_state_graph if they were not visited in Dijkstra
+        o  nat_table -- tbd
+
+ -- The maps are based on an associative array data structure, which is implemented as an AA Tree.  The tree is composed of nodes that each hold void * data.  The constructor is passed a function that extracts the key from data and compares two datas in a total order.  Functions are provided to read, write and delete entries with a particular key, and also a function that walks the tree in order from biggest to smallest; the order property of the traversal is used in forwarding_table for performing Largest Prefix Matching, and writing to hardware in order.
                 
 == Module Decomposition ==
 There are four types of module (each is a collection of c files):
@@ -51,15 +66,19 @@ The structure of (1) (i.e. its call graph) is determined by the TCP/IP specifica
                                         | |                | | | |              
    arp_request_handler_process_reply <--- |                | | | V
    arp_reply_to_request <------------------                | | | icmp_handle_incoming_packet
-                                                           | | -> ip_forward
+                                                           | | -> ip_forward (packet not for us)
                                                            | -----> ospf_handle_incoming_packet         
-                                                           ---------->sr_transport_input
+                                                           ---------->sr_transport_input (for TCP)
 
-== hardware integration  ==
-A change to the arp cache, forwarding table, or interface list will trigger writing the whole corresponding hardware table.
+ -- Packets sent from one interface to another are not passed to hardware, but are handled entirely in software.
+ -- Incoming packets are verified for checksum, ip version, and are silently dropped if verification fails
+ -- Communication with hardware is by BSD sockets and select
+ -- if an ip packet is not for us then check its ttl; if it is <= 1 then send an ICMP timeout message, else send to ip_forward
+ -- ip_forward looks up the next hop in the forwarding table.  If that fails then return ICMP destination unreachable.  Else look up the MAC address of the next hop in the arp_cache.  If that fails then add the packet to arp_reply_waiting_list.  Else send the packet onto the hardware.
 
 == Interop testing ==
    -- We set up the routers as depicted in the diagram interop_test.png.  
    -- Pinging from eth1 (the Linux kernel on the same machine as R4) to R4.  
    -- Sending pings to the other routers and from the other routers, which checks that OSPF works.  
    -- Test with various configurations; e.g., running our router on R4 , and the reference router on R11 and R12.
+   -- TVNS

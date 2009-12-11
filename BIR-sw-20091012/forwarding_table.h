@@ -29,6 +29,8 @@ struct forwarding_table
     struct assoc_array * array_s;
     struct assoc_array * array_d;
     struct sr_mutex * mutex;
+
+    int running_dijkstra;
 };
 
 void forwarding_table_create(struct sr_instance * sr);

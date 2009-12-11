@@ -33,6 +33,7 @@ void forwarding_table_create(struct sr_instance * sr)
     ret->array_s = assoc_array_create(__forwarding_table_get_key_mask,assoc_array_key_comp_int);
     ret->array_d = assoc_array_create(__forwarding_table_get_key_mask,assoc_array_key_comp_int);
     ret->mutex = mutex_create();
+    ret->running_dijkstra = 0;
 }
 
 void forwarding_table_destroy(struct forwarding_table * fwd_table)
@@ -162,6 +163,10 @@ void forwarding_table_add(struct sr_instance * sr, struct ip_address * ip,
         assoc_array_insert(array,ftsl);
     }
     assoc_array_insert(ftsl->list,entry);
+    if(ft->running_dijkstra == 0)
+    {
+        forwarding_table_hw_write(sr);
+    }
 
     mutex_unlock(ft->mutex);
 }
@@ -171,7 +176,7 @@ void forwarding_table_start_dijkstra(struct sr_instance * sr)
     struct forwarding_table * fwd_table = FORWARDING_TABLE(sr);
     assoc_array_delete_array(fwd_table->array_d,__delete_forwarding_table);
     fwd_table->array_d = assoc_array_create(__forwarding_table_get_key_mask,assoc_array_key_comp_int);    
-
+    fwd_table->running_dijkstra = 1;
     mutex_lock(fwd_table->mutex);
 }
 
@@ -179,6 +184,7 @@ void forwarding_table_end_dijkstra(struct sr_instance * sr)
 {
     struct forwarding_table * fwd_table = FORWARDING_TABLE(sr);
     forwarding_table_hw_write(sr);
+    fwd_table->running_dijkstra = 0;
     mutex_unlock(fwd_table->mutex);
 }
 
