@@ -104,24 +104,35 @@ void __interface_list_get_lsus_from_neighbours_a(struct neighbour * n, void * us
     }
 }
 
-int __interface_list_get_lsus_a(void * data, void * userdata)
+struct interface_list_send_flood_i
+{
+    uint8_t * outbound_lsu_data;
+    struct fifo * outbound_lsu_list;
+    int n_lsus;
+    struct sr_instance * sr;
+};
+
+int __interface_list_get_outbound_lsus_a(void * data, void * userdata)
 {
     struct interface_list_entry * ile = (struct interface_list_entry *)data;
-    struct fifo * lsu_list = (struct fifo *)userdata;
+    struct interface_list_send_flood_i * fi = (struct interface_list_send_flood_i *)userdata;
     struct ospfv2_lsu * lsu;
-    struct __interface_list_get_lsus_from_neighbours_i ilglfni = {ile->aid,lsu_list};
+    struct __interface_list_get_lsus_from_neighbours_i ilglfni = {ile->aid,fi->outbound_lsu_list};
 
-    if(neighbour_list_empty(ile->n_list))
+    if(!interface_list_inbound(fi->sr, ile->vns_if->name))
     {
-        lsu = (struct ospfv2_lsu *)malloc(sizeof(struct ospfv2_lsu));
-        lsu->subnet = (ile->vns_if->ip) & (ile->vns_if->mask);
-        lsu->mask = ile->vns_if->mask;
-        lsu->rid = 0;
-        fifo_push(lsu_list,lsu);
-    }
-    else
-    {
-        neighbour_list_loop(ile->n_list, __interface_list_get_lsus_from_neighbours_a, &ilglfni);
+        if(neighbour_list_empty(ile->n_list))
+        {
+            lsu = (struct ospfv2_lsu *)malloc(sizeof(struct ospfv2_lsu));
+            lsu->subnet = (ile->vns_if->ip) & (ile->vns_if->mask);
+            lsu->mask = ile->vns_if->mask;
+            lsu->rid = 0;
+            fifo_push(fi->outbound_lsu_list,lsu);
+        }
+        else
+        {
+            neighbour_list_loop(ile->n_list, __interface_list_get_lsus_from_neighbours_a, &ilglfni);
+        }
     }
 
     return 0;
@@ -130,15 +141,18 @@ int __interface_list_get_lsus_a(void * data, void * userdata)
 struct __interface_list_send_i
 {
     struct sr_instance * sr;
+    struct sr_vns_if * vns_if;
     uint8_t * data;
     int len;
 };
 
-void __interface_list_send_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
+void __interface_list_send_lsu_a(struct neighbour * n, void * userdata)
 {
     struct __interface_list_send_i * ilsi = (struct __interface_list_send_i *)userdata;
-    struct sr_packet * packet = router_construct_packet(ilsi->sr,ilsi->data,ilsi->len,vns_if->name);
+    struct sr_packet * packet;
+    struct sr_vns_if * vns_if = ilsi->vns_if;
 
+    packet = router_construct_packet(ilsi->sr,ilsi->data,ilsi->len,vns_if->name);
     ospf_construct_ospf_header(packet->packet,OSPF_TYPE_LSU,ilsi->len,ROUTER(ilsi->sr)->rid,n->aid);
     ip_construct_ip_header(packet->packet,ilsi->len,0,OSPF_MAX_LSU_TTL,IP_P_OSPF,vns_if->ip,n->ip);
     ip_construct_eth_header(packet->packet,0,0,ETHERTYPE_IP);
@@ -148,48 +162,93 @@ void __interface_list_send_lsu_a(struct sr_vns_if * vns_if, struct neighbour * n
     router_free_packet(packet);
 }
 
-void interface_list_send_flood(struct sr_instance * sr)
+
+uint8_t * __interface_list_lsus_to_data(struct fifo * list)
 {
-    struct fifo * lsu_list = fifo_create();
+    int n = fifo_length(list);
     struct ospfv2_lsu * lsu;
-    struct ospfv2_lsu * flood_data;
-    uint8_t * data;
-    int n,i = 0,len;
-    struct __interface_list_send_i ilsi;
+    struct ospfv2_lsu * data = (struct ospfv2_lsu *)malloc(n * sizeof(struct ospfv2_lsu));
+    int i = 0;
 
-    mutex_lock(INTERFACE_LIST(sr)->mutex);
-
-    bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array, __interface_list_get_lsus_a, lsu_list);
-    n = fifo_length(lsu_list);
-
-    len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)
-        + sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_lsu_hdr) + n*sizeof(struct ospfv2_lsu);
-
-    data = (uint8_t *)malloc(len);
-    flood_data = B_LSU_START(data);
-
-    while((lsu = fifo_pop(lsu_list)))
+    while((lsu = fifo_pop(list)))
     {
-        flood_data[i] = *lsu;
+        data[i] = *lsu;
         free(lsu);
         i++;
     }
-    
-    fifo_delete(lsu_list,0);
 
-    ROUTER(sr)->ospf_seq += 1;
-    
-    ospf_construct_lsu_header(data,ROUTER(sr)->ospf_seq, n);
+    return (uint8_t*)data;
+}
 
-    ilsi.sr = sr;
-    ilsi.data = data;
+int interface_list_send_flood_a(void * data, void * userdata)
+{
+    struct interface_list_entry * if_entry = (struct interface_list_entry *)data;
+    struct interface_list_send_flood_i * fi = (struct interface_list_send_flood_i *)userdata;
+    struct fifo * inbound_lsu_list = fifo_create();
+    uint8_t * packet_data;
+    uint8_t * inbound_lsu_data;
+    struct __interface_list_send_i ilsi;
+    struct __interface_list_get_lsus_from_neighbours_i ni = {if_entry->aid,inbound_lsu_list};
+    int n_lsus,len;
+    
+    if(interface_list_inbound(fi->sr, if_entry->vns_if->name))
+    {
+        neighbour_list_loop(if_entry->n_list, __interface_list_get_lsus_from_neighbours_a, &ni);
+    }
+    n_lsus = fifo_length(inbound_lsu_list);
+    inbound_lsu_data = __interface_list_lsus_to_data(inbound_lsu_list);
+
+    len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)
+        + sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_lsu_hdr)
+        + (n_lsus + fi->n_lsus)*sizeof(struct ospfv2_lsu);
+
+    packet_data = (uint8_t *)malloc(len);
+    if(fi->n_lsus > 0)
+    {
+        memcpy((uint8_t *)B_LSU_START(packet_data), fi->outbound_lsu_data,
+               sizeof(struct ospfv2_lsu) * fi->n_lsus);
+    }
+    if(n_lsus > 0)
+    {
+        memcpy((uint8_t *)(B_LSU_START(packet_data) + fi->n_lsus),
+               inbound_lsu_data, sizeof(struct ospfv2_lsu) * n_lsus);
+    }
+    free(inbound_lsu_data);    
+    fifo_delete(inbound_lsu_list,0);
+    
+    ospf_construct_lsu_header(packet_data,ROUTER(fi->sr)->ospf_seq, (n_lsus + fi->n_lsus));
+
+    ilsi.sr = fi->sr;
+    ilsi.vns_if = if_entry->vns_if;
+    ilsi.data = packet_data;
     ilsi.len = len;
 
-    interface_list_loop_through_neighbours(INTERFACE_LIST(sr), __interface_list_send_lsu_a, &ilsi);
+    neighbour_list_loop(if_entry->n_list, __interface_list_send_lsu_a, &ilsi);
 
-    free(data);
+    free(packet_data);
+    return 0;
+}
 
+void interface_list_send_flood(struct sr_instance * sr)
+{
+    struct fifo * outbound_lsu_list = fifo_create();
+    struct interface_list_send_flood_i fi;
+
+    ROUTER(sr)->ospf_seq += 1;
+
+    fi.sr = sr;
+    fi.outbound_lsu_list = outbound_lsu_list;
+    
+    mutex_lock(INTERFACE_LIST(sr)->mutex);
+    bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array,__interface_list_get_outbound_lsus_a,&fi);
+
+    fi.n_lsus = fifo_length(outbound_lsu_list);
+    fi.outbound_lsu_data = __interface_list_lsus_to_data(outbound_lsu_list);
+        
+    bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array,interface_list_send_flood_a,&fi);
     mutex_unlock(INTERFACE_LIST(sr)->mutex);
+    fifo_delete(outbound_lsu_list,0);
+    free(fi.outbound_lsu_data);
 }
 
 void interface_list_send_hello(struct interface_list * iflist)
@@ -578,4 +637,11 @@ int interface_list_set_enabled(struct sr_instance * sr, char * iface, int enable
         }
     }
     return ret;
+}
+
+int interface_list_inbound(struct sr_instance * sr, char * name)
+{
+    struct assoc_array * inbound = OPTIONS(sr)->inbound;
+    if(inbound == NULL) return 0;
+    return assoc_array_read(inbound, name) != NULL;
 }

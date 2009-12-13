@@ -15,6 +15,9 @@ typedef int (* assoc_array_key_comp)(void*,void*);
 int assoc_array_key_comp_int(void * k1, void * k2);
 int assoc_array_key_comp_str(void * k1, void * k2);
 
+void * assoc_array_get_self(void * data);
+void assoc_array_delete_self(void * data);
+
 struct assoc_array;
 
 struct AssocArrayNode

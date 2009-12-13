@@ -59,6 +59,7 @@
 
 #include "sr_rt.h"
 #include "../common.h"
+#include "assoc_array.h"
 
 extern char* optarg;
 
@@ -72,6 +73,26 @@ static void sr_destroy_instance(struct sr_instance* sr);
 
 /** run the command-line interface on CLI_PORT */
 #define CLI_PORT 2300
+
+struct assoc_array * str_split(const char * str, char delim)
+{
+    int i = 0,j = 0;
+    char * buf;
+    struct assoc_array * ret = assoc_array_create(assoc_array_get_self, assoc_array_key_comp_str);
+    while(str[i] != '\0')
+    {
+        if(str[i] == delim)
+        {
+            buf = malloc(i - j + 1);
+            memcpy(buf, str + j, i - j);
+            buf[i - j + 1] = '\0';
+            assoc_array_insert(ret, buf);
+            j = i+1;
+        }
+        i++;
+    }
+    return ret;
+}
 
 
 /*----------------------------------------------------------------------------
@@ -112,7 +133,8 @@ int sr_init_low_level_subystem(int argc, char **argv)
         { "arp_proxy"  ,   1, &opt.arp_proxy, 0 },
         { "aid"        ,   1, &opt.aid, 0 },
         { "debug_show" ,   1, &opt.debug_show, 0 },
-        { "RCPPort"    ,   1, &opt.RCPPort, 0 },        
+        { "RCPPort"    ,   1, &opt.RCPPort, 0 },
+        { "inbound"    ,   1, 0, 0 },                
         { NULL         ,   0, NULL, 0 }
     };
     
@@ -142,7 +164,17 @@ int sr_init_low_level_subystem(int argc, char **argv)
         case 0:
             if(optarg)
             {
-                *(long_options[option_index].flag) = atoi((char *) optarg);
+                if(strcmp(long_options[option_index].name, "inbound") == 0)
+                {
+                    if(opt.inbound == NULL)
+                    {
+                        opt.inbound = str_split(optarg,',');
+                    }
+                }
+                else
+                {
+                    *(long_options[option_index].flag) = atoi((char *) optarg);
+                }
             }
             break;
             case 'h':

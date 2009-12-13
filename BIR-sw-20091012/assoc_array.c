@@ -321,3 +321,13 @@ int assoc_array_empty(struct assoc_array * array)
 {
     return (array->root == NULL);
 }
+
+void * assoc_array_get_self(void * data)
+{
+    return data;
+}
+
+void assoc_array_delete_self(void * data)
+{
+    free(data);
+}

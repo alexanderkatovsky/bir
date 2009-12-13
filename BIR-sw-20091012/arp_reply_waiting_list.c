@@ -107,12 +107,12 @@ void arp_reply_waiting_list_create(struct sr_instance * sr)
 
 void arp_reply_waiting_list_destroy(struct arp_reply_waiting_list * list)
 {
-    mutex_destroy(list->mutex);
     list->exit_signal = 0;
     while(list->exit_signal == 0)
     {
     }
     assoc_array_delete_array(list->array,__delete_arwl);
+    mutex_destroy(list->mutex);
     free(list);       
 }
 

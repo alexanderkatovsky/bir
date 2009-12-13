@@ -110,6 +110,10 @@ void router_destroy(struct sr_router * router)
     arp_cache_destroy(router->a_cache);
     arp_reply_waiting_list_destroy(router->arwl);
     link_state_graph_destroy(router->lsg);
+    if(router->opt.inbound)
+    {
+        assoc_array_delete_array(router->opt.inbound, assoc_array_delete_self);
+    }
 
 #ifdef _CPUMODE_
     closeDescriptor(&router->device);
@@ -167,4 +171,5 @@ void sr_router_default_options(struct sr_options * opt)
     opt->aid = 0;
     opt->debug_show = 1;
     opt->RCPPort = -1;
+    opt->inbound = NULL;
 }

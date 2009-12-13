@@ -84,3 +84,12 @@ The structure of (1) (i.e. its call graph) is determined by the TCP/IP specifica
    -- Sending pings to the other routers and from the other routers, which checks that OSPF works.  
    -- Test with various configurations; e.g., running our router on R4 , and the reference router on R11 and R12.
    -- TVNS
+
+=== NAT ===
+
+-- Assumptions:
+*  If NAT is enabled on the router, an interface is either inbound or outbound
+*  Networks on inbound interfaces are disjoint from networks on all other interfaces. i.e. a node accessible from an inbound interface is only accessible through that interface.
+
+-- packet flow:
+   

@@ -53,14 +53,17 @@ void ip_forward(struct sr_packet * packet)
         }
         else
         {
-            dump_ip(ip_hdr->ip_dst.s_addr);Debug(" not in forwarding table\n");
-            if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table,
-                                                ip_hdr->ip_src.s_addr, &next_hop, thru_interface))
+            if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table, ip_hdr->ip_src.s_addr, 0,0))
             {
                 icmp_send_host_unreachable(packet);
             }
         }
     }
+}
+
+void ip_handle_tcp(struct sr_packet * packet)
+{
+    
 }
 
 void ip_handle_incoming_packet(struct sr_packet * packet)
@@ -99,7 +102,7 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
                 icmp_handle_incoming_packet(packet);
                 break;
             case IP_P_TCP:
-                /*sr_transport_input(packet->packet);*/
+                ip_handle_tcp(packet);
                 break;
             case IP_P_OSPF:
                 ospf_handle_incoming_packet(packet);

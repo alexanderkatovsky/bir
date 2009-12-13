@@ -59,4 +59,6 @@ char * interface_list_get_ifname_from_port(struct sr_instance * sr, uint32_t por
 
 int interface_list_interface_up(struct sr_instance * sr, char * iface);
 int interface_list_set_enabled(struct sr_instance * sr, char * iface, int enabled);
+
+int interface_list_inbound(struct sr_instance * sr, char * name);
 #endif
