@@ -50,9 +50,9 @@ class VirtualNode(Node):
 
     def handle_packet(self, intf, packet):
         """Forwards to the user responsible for handling packets for this virtual node"""
-        #if (intf.mac == packet[0:6]) or (packet[0:6] == zeromac):
-        if self.conn is not None:
-            self.conn.send(VNSPacket(intf.name, packet))
+        if (intf.mac == packet[0:6]) or (packet[0:6] == zeromac):
+            if self.conn is not None:
+                self.conn.send(VNSPacket(intf.name, packet))
 
 
 def cksum(s):

@@ -99,7 +99,7 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
                 icmp_handle_incoming_packet(packet);
                 break;
             case IP_P_TCP:
-                sr_transport_input(packet->packet);
+                /*sr_transport_input(packet->packet);*/
                 break;
             case IP_P_OSPF:
                 ospf_handle_incoming_packet(packet);

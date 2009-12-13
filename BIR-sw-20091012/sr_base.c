@@ -112,6 +112,7 @@ int sr_init_low_level_subystem(int argc, char **argv)
         { "arp_proxy"  ,   1, &opt.arp_proxy, 0 },
         { "aid"        ,   1, &opt.aid, 0 },
         { "debug_show" ,   1, &opt.debug_show, 0 },
+        { "RCPPort"    ,   1, &opt.RCPPort, 0 },        
         { NULL         ,   0, NULL, 0 }
     };
     
@@ -427,7 +428,8 @@ static void usage(char* argv0)
     printf("Format: %s [-h] [-v host] [-s server] [-p VNS port] \n",argv0);
     printf("           [-t topo id] [-P cli port] [-i cpu config file]\n");
     printf("\nLong Options:\n");
-    printf("  --arp_proxy  (=1,0) arp proxying (on,off)\n");
-    printf("  --aid router area id\n");
-    printf("  --debug_show (=1,0) dump packet (on,off)\n");
+    printf("  --arp_proxy   (=1,0) arp proxying (on,off)\n");
+    printf("  --aid router  area id\n");
+    printf("  --debug_show  (=1,0) dump packet (on,off)\n");
+    printf("  --RCPPort     Port for RCP Server\n");
 } /* -- usage -- */

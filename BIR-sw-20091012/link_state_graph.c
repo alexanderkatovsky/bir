@@ -199,7 +199,6 @@ int __link_state_graph_deprecate_non_visited_nodes_a(void * data, void * userdat
 
 void link_state_graph_update_forwarding_table(struct sr_instance * sr)
 {
-
     /*[(ip-address (subnet,mask), rid, interface, next-hop)]*/
     struct linked_list * dijkstra_list = linked_list_create();
     struct dijkstra_i di;
@@ -240,10 +239,6 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
       
     /*unlock mutex*/
     forwarding_table_end_dijkstra(sr);
-
-    Debug("... Finished Updating forwarding table***\n\n");
-
-/*    forwarding_table_dynamic_show(FORWARDING_TABLE(sr),printf);*/
 }
 
 int link_state_graph_update_links(struct sr_instance * sr,

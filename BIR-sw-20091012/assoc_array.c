@@ -1,5 +1,6 @@
 #include "assoc_array.h"
 #include <stdlib.h>
+#include <string.h>
 
 
 /*

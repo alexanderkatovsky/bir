@@ -11,6 +11,7 @@
 #include "common.h"
 #include "link_state_graph.h"
 #include "nf2util.h"
+#include "RCP.h"
 
 struct sr_packet
 {
@@ -36,6 +37,7 @@ struct sr_router
     int ready;
 
     struct sr_options opt;
+    struct RCPServer * rcp_server;
 
 #ifdef _CPUMODE_
     struct nf2device device;

@@ -86,14 +86,25 @@ void router_create(struct sr_instance * sr, struct sr_options * opt)
     link_state_graph_create(sr);
     ret->rid = 0;
     ret->ospf_seq = 0;
-
     ret->opt = *opt;
-    
     ret->ready = 1;
+
+    if(ret->opt.RCPPort != -1)
+    {
+        ret->rcp_server = RCPSeverCreate(sr, ret->opt.RCPPort);
+    }
+    else
+    {
+        ret->rcp_server = 0;
+    }
 }
 
 void router_destroy(struct sr_router * router)
 {
+    if(router->rcp_server)
+    {
+        RCPServerDestroy(router->rcp_server);
+    }
     interface_list_destroy(router->iflist);
     forwarding_table_destroy(router->fwd_table);
     arp_cache_destroy(router->a_cache);
@@ -103,7 +114,6 @@ void router_destroy(struct sr_router * router)
 #ifdef _CPUMODE_
     closeDescriptor(&router->device);
 #endif
-    
     free(router);
 }
 
@@ -156,4 +166,5 @@ void sr_router_default_options(struct sr_options * opt)
     opt->arp_proxy = 0;
     opt->aid = 0;
     opt->debug_show = 1;
+    opt->RCPPort = -1;
 }

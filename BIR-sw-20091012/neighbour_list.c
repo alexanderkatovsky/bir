@@ -40,7 +40,6 @@ int neighbour_list_process_incoming_hello(struct sr_instance * sr, struct neighb
     if(n == NULL)
     {
         ret = 1;
-        Debug("\n\nAdding new Neighbour rid=%d\n\n",rid);
         n = (struct neighbour *)malloc(sizeof(struct neighbour));
         n->router_id = rid;
         n->ip = ip;

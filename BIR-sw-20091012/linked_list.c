@@ -34,8 +34,11 @@ void linked_list_add(struct linked_list * list, void * data)
     node->data = data;
     node->list = list;
     node->i = list->head;
-    list->head += 1;
-    assoc_array_insert(list->array,node);
+    if(assoc_array_read(list->array,node) == NULL)
+    {
+        list->head += 1;
+        assoc_array_insert(list->array,node);
+    }
 }
 
 void linked_list_walk_list(struct linked_list * list, int (* fn)(void *, void *), void * user_data)

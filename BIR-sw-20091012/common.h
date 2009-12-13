@@ -24,6 +24,7 @@ struct sr_options
     int arp_proxy;
     int aid;
     int debug_show;
+    int RCPPort;
 };
 
 void sr_router_default_options(struct sr_options * opt);
