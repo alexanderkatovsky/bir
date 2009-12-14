@@ -91,6 +91,10 @@ struct assoc_array * str_split(const char * str, char delim)
         }
         i++;
     }
+    buf = malloc(i - j + 1);
+    memcpy(buf, str + j, i - j);
+    buf[i - j + 1] = '\0';
+    assoc_array_insert(ret, buf);
     return ret;
 }
 
@@ -134,7 +138,8 @@ int sr_init_low_level_subystem(int argc, char **argv)
         { "aid"        ,   1, &opt.aid, 0 },
         { "debug_show" ,   1, &opt.debug_show, 0 },
         { "RCPPort"    ,   1, &opt.RCPPort, 0 },
-        { "inbound"    ,   1, 0, 0 },                
+        { "inbound"    ,   1, 0, 0 },
+        { "outbound"   ,   1, 0, 0 },
         { NULL         ,   0, NULL, 0 }
     };
     
@@ -169,6 +174,13 @@ int sr_init_low_level_subystem(int argc, char **argv)
                     if(opt.inbound == NULL)
                     {
                         opt.inbound = str_split(optarg,',');
+                    }
+                }
+                else if(strcmp(long_options[option_index].name, "outbound") == 0)
+                {
+                    if(opt.outbound == NULL)
+                    {
+                        opt.outbound = str_split(optarg,',');
                     }
                 }
                 else

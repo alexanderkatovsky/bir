@@ -88,8 +88,11 @@ The structure of (1) (i.e. its call graph) is determined by the TCP/IP specifica
 === NAT ===
 
 -- Assumptions:
-*  If NAT is enabled on the router, an interface is either inbound or outbound
+*  If NAT is enabled on the router, an interface is either inbound, outbound, or NAT disabled
 *  Networks on inbound interfaces are disjoint from networks on all other interfaces. i.e. a node accessible from an inbound interface is only accessible through that interface.
+
+-- notes
+In the forwarding table, an outbound interface should be given preference over a NAT disabled interface.  Otherwise some nodes accessible to both an outbound and a NAT disabled interface might not be accessible to a node on the inbound interface, if Dijkstra chooses the NAT disabled interface as the gateway.
 
 -- packet flow:
    

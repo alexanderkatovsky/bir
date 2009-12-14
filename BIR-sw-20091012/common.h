@@ -25,8 +25,10 @@ struct sr_options
     int aid;
     int debug_show;
     int RCPPort;
-    /* inbound interfaces -- if this is not NULL, then the router is doing NAT */
+    /* inbound nat interfaces */
     struct assoc_array * inbound;
+    /* outbound nat interfaces */
+    struct assoc_array * outbound;
 };
 
 void sr_router_default_options(struct sr_options * opt);

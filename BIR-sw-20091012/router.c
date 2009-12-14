@@ -114,6 +114,10 @@ void router_destroy(struct sr_router * router)
     {
         assoc_array_delete_array(router->opt.inbound, assoc_array_delete_self);
     }
+    if(router->opt.outbound)
+    {
+        assoc_array_delete_array(router->opt.outbound, assoc_array_delete_self);
+    }    
 
 #ifdef _CPUMODE_
     closeDescriptor(&router->device);
@@ -172,4 +176,10 @@ void sr_router_default_options(struct sr_options * opt)
     opt->debug_show = 1;
     opt->RCPPort = -1;
     opt->inbound = NULL;
+    opt->outbound = NULL;
+}
+
+int router_nat_enabled(struct sr_instance * sr)
+{
+    return ((OPTIONS(sr)->inbound != NULL) || (OPTIONS(sr)->outbound != NULL));
 }

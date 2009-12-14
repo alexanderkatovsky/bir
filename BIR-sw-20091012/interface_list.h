@@ -9,6 +9,13 @@
 
 struct sr_packet;
 
+enum e_nat_type
+{
+    E_NAT_TYPE_INBOUND,
+    E_NAT_TYPE_OUTBOUND,
+    E_NAT_TYPE_NONE
+};
+
 struct interface_list_entry
 {
     struct neighbour_list * n_list;
@@ -16,6 +23,8 @@ struct interface_list_entry
     uint32_t aid;
     int i;
     uint32_t port;
+
+    enum e_nat_type nat_type;
 
     int up;
 };
@@ -61,4 +70,6 @@ int interface_list_interface_up(struct sr_instance * sr, char * iface);
 int interface_list_set_enabled(struct sr_instance * sr, char * iface, int enabled);
 
 int interface_list_inbound(struct sr_instance * sr, char * name);
+int interface_list_outbound(struct sr_instance * sr, char * name);
+int interface_list_nat_enabled(struct sr_instance * sr, char * name);
 #endif

@@ -361,6 +361,8 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     NEW_STRUCT(entry,interface_list_entry);
     NEW_STRUCT(interface_copy,sr_vns_if);
     struct neighbour_list * n_list = neighbour_list_create();
+    struct assoc_array * inbound = OPTIONS(list->sr)->inbound;
+    struct assoc_array * outbound = OPTIONS(list->sr)->outbound;
     *interface_copy = *interface;
     entry->vns_if = interface_copy;
     entry->n_list = n_list;
@@ -369,6 +371,16 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     entry->port = output_ports[entry->i];
     entry->up = 1;
     list->total += 1;
+    entry->nat_type = E_NAT_TYPE_NONE;
+    if(inbound && assoc_array_read(inbound, interface->name))
+    {
+        entry->nat_type = E_NAT_TYPE_INBOUND;
+    }
+    else if(outbound && assoc_array_read(outbound, interface->name))
+    {
+        entry->nat_type = E_NAT_TYPE_OUTBOUND;
+    }
+    
     mutex_lock(list->mutex);
     bi_assoc_array_insert(list->array,entry);
     interface_list_update_hw(list->sr);
@@ -639,9 +651,29 @@ int interface_list_set_enabled(struct sr_instance * sr, char * iface, int enable
     return ret;
 }
 
+int interface_list_nat_type(struct sr_instance * sr, char * name, enum e_nat_type type)
+{
+    mutex_lock(INTERFACE_LIST(sr)->mutex);
+    struct interface_list_entry * e = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, name);
+    mutex_unlock(INTERFACE_LIST(sr)->mutex);
+    if(e)
+    {
+        return e->nat_type == type;
+    }
+    return 0;    
+}
+
 int interface_list_inbound(struct sr_instance * sr, char * name)
 {
-    struct assoc_array * inbound = OPTIONS(sr)->inbound;
-    if(inbound == NULL) return 0;
-    return assoc_array_read(inbound, name) != NULL;
+    return interface_list_nat_type(sr, name, E_NAT_TYPE_INBOUND);
+}
+
+int interface_list_outbound(struct sr_instance * sr, char * name)
+{
+    return interface_list_nat_type(sr, name, E_NAT_TYPE_OUTBOUND);
+}
+
+int interface_list_nat_enabled(struct sr_instance * sr, char * name)
+{
+    return !interface_list_nat_type(sr, name, E_NAT_TYPE_NONE);
 }

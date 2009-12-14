@@ -106,6 +106,7 @@ void icmp_send_host_unreachable(struct sr_packet * packet);
 void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num, int id, int ttl);
 
 int router_cmp_MAC(void * k1, void * k2);
+int router_nat_enabled(struct sr_instance * sr);
 
 void ospf_handle_incoming_packet(struct sr_packet * packet);
 void ospf_send_hello(struct sr_instance * sr, struct interface_list_entry * ifentry);
