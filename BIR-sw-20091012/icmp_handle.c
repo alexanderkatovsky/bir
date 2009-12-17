@@ -24,13 +24,21 @@ void icmp_basic_reply(struct sr_packet * packet, int prot, int code)
     struct ip * iph = IP_HDR(packet);
     int start_data = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct icmphdr);
     uint32_t ip;
-    interface_list_get_MAC_and_IP_from_name(INTERFACE_LIST(packet->sr), packet->interface,0,&ip);
+    struct sr_packet * packet2;
+    char * iface = packet->interface == NULL ? ROUTER(packet->sr)->default_interface : packet->interface;
+    interface_list_get_MAC_and_IP_from_name(INTERFACE_LIST(packet->sr), iface,0,&ip);
     memcpy(data + start_data,packet->packet + sizeof(struct sr_ethernet_hdr),len - start_data);
     icmp_construct_header(data, prot, code, 0, 0, len - start_data);
     ip_construct_ip_header(data,len,0,63,IP_P_ICMP,ip,iph->ip_src.s_addr);
     ip_construct_eth_header(data,ETH_HDR(packet)->ether_shost,ETH_HDR(packet)->ether_dhost,ETHERTYPE_IP);
 
-    if(sr_integ_low_level_output(packet->sr,data,len,packet->interface) == -1)
+    if(packet->interface == NULL)
+    {
+        packet2 = router_construct_packet(packet->sr, data, len, NULL);
+        ip_handle_incoming_packet(packet2);
+        router_free_packet(packet2);
+    }
+    else if(sr_integ_low_level_output(packet->sr,data,len,packet->interface) == -1)
     {
         printf("\nfailed to send packet\n");
     }
@@ -64,7 +72,7 @@ void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num, int 
     icmp_construct_header(data,8,0,id,seq_num,0);
     ip_construct_ip_header(data,len,0,ttl,IP_P_ICMP,ROUTER(sr)->rid,ip);
     ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
-    packet = router_construct_packet(sr,data,len,ROUTER(sr)->default_interface);
+    packet = router_construct_packet(sr,data,len,NULL);
     ip_forward(packet);
     router_free_packet(packet);
     free(data);
@@ -87,7 +95,7 @@ void icmp_reply(struct sr_packet * packet)
                            IP_P_ICMP,iph->ip_dst.s_addr,
                            iph->ip_src.s_addr);
     ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
-    packet2 = router_construct_packet(packet->sr,data,len + xtra_len,"");
+    packet2 = router_construct_packet(packet->sr,data,len + xtra_len,NULL);
     ip_forward(packet2);
     router_free_packet(packet2);
     free(data);

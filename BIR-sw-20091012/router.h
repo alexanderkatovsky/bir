@@ -10,6 +10,7 @@
 #include "pwospf_protocol.h"
 #include "common.h"
 #include "link_state_graph.h"
+#include "nat.h"
 #include "nf2util.h"
 #include "RCP.h"
 
@@ -28,6 +29,7 @@ struct sr_router
     struct arp_cache * a_cache;
     struct arp_reply_waiting_list * arwl;
     struct link_state_graph * lsg;
+    struct nat_table * nat;
 
     char default_interface[SR_NAMELEN];
 
@@ -64,6 +66,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 #define ARWL(sr) ((struct arp_reply_waiting_list *)(ROUTER(sr)->arwl))
 #define LSG(sr) ((struct link_state_graph *)(ROUTER(sr)->lsg))
 #define OPTIONS(sr) (&(ROUTER(sr)->opt))
+#define NAT(sr) (ROUTER(sr)->nat)
 
 
 #define B_ETH_HDR(packet) ((struct sr_ethernet_hdr *) ((packet)))
@@ -74,6 +77,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 #define B_HELLO_HDR(packet) ((struct ospfv2_hello_hdr *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct ospfv2_hdr)))
 #define B_LSU_HDR(packet) ((struct ospfv2_lsu_hdr *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct ospfv2_hdr)))
 #define B_LSU_START(packet) ((struct ospfv2_lsu *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_lsu_hdr)))
+#define B_TCP_HDR(packet) ((struct tcpheader *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)))
 
 #define ETH_HDR(packet) B_ETH_HDR((packet)->packet)
 #define ARP_HDR(packet) B_ARP_HDR((packet)->packet)
@@ -83,6 +87,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 #define HELLO_HDR(packet) B_HELLO_HDR((packet)->packet)
 #define LSU_HDR(packet) B_LSU_HDR((packet)->packet)
 #define LSU_START(packet) B_LSU_START((packet)->packet)
+#define TCP_HDR(packet) B_TCP_HDR((packet)->packet)
 
 void arp_handle_incoming_packet(struct sr_packet * packet);
 void arp_request(struct sr_instance * sr, uint32_t ip, char * interface);
@@ -98,6 +103,7 @@ void ip_construct_ip_header(uint8_t * packet, uint16_t len,
 unsigned short checksum_ipheader(const struct ip * ip_hdr);
 unsigned short checksum_icmpheader(const uint8_t * icmp_hdr, unsigned int len);
 unsigned short checksum_ospfheader(const uint8_t * p_ospf_hdr, unsigned int len);
+unsigned short cksum(const unsigned short *data, int len);
     
 void icmp_handle_incoming_packet(struct sr_packet * packet);
 void icmp_send_port_unreachable(struct sr_packet * packet);
@@ -112,5 +118,8 @@ void ospf_handle_incoming_packet(struct sr_packet * packet);
 void ospf_send_hello(struct sr_instance * sr, struct interface_list_entry * ifentry);
 void ospf_construct_ospf_header(uint8_t * packet, uint8_t type, uint16_t len, uint32_t rid, uint32_t aid);
 void ospf_construct_lsu_header(uint8_t * packet, uint16_t seq, uint32_t num_adv);
+
+void tcp_handle_incoming_not_for_us(struct sr_packet * packet);
+void tcp_handle_incoming_for_us(struct sr_packet * packet);
 
 #endif

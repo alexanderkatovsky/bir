@@ -8,9 +8,12 @@ from VNSProtocol import VNS_DEFAULT_PORT, create_vns_server
 from VNSProtocol import VNSOpen, VNSClose, VNSPacket, VNSInterface, VNSHardwareInfo
 
 from IPMaker import IPMakerWithBase, IP, SubnetToString
-import csv,array
+import csv
 import os,fcntl
-
+from threading import Thread
+from HTTPHandler import HTTPHandler
+import commands
+import time
 zeromac = struct.pack('> 6B', 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)
 
 class Node:
@@ -52,64 +55,30 @@ class VirtualNode(Node):
         """Forwards to the user responsible for handling packets for this virtual node"""
         if (intf.mac == packet[0:6]) or (packet[0:6] == zeromac):
             if self.conn is not None:
+                print "VirtualHost:  %f\n"%time.time()
                 self.conn.send(VNSPacket(intf.name, packet))
-
-
-def cksum(s):
-    if len(s) & 1:
-        s = s + '\0'
-    words = array.array('h', s)
-    sum = 0
-    for word in words:
-        sum = sum + (word & 0xffff)
-    hi = sum >> 16
-    lo = sum & 0xffff
-    sum = hi + lo
-    sum = sum + (sum >> 16)
-    return (~sum) & 0xffff
-
-from threading import Thread
 
 class Host(Node):
     def __init__(self, name, interfaces):
         Node.__init__(self, name, interfaces)
         self.conn = None
+        if len(interfaces) > 1:
+            raise Exception("Host.__init__: too many interfaces")
+        self.__intf = interfaces[0]
+        self.__httphandler = HTTPHandler(self.__send)
+
+    def __send(self,packet):
+        self.send_packet(self.__intf, packet)
 
     def connect(self, _):
         print 'Rejecting connection to %s - may not control a Host node' % self.name
         return False
         
     def handle_packet(self, intf, packet):
-        """Replies to echo requests"""
-        import IPConstructor,socket
-        try:
-            pkt = IPConstructor.eth_packet.parse(packet)
-            if pkt.ethernet_header.type == 'ARP':
-                pkt.ethernet_header.dest = pkt.ethernet_header.src
-                pkt.ethernet_header.src = intf.mac
-                pkt.next.dst_ip = pkt.next.src_ip
-                pkt.next.src_ip = intf.ip
-                pkt.next.dst_mac = pkt.next.src_mac
-                pkt.next.src_mac = intf.mac
-                self.send_packet(intf, IPConstructor.eth_packet.build(pkt))
-            elif pkt.ethernet_header.type == 'IP':
-                pkt.next.icmp_header.type = 0
-                pkt.next.icmp_header.cksum = 0
-                pkt.next.ip_header.cksum = 0
-                src = pkt.next.ip_header.ip_dst
-                pkt.next.ip_header.ip_dst = pkt.next.ip_header.ip_src
-                pkt.next.ip_header.ip_src = src
-                src = pkt.ethernet_header.dest
-                pkt.ethernet_header.dest = pkt.ethernet_header.src
-                pkt.ethernet_header.src = src
-                ethsize = len(IPConstructor.ethernet_header.build(pkt.ethernet_header))
-                ipsize = len(IPConstructor.ip_header.build(pkt.next.ip_header))
-                pkt.next.icmp_header.cksum = socket.htons(cksum(IPConstructor.eth_packet.build(pkt)[ethsize + ipsize:]))
-                pkt.next.ip_header.cksum = socket.htons(cksum(IPConstructor.eth_packet.build(pkt)[ethsize:]))
-                self.send_packet(intf, IPConstructor.eth_packet.build(pkt))
-        except IPConstructor.ConstructError, e:
-            pass
-            
+        """Replies to echo requests, arp requests, also TCP handshake, and simple HTTP Server"""
+        self.__httphandler.process_packet(intf.ip, intf.mac, packet)
+        
+        
 class TunHost(Node, Thread):
     """A tunnel to a linux network interface -- requires superuser privilages"""
     def __init__(self, name, interfaces):
@@ -119,18 +88,21 @@ class TunHost(Node, Thread):
         fcntl.ioctl(self.__fd, 0x400454ca, struct.pack("16sH", name, 2))
         self.conn = None
         if len(interfaces) > 0:
-            import commands
             commands.getoutput("ifconfig %s up"%(name))
             commands.getoutput("ifconfig %s %s netmask %s"%(name, SubnetToString(interfaces[0].ip),
                                                             SubnetToString(interfaces[0].mask)))
-            commands.getoutput("route add -net 192.168.0.0 netmask 255.255.0.0 dev %s"%name)
+            if len(interfaces[0].neighboring_interfaces) > 0:
+                commands.getoutput("route add -net 192.168.0.0 gw %s netmask 255.255.0.0 dev %s"
+                                   %(SubnetToString(interfaces[0].neighboring_interfaces[0].ip), name))
         self.start()
 
     def run(self):
         while 1:
             buf = os.read(self.__fd,1500)
             for intf in self.interfaces:
+                print "tun:  %f"%time.time()
                 self.send_packet(intf,buf[4:])
+                print "\n"
 
     def connect(self, _):
         print 'Rejecting connection to %s - may not control a Host node' % self.name
@@ -325,7 +297,7 @@ class SimpleVNS:
 
     def handle_recv_msg(self, conn, vns_msg):
         if vns_msg is not None:
-            print 'recv: %s' % str(vns_msg)
+            #print 'recv: %s' % str(vns_msg)
             if vns_msg.get_type() == VNSOpen.get_type():
                 self.handle_open_msg(conn, vns_msg)
             elif vns_msg.get_type() == VNSClose.get_type():

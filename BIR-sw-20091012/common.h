@@ -23,12 +23,21 @@ struct sr_options
     /* arp proxy (respond to arp request if the destination address is in the forwarding table) */
     int arp_proxy;
     int aid;
-    int debug_show;
     int RCPPort;
     /* inbound nat interfaces */
     struct assoc_array * inbound;
     /* outbound nat interfaces */
     struct assoc_array * outbound;
+
+
+    int verbose;
+    int show_arp;
+    int show_ip;
+    int show_ospf;
+    int show_ospf_hello;
+    int show_ospf_lsu;
+    int show_icmp;
+    int show_tcp;    
 };
 
 void sr_router_default_options(struct sr_options * opt);

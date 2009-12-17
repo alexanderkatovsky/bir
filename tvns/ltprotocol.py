@@ -13,6 +13,8 @@ import struct
 from twisted.internet.protocol  import Protocol, ReconnectingClientFactory, Factory
 from twisted.internet           import reactor
 
+import time
+
 class LTMessage:
     """This class should be overridden to define specific messages which begin
        with length and type.

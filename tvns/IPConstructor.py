@@ -19,10 +19,19 @@ ip_header = Struct(
     Byte("ttl"),
     Enum(
         Byte("protocol"),
-        ICMP = 1),
+        ICMP = 1,
+        TCP  = 6),
     UBInt16("cksum"),
     UBInt32("ip_src"),
     UBInt32("ip_dst"))
+
+ip_pseudo_header = Struct(
+    "ip_pseudo_header",
+    UBInt32("src_ip"),
+    UBInt32("dst_ip"),
+    Byte("reserved"),
+    Byte("protocol"),
+    UBInt16("len"))
 
 arp_header = Struct(
     "arp_header",
@@ -42,10 +51,31 @@ icmp_header = Struct(
     Byte("code"),
     UBInt16("cksum"))
 
+tcp_header = Struct(
+    "tcp_header",
+    UBInt16("src_port"),
+    UBInt16("dst_port"),
+    UBInt32("seq_num"),
+    UBInt32("ack_num"),
+    BitStruct("bs",
+              Bits("offset",4),
+              Bits("reserved",3),
+              Bits("ecn",3),
+              Flag("URG"),
+              Flag("ACK"),
+              Flag("PSH"),
+              Flag("RST"),
+              Flag("SYN"),
+              Flag("FIN")),
+    UBInt16("window"),
+    UBInt16("cksum"),
+    UBInt16("ubp"))
+
 ip_packet = Struct(
     "ip_packet",
     ip_header,
-    icmp_header)
+    Switch("next", lambda ctx: ctx["ip_header"]["protocol"],
+           {"ICMP" : icmp_header, "TCP" : tcp_header}))
 
 eth_packet = Struct(
     "arp_packet",

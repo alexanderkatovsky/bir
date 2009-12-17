@@ -134,12 +134,21 @@ int sr_init_low_level_subystem(int argc, char **argv)
     int option_index = 0;
     
     const struct option long_options[] = {
-        { "arp_proxy"  ,   1, &opt.arp_proxy, 0 },
-        { "aid"        ,   1, &opt.aid, 0 },
-        { "debug_show" ,   1, &opt.debug_show, 0 },
-        { "RCPPort"    ,   1, &opt.RCPPort, 0 },
-        { "inbound"    ,   1, 0, 0 },
-        { "outbound"   ,   1, 0, 0 },
+        { "arp_proxy"  ,   no_argument, &opt.arp_proxy, 0 },
+        { "aid"        ,   required_argument, &opt.aid, 0 },
+        { "RCPPort"    ,   required_argument, &opt.RCPPort, 0 },
+        { "inbound"    ,   required_argument, 0, 0 },
+        { "outbound"   ,   required_argument, 0, 0 },
+#ifdef _DEBUG_
+        { "verbose" ,   no_argument, &opt.verbose, 1 },
+        { "show_ip" ,   no_argument, &opt.show_ip, 1 },
+        { "show_arp" ,   no_argument, &opt.show_arp, 1 },
+        { "show_icmp" ,   no_argument, &opt.show_icmp, 1 },
+        { "show_tcp" ,   no_argument, &opt.show_tcp, 1 },
+        { "show_ospf" ,   no_argument, &opt.show_ospf, 1 },
+        { "show_ospf_hello" ,   no_argument, &opt.show_ospf_hello, 1 },
+        { "show_ospf_lsu" ,   no_argument, &opt.show_ospf_lsu, 1 },        
+#endif
         { NULL         ,   0, NULL, 0 }
     };
     
@@ -157,15 +166,15 @@ int sr_init_low_level_subystem(int argc, char **argv)
     sr = (struct sr_instance*) malloc(sizeof(struct sr_instance));
     sr_get_global_instance(sr); /* actually *sets* global instance! */
 
+
     while ((c = getopt_long(argc, argv, "hs:v:p:P:c:t:r:l:i:", long_options, &option_index)) != EOF)
     {
-        if(c == -1)
-        {
-            usage("./sr");
-            exit(0);
-        }
         switch (c)
         {
+        case '?':
+            usage("./sr");
+            exit(0);
+            break;
         case 0:
             if(optarg)
             {
@@ -468,12 +477,24 @@ static void sr_destroy_instance(struct sr_instance* sr)
 
 static void usage(char* argv0)
 {
-    printf("Simple Router Client\n Compile Time: (%s %s)\n", __TIME__, __DATE__);
+#ifdef _DEBUG_
+    const char * debug_str = " (debug) ";
+#else
+    const char * debug_str = " ";
+#endif
+    printf("Simple Router Client%s\nCompiled At: (%s %s)\n", debug_str, __TIME__, __DATE__);
     printf("Format: %s [-h] [-v host] [-s server] [-p VNS port] \n",argv0);
     printf("           [-t topo id] [-P cli port] [-i cpu config file]\n");
     printf("\nLong Options:\n");
-    printf("  --arp_proxy   (=1,0) arp proxying (on,off)\n");
-    printf("  --aid router  area id\n");
-    printf("  --debug_show  (=1,0) dump packet (on,off)\n");
+    printf("  --arp_proxy   turn on arp proxying\n");
+    printf("  --aid         router  area id\n");
     printf("  --RCPPort     Port for RCP Server\n");
+    printf("  --inbound     Inbound NAT interfaces comma separated(e.g. eth0,eth1)\n");
+    printf("  --outbound    Outbound NAT interfaces comma separated(e.g. eth0,eth1)\n");
+    
+#ifdef _DEBUG_
+    printf("  --verbose     Show every packet\n");
+    printf("  --show_{ip,arp,icmp,tcp,ospf,ospf_hello,ospf_lsu}\n");
+    printf("                Show only this type of packet\n");
+#endif
 } /* -- usage -- */

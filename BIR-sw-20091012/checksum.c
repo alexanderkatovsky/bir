@@ -25,7 +25,7 @@ unsigned short cksum(const unsigned short *data, int len)
     if(len)
     {
         /* take care of left over byte */
-        sum += *data++;
+        sum += *data & 0x00ff;
     }
           
     while(sum>>16)

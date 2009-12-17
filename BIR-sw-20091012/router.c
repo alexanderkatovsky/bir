@@ -13,8 +13,15 @@ struct sr_packet * router_construct_packet(struct sr_instance * sr,
     ret->packet = (uint8_t *) malloc(len*sizeof(uint8_t));
     memcpy(ret->packet,packet,len);
     ret->len = len;
-    ret->interface = (char *)malloc(sizeof(char)*(strlen(interface) + 1));
-    strcpy(ret->interface,interface);
+    if(interface)
+    {
+        ret->interface = (char *)malloc(sizeof(char)*(strlen(interface) + 1));
+        strcpy(ret->interface,interface);
+    }
+    else
+    {
+        ret->interface = NULL;
+    }
 
     return ret;
 }
@@ -84,6 +91,7 @@ void router_create(struct sr_instance * sr, struct sr_options * opt)
     arp_cache_create(sr);
     arp_reply_waiting_list_create(sr);
     link_state_graph_create(sr);
+    nat_create(sr);
     ret->rid = 0;
     ret->ospf_seq = 0;
     ret->opt = *opt;
@@ -110,6 +118,7 @@ void router_destroy(struct sr_router * router)
     arp_cache_destroy(router->a_cache);
     arp_reply_waiting_list_destroy(router->arwl);
     link_state_graph_destroy(router->lsg);
+    nat_destroy(router->nat);
     if(router->opt.inbound)
     {
         assoc_array_delete_array(router->opt.inbound, assoc_array_delete_self);
@@ -173,10 +182,19 @@ void sr_router_default_options(struct sr_options * opt)
 {
     opt->arp_proxy = 0;
     opt->aid = 0;
-    opt->debug_show = 1;
+
     opt->RCPPort = -1;
     opt->inbound = NULL;
     opt->outbound = NULL;
+
+    opt->verbose = 0;
+    opt->show_ip = 0;
+    opt->show_arp = 0;
+    opt->show_ospf = 0;
+    opt->show_ospf_hello = 0;
+    opt->show_ospf_lsu = 0;
+    opt->show_icmp = 0;
+    opt->show_tcp = 0; 
 }
 
 int router_nat_enabled(struct sr_instance * sr)

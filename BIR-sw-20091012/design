@@ -89,10 +89,15 @@ The structure of (1) (i.e. its call graph) is determined by the TCP/IP specifica
 
 -- Assumptions:
 *  If NAT is enabled on the router, an interface is either inbound, outbound, or NAT disabled
-*  Networks on inbound interfaces are disjoint from networks on all other interfaces. i.e. a node accessible from an inbound interface is only accessible through that interface.
+*  On the topology: A node accessible from an inbound interface is only accessible through that interface.
+*  The nodes have unique ip addresses over all connected topologies.
 
 -- notes
-In the forwarding table, an outbound interface should be given preference over a NAT disabled interface.  Otherwise some nodes accessible to both an outbound and a NAT disabled interface might not be accessible to a node on the inbound interface, if Dijkstra chooses the NAT disabled interface as the gateway.
+* In the forwarding table, an outbound interface should be given preference over a NAT disabled interface.  Otherwise some nodes accessible to both an outbound and a NAT disabled interface might not be accessible to a node on the inbound interface, if Dijkstra chooses the NAT disabled interface as the gateway.
+* In the future, we could have multiple inbound interfaces on the same topology.  A solution would be to have a separate forwarding table for each topology.  There would be a single outbound topology, and multiple inbound topologies, and for each topology, a forwarding table with an associated link_state_graph
+* At the moment, there is only one pool of port numbers across all outbound interfaces; in the future, there could be one pool per outbound interface.
 
 -- packet flow:
-   
+if tcp packet is for us and from an outbound interface then pass it to nat_fwd_in; if we find an entry in the NAT table then forward the packet to the node behind the NAT; if tcp packet is not for us and from an inbound interface and the next_hop is through an outbound interface then pass it to nat_fwd_out
+
+

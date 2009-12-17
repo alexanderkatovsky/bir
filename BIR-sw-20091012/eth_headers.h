@@ -32,6 +32,15 @@ struct tcpheader {
     unsigned short int   tcph_urgptr;
 } __attribute__ ((packed)) ;
 
+struct tcp_pseudo_hdr
+{
+    uint32_t src_ip;
+    uint32_t dst_ip;
+    uint8_t reserved;
+    uint8_t protocol;
+    uint16_t len;
+} __attribute__((packed));
+
 #define IP_P_ICMP 1
 #define IP_P_TCP  6
 #define IP_P_OSPF 89

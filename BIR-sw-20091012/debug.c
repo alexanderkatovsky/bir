@@ -3,6 +3,7 @@
 #include "debug.h"
 #include "sr_base_internal.h"
 #include <stdio.h>
+#include "router.h"
 
 void dump_packet(const uint8_t * packet, unsigned int len)
 {
@@ -192,7 +193,27 @@ void dump_ip_hdr(const uint8_t * packet, unsigned int len)
 
 int __debug_validate(struct sr_options * opt, const uint8_t * packet)
 {
-    return opt->debug_show;
+    int eth_type;
+    int ip_type;
+    int ospf_type;
+    if(opt->verbose) return 1;
+    eth_type = ntohs(B_ETH_HDR(packet)->ether_type);
+    if(eth_type == ETHERTYPE_ARP) return opt->show_arp;
+    else if(eth_type == ETHERTYPE_IP)
+    {
+        if(opt->show_ip) return 1;
+        ip_type = B_IP_HDR(packet)->ip_p;
+        if(ip_type == IP_P_ICMP) return opt->show_icmp;
+        else if(ip_type == IP_P_OSPF)
+        {
+            if(opt->show_ospf) return 1;
+            ospf_type = B_OSPF_HDR(packet)->type;
+            if(ospf_type == OSPF_TYPE_HELLO) return opt->show_ospf_hello;
+            else if(ospf_type == OSPF_TYPE_LSU) return opt->show_ospf_lsu;
+        }
+        else if(ip_type == IP_P_TCP) return opt->show_tcp;
+    }
+    return 0;  
 }
 
 #include <sys/time.h>
