@@ -71,6 +71,24 @@ void interface_list_update_hw(struct sr_instance * sr)
 #endif
 }
 
+void interface_list_hw_nat(struct sr_instance * sr, int i, enum e_nat_type type)
+{
+#ifdef _CPUMODE_
+    struct nf2device * device = &ROUTER(sr)->device;
+
+    if(type == E_NAT_TYPE_INBOUND)
+    {
+        writeReg(device, NAT_ENABLE_IF, 1);
+        writeReg(device, NAT_INBOUND_IF, i);
+    }
+    else if(type == E_NAT_TYPE_OUTBOUND)
+    {
+        writeReg(device, NAT_ENABLE_IF, 1);
+        writeReg(device, NAT_OUTBOUND_IF, i);
+    }
+#endif
+}
+
 
 int interface_list_send_hello_on_interface(void * data, void * userdata)
 {
@@ -372,6 +390,12 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     entry->up = 1;
     list->total += 1;
     entry->nat_type = E_NAT_TYPE_NONE;
+
+    mutex_lock(list->mutex);
+    bi_assoc_array_insert(list->array,entry);
+    interface_list_update_hw(list->sr);
+    mutex_unlock(list->mutex);    
+    
     if(inbound && assoc_array_read(inbound, interface->name))
     {
         entry->nat_type = E_NAT_TYPE_INBOUND;
@@ -380,11 +404,8 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     {
         entry->nat_type = E_NAT_TYPE_OUTBOUND;
     }
-    
-    mutex_lock(list->mutex);
-    bi_assoc_array_insert(list->array,entry);
-    interface_list_update_hw(list->sr);
-    mutex_unlock(list->mutex);    
+
+    interface_list_hw_nat(list->sr, entry->i, entry->nat_type);
 }
 
 struct sr_vns_if * interface_list_get_interface_by_ip(struct interface_list * list, uint32_t ip)
@@ -449,7 +470,10 @@ int interface_list_print_entry(void * data, void * userdata)
     print("  ");    
     print_mac(vnsif->addr,print);
     print("  ");
-    print("%s    %d     %d\n",vnsif->name,entry->aid, entry->up);
+    print("%s    %d     %d      %s\n",vnsif->name,entry->aid, entry->up,
+          entry->nat_type == E_NAT_TYPE_INBOUND ? "in"
+          : entry->nat_type == E_NAT_TYPE_OUTBOUND ? "out"
+          : "no");
     return 0;
 }
 
@@ -458,7 +482,7 @@ void interface_list_show(struct interface_list * list,print_t print)
 {
     mutex_lock(list->mutex);
     print("\nInterface List:\n");
-    print("%3s               %3s               %3s              %3s    %3s    %3s\n","ip","mask","MAC","name", "aid", "up?");
+    print("%3s               %3s               %3s              %3s    %3s    %3s     %3s\n","ip","mask","MAC","name", "aid", "up?", "nat");
     bi_assoc_array_walk_array(list->array,interface_list_print_entry,print);
     print("\n\n");
     mutex_unlock(list->mutex);

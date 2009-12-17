@@ -76,6 +76,14 @@ void print_ip(uint32_t ip,print_t print)
     print("%--15s",buf);
 }
 
+void print_ip_port(uint32_t ip,int port,print_t print)
+{
+    uint8_t * i = (uint8_t *)&ip;
+    char buf[20];
+    sprintf(buf,"%d.%d.%d.%d:%d",i[0],i[1],i[2],i[3],port);
+    print("%--20s",buf);
+}
+
 
 void dump_arp_hdr(const uint8_t * packet, unsigned int len)
 {

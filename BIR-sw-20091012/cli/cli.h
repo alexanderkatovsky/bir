@@ -97,6 +97,7 @@ void cli_show_all();
 #   define cli_show_hw_arp   cli_send_no_hw_str
 #   define cli_show_hw_intf  cli_send_no_hw_str
 #   define cli_show_hw_route cli_send_no_hw_str
+#   define cli_show_hw_nat   cli_send_no_hw_str
 #   ifndef _MANUAL_MODE_
 #       define _VNS_MODE_
 #   endif
@@ -106,12 +107,14 @@ void cli_show_all();
     void cli_show_hw_arp();
     void cli_show_hw_intf();
     void cli_show_hw_route();
+    void cli_show_hw_nat();
 #endif
 
 void cli_show_ip();
 void cli_show_ip_arp();
 void cli_show_ip_intf();
 void cli_show_ip_route();
+void cli_show_nat();
 
 void cli_show_opt();
 void cli_show_opt_verbose();

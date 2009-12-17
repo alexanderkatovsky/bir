@@ -251,6 +251,7 @@ void cli_show_hw() {
     cli_show_hw_arp();
     cli_show_hw_intf();
     cli_show_hw_route();
+    cli_show_hw_nat();
 }
 
 void cli_show_hw_about() {
@@ -280,6 +281,39 @@ void cli_show_hw_arp() {
         print_ip(htonl(ip),cli_printf);
         cli_printf("\n");
     }
+}
+
+void cli_show_hw_nat()
+{
+    int i;
+    struct nf2device* device = &ROUTER(get_sr())->device;
+    uint32_t out_ip,out_port,dst_ip,dst_port,src_ip,src_port;    
+
+    cli_printf("\nNAT table:\n");
+    for(i = 0; i < NAT_TABLE_DEPTH; i++)
+    {
+        writeReg(device, NAT_TABLE_RD_ADDR, i);
+
+        readReg(device, NAT_TABLE_NAT_OUT_IP, &out_ip);
+        readReg(device, NAT_TABLE_NAT_OUT_PORT, &out_port);
+        readReg(device, NAT_TABLE_IP_DST, &dst_ip);
+        readReg(device, NAT_TABLE_DST_PORT, &dst_port);
+        readReg(device, NAT_TABLE_IP_SRC, &src_ip);
+        readReg(device, NAT_TABLE_SRC_PORT, &src_port);
+
+        src_ip = htonl(src_ip);
+        out_ip = htonl(out_ip);
+        dst_ip = htonl(dst_ip);
+
+        if(out_ip != 0)
+        {
+            print_ip(htonl(src_ip),cli_printf);cli_printf(":0x%04x ",src_port);
+            print_ip(htonl(out_ip),cli_printf);cli_printf(":0x%04x ",out_port);
+            print_ip(htonl(dst_ip),cli_printf);cli_printf(":0x%04x ",dst_port);
+            
+            cli_printf("\n");
+        }
+    }    
 }
 
 
@@ -354,6 +388,12 @@ void cli_show_ip() {
     cli_show_ip_arp();
     cli_show_ip_intf();
     cli_show_ip_route();
+    cli_show_nat();
+}
+
+void cli_show_nat()
+{
+    nat_show(get_sr(),cli_printf);
 }
 
 void cli_show_ip_arp() {

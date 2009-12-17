@@ -1,15 +1,71 @@
 #include "nat.h"
 #include <unistd.h>
 #include "router.h"
+#include "reg_defines.h"
 #include "lwtcp/lwip/sys.h"
 
-void nat_free_port(struct sr_instance * sr, int port)
+
+void nat_hw_insert_entry(struct sr_instance * sr, struct nat_entry * entry)
 {
-    int * i = assoc_array_read(NAT(sr)->used_ports, &port);
-    if(i)
+#ifdef _CPUMODE_
+    struct nf2device * device = &ROUTER(sr)->device;
+    struct nat_entry_ip_port ipp;
+    struct nat_entry * entry2;
+    unsigned int port;
+
+    writeReg(device, NAT_TABLE_RD_ADDR, NAT(sr)->hw_i);
+    readReg(device, NAT_TABLE_IP_SRC, &ipp.ip);
+    readReg(device, NAT_TABLE_SRC_PORT, &port);
+    ipp.port = port;
+    ipp.ip = htonl(ipp.ip);
+
+    if((entry2 = bi_assoc_array_read_1(NAT(sr)->table, &ipp)) != NULL)
     {
-        free(i);
+        entry2->hw_i = -1;
     }
+
+    writeReg(device, NAT_TABLE_NAT_OUT_IP, ntohl(entry->outbound.out.ip));
+    writeReg(device, NAT_TABLE_NAT_OUT_PORT, entry->outbound.out.port);
+    writeReg(device, NAT_TABLE_IP_DST, ntohl(entry->outbound.dst.ip));
+    writeReg(device, NAT_TABLE_DST_PORT, entry->outbound.dst.port);
+    writeReg(device, NAT_TABLE_IP_SRC, ntohl(entry->inbound.ip));
+    writeReg(device, NAT_TABLE_SRC_PORT, entry->inbound.port);
+    writeReg(device, NAT_TABLE_WR_ADDR, NAT(sr)->hw_i);
+    
+    entry->hw_i = NAT(sr)->hw_i;
+
+    NAT(sr)->hw_i += 1;
+    NAT(sr)->hw_i %= NAT_TABLE_DEPTH;
+#endif
+}
+
+void nat_hw_delete_entry(struct sr_instance * sr, int i)
+{
+#ifdef _CPUMODE_
+    struct nf2device * device = &ROUTER(sr)->device;
+
+    if(i != -1)
+    {
+        writeReg(device, NAT_TABLE_NAT_OUT_IP, 0);
+        writeReg(device, NAT_TABLE_NAT_OUT_PORT, 0);
+        writeReg(device, NAT_TABLE_IP_DST, 0);
+        writeReg(device, NAT_TABLE_DST_PORT, 0);
+        writeReg(device, NAT_TABLE_IP_SRC, 0);
+        writeReg(device, NAT_TABLE_SRC_PORT, 0);
+        writeReg(device, NAT_TABLE_WR_ADDR, i);
+    }
+#endif
+}
+
+void nat_hw_init(struct sr_instance * sr)
+{
+#ifdef _CPUMODE_
+    int i;
+    for(i = 0; i < NAT_TABLE_DEPTH; i++)
+    {
+        nat_hw_delete_entry(sr, i);
+    }
+#endif
 }
 
 int nat_depricate_entries_a(void * data, void * userdata)
@@ -38,7 +94,7 @@ void nat_depricate_entries(struct sr_instance * sr)
     {
 /*        printf("deprecating entry %x\n",entry->outbound.out.port);*/
         bi_assoc_array_delete_1(NAT(sr)->table, &entry->inbound);
-        nat_free_port(sr, entry->outbound.out.port);
+        nat_hw_delete_entry(sr,entry->hw_i);
         free(entry);
     }
     
@@ -119,10 +175,11 @@ void nat_create(struct sr_instance * sr)
     NEW_STRUCT(ret,nat_table);
     ROUTER(sr)->nat = ret;
     ret->table = bi_assoc_array_create(nat_get_INBOUND,nat_entry_ip_port_cmp,nat_get_OUTBOUND,nat_entry_OUTBOUND_cmp);
-    ret->used_ports = assoc_array_create(assoc_array_get_self, assoc_array_key_comp_int);
     
     ret->exit_signal = 1;
     ret->mutex = mutex_create();
+    nat_hw_init(sr);
+    ret->hw_i = 0;
     sys_thread_new(nat_thread,sr);
 }
 
@@ -134,30 +191,20 @@ void nat_destroy(struct nat_table * nat)
         usleep(10000);
     }
     bi_assoc_array_delete_array(nat->table, assoc_array_delete_self);
-    assoc_array_delete_array(nat->used_ports, assoc_array_delete_self);
     mutex_destroy(nat->mutex);
     free(nat);
 }
 
 
-/*
- * A more efficient approach: keep an array of freed entries.  If this is non-empty then
- * use one of these, else use 1 + maximum entry in the used array (a function returning 1
- * in assoc_array_walk will get the max entry)
- * */
-int nat_port_alloc(struct sr_instance * sr, uint16_t * port)
+int nat_port_alloc(struct sr_instance * sr, struct nat_entry_OUTBOUND * outbound)
 {
-    struct assoc_array * used_ports = NAT(sr)->used_ports;
+    struct bi_assoc_array * table = NAT(sr)->table;
     int i;
-    int * pi;
     for(i = 1; i < 0xffff; i++)
     {
-        if(assoc_array_read(used_ports, &i) == NULL)
+        outbound->out.port = i;
+        if(bi_assoc_array_read_2(table, outbound) == NULL)
         {
-            pi = malloc(sizeof(int));
-            *pi = i;
-            *port = i;
-            assoc_array_insert(used_ports, pi);
             return 1;
         }
     }
@@ -169,7 +216,7 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
 {
     struct nat_entry_ip_port src = {*src_ip, *src_port};
     struct nat_entry * entry;
-    int ret = 1;
+    int ret = 0;
 
     mutex_lock(NAT(sr)->mutex);
 
@@ -178,6 +225,7 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
 
     if(entry)
     {
+        ret = 1;
         if(dst_ip == entry->outbound.dst.ip && dst_port == entry->outbound.dst.port &&
            *src_ip == entry->outbound.out.ip)
         {
@@ -185,26 +233,34 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
         }
         else
         {
+            /* keep the old port number  */
             bi_assoc_array_delete_1(NAT(sr)->table, &src);
             entry->outbound.out.ip = *src_ip;
             entry->outbound.dst.ip = dst_ip;
-            entry->outbound.dst.port = dst_port; /* keep the old port number  */
+            entry->outbound.dst.port = dst_port; 
             bi_assoc_array_insert(NAT(sr)->table, entry);
+            nat_hw_delete_entry(sr,entry->hw_i);
+            nat_hw_insert_entry(sr,entry);
         }
     }
-    else if(nat_port_alloc(sr, src_port))
+    else
     {
         entry = (struct nat_entry *)malloc(sizeof(struct nat_entry));
         entry->inbound = src;
         entry->outbound.out.ip = *src_ip;
-        entry->outbound.out.port = *src_port;
         entry->outbound.dst.ip = dst_ip;
-        entry->outbound.dst.port = dst_port; 
-        bi_assoc_array_insert(NAT(sr)->table, entry);
-    }
-    else
-    {
-        ret = 0;
+        entry->outbound.dst.port = dst_port;
+
+        if(nat_port_alloc(sr,&entry->outbound))
+        {
+            ret = 1;
+            bi_assoc_array_insert(NAT(sr)->table, entry);
+            nat_hw_insert_entry(sr,entry);
+        }
+        else
+        {
+            free(entry);
+        }
     }
 
     if(ret)
@@ -230,8 +286,23 @@ int nat_in(struct sr_instance * sr, uint32_t src_ip, uint16_t src_port, uint32_t
         *dst_port = entry->inbound.port;
         return 1;
     }
-    else
-    {
-        return 0;
-    }
+    return 0;
+}
+
+int __nat_show_a(void * data, void * userdata)
+{
+    print_t print = (print_t)userdata;
+    struct nat_entry * entry = (struct nat_entry *)data;
+
+    print_ip_port(entry->inbound.ip,entry->inbound.port,print);
+    print_ip_port(entry->outbound.out.ip,entry->outbound.out.port,print);
+    print_ip_port(entry->outbound.dst.ip,entry->outbound.dst.port,print);
+    print(" (ttl: %d)\n", entry->ttl);
+    return 0;
+}
+
+void nat_show(struct sr_instance * sr, print_t print)
+{
+    print("\nNAT table:\n");
+    bi_assoc_array_walk_array(NAT(sr)->table,__nat_show_a,print);
 }

@@ -4,6 +4,7 @@
 #include "bi_assoc_array.h"
 #include "common.h"
 #include "mutex.h"
+#include "debug.h"
 
 struct sr_instance;
 
@@ -27,13 +28,16 @@ struct nat_entry
     struct nat_entry_OUTBOUND outbound;
 
     int ttl;
+    int hw_i;
 };
 
 struct nat_table
 {
     /* (src_ip, src_port, out_ip, out_port, dst_ip, dst_port)  */
     struct bi_assoc_array * table;
-    struct assoc_array * used_ports;
+
+    /*the next entry to write to in the NAT hardware table*/
+    int hw_i;
 
     int exit_signal;
     struct sr_mutex * mutex;
@@ -45,6 +49,6 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port, uin
             uint16_t dst_port, char * out_iface);
 int nat_in(struct sr_instance * sr, uint32_t src_ip, uint16_t src_port, uint32_t * dst_ip, uint16_t * dst_port);
 
-
+void nat_show(struct sr_instance * sr, print_t print);
 
 #endif
