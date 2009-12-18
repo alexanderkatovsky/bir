@@ -28,7 +28,6 @@ void arp_reply_waiting_list_alert_host_unreachable(struct arwl_entry * entry)
     struct arwl_list_entry * pl_entry;
     while((pl_entry = fifo_pop(entry->packet_list)))
     {
-        dump_ip(entry->next_hop);
         icmp_send_host_unreachable(pl_entry->packet);
     }
 }
@@ -146,6 +145,8 @@ void arp_reply_waiting_list_add(struct arp_reply_waiting_list * list, struct sr_
     mutex_unlock(list->mutex);
 }
 
+struct sr_instance * get_sr();
+
 void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint32_t ip)
 {
     struct arwl_entry * entry;
@@ -157,7 +158,8 @@ void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint3
     {
         while((l_entry = ((struct arwl_list_entry * )fifo_pop(entry->packet_list))))
         {
-            ip_forward_packet(l_entry->packet,l_entry->next_hop,entry->thru_interface);
+            ip_send(l_entry->packet, entry->next_hop, entry->thru_interface);
+            free(l_entry);
         }
         __delete_arwl(entry);
     }
@@ -168,7 +170,7 @@ void arp_reply_waiting_list_dispatch(struct arp_reply_waiting_list * list, uint3
 void arp_request_handler_process_reply(struct sr_packet * packet)
 {
     struct sr_arphdr * arp_hdr = ARP_HDR(packet);
-    arp_cache_add(packet->sr,arp_hdr->ar_sip,arp_hdr->ar_sha);
+    arp_cache_add(packet->sr,arp_hdr->ar_sip,arp_hdr->ar_sha,1);
     arp_reply_waiting_list_dispatch(ROUTER(packet->sr)->arwl, ARP_HDR(packet)->ar_sip);
 }
 

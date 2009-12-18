@@ -254,6 +254,7 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
         if(nat_port_alloc(sr,&entry->outbound))
         {
             ret = 1;
+            *src_port = entry->outbound.out.port;
             bi_assoc_array_insert(NAT(sr)->table, entry);
             nat_hw_insert_entry(sr,entry);
         }

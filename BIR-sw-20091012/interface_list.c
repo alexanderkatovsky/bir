@@ -175,7 +175,7 @@ void __interface_list_send_lsu_a(struct neighbour * n, void * userdata)
     ip_construct_ip_header(packet->packet,ilsi->len,0,OSPF_MAX_LSU_TTL,IP_P_OSPF,vns_if->ip,n->ip);
     ip_construct_eth_header(packet->packet,0,0,ETHERTYPE_IP);
 
-    ip_forward_packet(packet,n->ip,vns_if->name);
+    ip_send(packet,n->ip,vns_if->name);
 
     router_free_packet(packet);
 }
@@ -424,6 +424,40 @@ struct sr_vns_if * interface_list_get_interface_by_ip(struct interface_list * li
     return ret;
 }
 
+struct sr_vns_if * interface_list_get_interface_by_name(struct interface_list * list, char * name)
+{
+    struct interface_list_entry * entry;
+    struct sr_vns_if * ret = NULL;
+    mutex_lock(list->mutex);
+    entry = bi_assoc_array_read_2(list->array,name);
+    if(entry)
+    {
+        ret = entry->vns_if;
+    }    
+    mutex_unlock(list->mutex);
+
+    return ret;
+}
+
+void interface_list_set_ip(struct sr_instance * sr, char * name, uint32_t ip, uint32_t subnet)
+{
+    struct interface_list * list = INTERFACE_LIST(sr);
+    struct interface_list_entry * entry;
+    mutex_lock(list->mutex);
+    if(bi_assoc_array_read_1(list->array, &ip) == NULL)
+    {
+        entry = bi_assoc_array_delete_2(list->array,name);
+        if(entry)
+        {
+            entry->vns_if->ip = ip;
+            entry->vns_if->mask = subnet;
+            bi_assoc_array_insert(list->array,entry);
+            ospf_send_hello(sr,entry);
+        }
+    }
+    mutex_unlock(list->mutex);
+}
+
 int interface_list_get_MAC_and_IP_from_name(struct interface_list * list,
                                             char * interface, uint8_t * MAC, uint32_t * ip)
 {
@@ -498,10 +532,6 @@ void interface_list_process_incoming_hello(struct sr_instance * sr, char * inter
     entry = bi_assoc_array_read_2(iflist->array, interface);
     if(entry)
     {
-        if(entry->aid == 0)
-        {
-            entry->aid = aid;
-        }
         if(entry->aid == aid)
         {
             if(neighbour_list_process_incoming_hello(sr, entry->n_list,ip,rid,aid,nmask,helloint))

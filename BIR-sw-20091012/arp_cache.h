@@ -23,6 +23,7 @@ struct arp_cache_entry
 struct arp_cache
 {
     struct bi_assoc_array * array;
+    struct bi_assoc_array * array_s;    
 
     struct sr_mutex * mutex;
     int exit_signal;
@@ -31,7 +32,9 @@ struct arp_cache
 void arp_cache_create(struct sr_instance * sr);
 void arp_cache_destroy(struct arp_cache * cache);
 int arp_cache_get_MAC_from_ip(struct arp_cache * cache, uint32_t ip, uint8_t * MAC);
-void arp_cache_add(struct sr_instance * sr, uint32_t ip, const uint8_t * MAC);
+void arp_cache_add(struct sr_instance * sr, uint32_t ip, const uint8_t * MAC, int isDynamic);
+int arp_cache_remove_entry(struct sr_instance * sr, uint32_t ip, int isDynamic);
+int arp_cache_purge(struct sr_instance * sr, int isDynamic);
 
 void arp_cache_show(struct arp_cache * cache,print_t print);
 void arp_cache_alert_packet_received(struct sr_packet * packet);

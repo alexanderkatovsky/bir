@@ -3,11 +3,10 @@
 #include "arp_cache.h"
 #include "common.h"
 
-void sr_transport_input(uint8_t* packet /* borrowed */);
 
-void ip_forward_packet(struct sr_packet * packet, uint32_t next_hop, char * thru_interface)
+/* look up arp and send  */
+void ip_send(struct sr_packet * packet, uint32_t next_hop, char * thru_interface)
 {
-    struct ip * ip_hdr = IP_HDR(packet);
     struct sr_ethernet_hdr * eth_hdr = ETH_HDR(packet);
 
     if(!arp_cache_get_MAC_from_ip(ROUTER(packet->sr)->a_cache, next_hop, eth_hdr->ether_dhost))
@@ -16,9 +15,6 @@ void ip_forward_packet(struct sr_packet * packet, uint32_t next_hop, char * thru
     }
     else
     {
-        ip_hdr->ip_ttl --;
-        ip_hdr->ip_sum = checksum_ipheader(ip_hdr);
-
         if(interface_list_get_MAC_and_IP_from_name(ROUTER(packet->sr)->iflist,thru_interface,eth_hdr->ether_shost,NULL))
         {
             if(sr_integ_low_level_output(packet->sr,packet->packet,packet->len,thru_interface) == -1)
@@ -57,7 +53,9 @@ void ip_forward(struct sr_packet * packet)
             {
                 next_hop = ip_hdr->ip_dst.s_addr;
             }
-            ip_forward_packet(packet,next_hop,thru_interface);
+            ip_hdr->ip_ttl --;
+            ip_hdr->ip_sum = checksum_ipheader(ip_hdr);
+            ip_send(packet,next_hop,thru_interface);
         }
         else
         {
@@ -83,9 +81,8 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
     }
     else
     {
-        /* if packet is not for (or from) one of our interfaces then forward */
+        /* if packet is not for one of our interfaces then forward */
         if(!interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_dst.s_addr) &&
-           !interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_src.s_addr) &&
            ntohl(ip_hdr->ip_dst.s_addr) != OSPF_AllSPFRouters)
         {
             if(ip_hdr->ip_ttl <= 1)

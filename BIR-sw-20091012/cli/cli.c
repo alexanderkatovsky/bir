@@ -547,10 +547,7 @@ void cli_manip_ip_intf_set( gross_intf_t* data ) {
     void* intf;
     intf = router_lookup_interface_via_name( SR, data->intf_name );
     if( intf ) {
-        /* not yet implmented: set intf's IP as data->ip and subnet mask as
-           data->subnet_mask */
-
-        /* not yet implemented: let everyone else know the routes we offer have changed */
+        interface_list_set_ip(SR, data->intf_name, data->ip, data->subnet_mask);
     }
     else
         cli_send_strs( 2, data->intf_name, " is not a valid interface\n" );

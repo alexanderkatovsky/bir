@@ -55,7 +55,7 @@ class VirtualNode(Node):
         """Forwards to the user responsible for handling packets for this virtual node"""
         if (intf.mac == packet[0:6]) or (packet[0:6] == zeromac):
             if self.conn is not None:
-                print "VirtualHost:  %f\n"%time.time()
+                print "VirtualHost:  %f"%time.time()
                 self.conn.send(VNSPacket(intf.name, packet))
 
 class Host(Node):
@@ -102,7 +102,6 @@ class TunHost(Node, Thread):
             for intf in self.interfaces:
                 print "tun:  %f"%time.time()
                 self.send_packet(intf,buf[4:])
-                print "\n"
 
     def connect(self, _):
         print 'Rejecting connection to %s - may not control a Host node' % self.name

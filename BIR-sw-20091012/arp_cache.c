@@ -44,6 +44,7 @@ void arp_cache_hw_write(struct sr_instance * sr)
     int i;
     mutex_lock(ARP_CACHE(sr)->mutex);
     bi_assoc_array_walk_array(ARP_CACHE(sr)->array, arp_cache_hw_write_a, &achws);
+    bi_assoc_array_walk_array(ARP_CACHE(sr)->array_s, arp_cache_hw_write_a, &achws);
 
     for(i = achws.count; i < ROUTER_OP_LUT_ARP_TABLE_DEPTH; i++)
     {
@@ -97,7 +98,6 @@ void arp_clear_cache_thread(void * arg)
             while((entry = fifo_pop(delete_list)))
             {
                 hw = 1;
-                Debug("deleting ip ");dump_ip(entry->ip);Debug(" from ARP cache\n");
                 free(bi_assoc_array_delete_1(cache->array,&entry->ip));
             }
             if(hw)
@@ -124,6 +124,8 @@ void arp_cache_create(struct sr_instance * sr)
     struct arp_cache * ret = (struct arp_cache *)malloc(sizeof(struct arp_cache));
     ret->array = bi_assoc_array_create(arp_cache_get_key,assoc_array_key_comp_int,
                                        arp_cache_get_MAC,router_cmp_MAC);
+    ret->array_s = bi_assoc_array_create(arp_cache_get_key,assoc_array_key_comp_int,
+                                       arp_cache_get_MAC,router_cmp_MAC);
     ret->exit_signal = 1;
     ret->mutex = mutex_create();
 
@@ -145,6 +147,7 @@ void arp_cache_destroy(struct arp_cache * cache)
     }
     mutex_destroy(cache->mutex);
     bi_assoc_array_delete_array(cache->array,__delete_arp_cache);
+    bi_assoc_array_delete_array(cache->array_s,__delete_arp_cache);    
     free(cache); 
 }
 
@@ -160,22 +163,85 @@ int arp_cache_get_MAC_from_ip(struct arp_cache * cache, uint32_t ip, uint8_t * M
         memcpy(MAC,res->MAC,ETHER_ADDR_LEN);
         ret = 1;
     }
+    else
+    {
+        res = bi_assoc_array_read_1(cache->array_s,&ip);
+        if(res)
+        {
+            memcpy(MAC,res->MAC,ETHER_ADDR_LEN);
+            ret = 1;
+        }        
+    }
 
     mutex_unlock(cache->mutex);
     return ret;
 }
 
-void arp_cache_add(struct sr_instance * sr, uint32_t ip, const uint8_t * MAC)
+void arp_cache_add(struct sr_instance * sr, uint32_t ip, const uint8_t * MAC, int isDynamic)
+{
+    struct bi_assoc_array * cache = isDynamic ? ARP_CACHE(sr)->array : ARP_CACHE(sr)->array_s;
+    struct arp_cache_entry * entry;
+    mutex_lock(ARP_CACHE(sr)->mutex);
+    if((entry = bi_assoc_array_read_2(cache,(void *)MAC)))
+    {
+        entry->ip = ip;
+    }
+    else
+    {
+        entry = (struct arp_cache_entry *)malloc(sizeof(struct arp_cache_entry));
+        entry->ip = ip;
+        memcpy(entry->MAC,MAC,ETHER_ADDR_LEN);
+        bi_assoc_array_insert(cache,entry);
+    }
+    entry->ttl = ARP_CACHE_TIMEOUT;
+    arp_cache_hw_write(sr);    
+    mutex_unlock(ARP_CACHE(sr)->mutex);
+}
+
+int arp_cache_remove_entry(struct sr_instance * sr, uint32_t ip, int isDynamic)
+{
+    struct arp_cache_entry * entry;
+    struct arp_cache * cache = ARP_CACHE(sr);
+    int ret = 0;
+    mutex_lock(cache->mutex);
+    entry = bi_assoc_array_delete_1(isDynamic ? cache->array : cache->array_s, &ip);
+    if(entry)
+    {
+        ret = 1;
+        __delete_arp_cache(entry);
+        arp_cache_hw_write(sr);
+    }
+    mutex_unlock(cache->mutex);
+    return ret;
+}
+
+int __arp_cache_purge_a(void * data, void * userdata)
+{
+    struct arp_cache_entry * entry = (struct arp_cache_entry *)data;
+    struct fifo * delete_list = (struct fifo *)userdata;
+
+    fifo_push(delete_list,entry);
+    return 0;
+}
+
+int arp_cache_purge(struct sr_instance * sr, int isDynamic)
 {
     struct arp_cache * cache = ARP_CACHE(sr);
-    NEW_STRUCT(entry,arp_cache_entry);
+    struct bi_assoc_array * array = isDynamic ? cache->array : cache->array_s;
+    struct fifo * delete_list = fifo_create();
+    struct arp_cache_entry * entry;
+    int i = 0;
     mutex_lock(cache->mutex);
-    entry->ip = ip;
-    entry->ttl = ARP_CACHE_TIMEOUT;
-    memcpy(entry->MAC,MAC,ETHER_ADDR_LEN);
-    bi_assoc_array_insert(cache->array,entry);
+    bi_assoc_array_walk_array(array, __arp_cache_purge_a, delete_list);
+    while((entry = fifo_pop(delete_list)))
+    {
+        i++;
+        __delete_arp_cache(bi_assoc_array_delete_1(cache->array,&entry->ip));
+    }
     arp_cache_hw_write(sr);
     mutex_unlock(cache->mutex);
+    fifo_destroy(delete_list);
+    return i;
 }
 
 void arp_cache_alert_packet_received(struct sr_packet * packet)
@@ -211,6 +277,11 @@ void arp_cache_show(struct arp_cache * cache, print_t print)
     print("\nARP Cache:\n");
     print("%3s               %3s              %3s\n","ip","MAC","ttl");   
     bi_assoc_array_walk_array(cache->array,arp_cache_print_entry,print);
+    print("\n\n");
+
+    print("\nARP Cache (static):\n");
+    print("%3s               %3s              %3s\n","ip","MAC","ttl");   
+    bi_assoc_array_walk_array(cache->array_s,arp_cache_print_entry,print);
     print("\n\n");
 }
 

@@ -17,8 +17,8 @@
 int arp_cache_static_entry_add( struct sr_instance* sr,
                                 uint32_t ip,
                                 uint8_t* mac ) {
-    fprintf( stderr, "not yet implemented: add static ip <-> mac translation to ROUTER's ARP cache\n" );
-    return 0; /* fail */
+    arp_cache_add(sr,ip,mac,0);
+    return 1; 
 }
 
 /**
@@ -26,8 +26,7 @@ int arp_cache_static_entry_add( struct sr_instance* sr,
  * @return 1 if succeeded (false if ip wasn't in the cache as a static entry)
  */
 int arp_cache_static_entry_remove( struct sr_instance* sr, uint32_t ip ) {
-    fprintf( stderr, "not yet implemented: remove static ip <-> mac translation to ROUTER's ARP cache\n" );
-    return 0; /* fail */
+    return arp_cache_remove_entry(sr,ip,0);
 }
 
 /**
@@ -35,8 +34,7 @@ int arp_cache_static_entry_remove( struct sr_instance* sr, uint32_t ip ) {
  * @return  number of static entries removed
  */
 unsigned arp_cache_static_purge( struct sr_instance* sr ) {
-    fprintf( stderr, "not yet implemented: arp_cache_static_purge\n" );
-    return 0;
+    return arp_cache_purge(sr,0);
 }
 
 /**
@@ -44,8 +42,7 @@ unsigned arp_cache_static_purge( struct sr_instance* sr ) {
  * @return  number of dynamic entries removed
  */
 unsigned arp_cache_dynamic_purge( struct sr_instance* sr ) {
-    fprintf( stderr, "not yet implemented: arp_cache_dynamic_purge\n" );
-    return 0;
+    return arp_cache_purge(sr,1);
 }
 
 /**
@@ -77,8 +74,9 @@ void* router_lookup_interface_via_ip( struct sr_instance* sr,
  */
 void* router_lookup_interface_via_name( struct sr_instance* sr,
                                         const char* name ) {
-    fprintf( stderr, "not yet implemented: router_lookup_interface_via_name\n" );
-    return NULL;
+    char cpname[SR_NAMELEN];
+    strcpy(cpname,name);
+    return interface_list_get_interface_by_name(INTERFACE_LIST(sr), cpname);
 }
 
 /**

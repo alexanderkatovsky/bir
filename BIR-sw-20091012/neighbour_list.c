@@ -42,12 +42,12 @@ int neighbour_list_process_incoming_hello(struct sr_instance * sr, struct neighb
         ret = 1;
         n = (struct neighbour *)malloc(sizeof(struct neighbour));
         n->router_id = rid;
-        n->ip = ip;
         n->aid = aid;
-        n->nmask = nmask;
-        n->helloint = helloint;
         assoc_array_insert(nl->array,n);
     }
+    n->ip = ip;
+    n->nmask = nmask;
+    n->helloint = helloint;
     n->ttl = 3 * helloint;
 
     mutex_unlock(nl->mutex);

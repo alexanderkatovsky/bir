@@ -86,6 +86,7 @@ class HTTPHandler:
                 pkt.next.src_ip = intf_ip
                 pkt.next.dst_mac = pkt.next.src_mac
                 pkt.next.src_mac = intf_mac
+                pkt.next.code = 2
                 self.__send(IPConstructor.eth_packet.build(pkt))
             elif pkt.ethernet_header.type == 'IP':
                 if pkt.next.ip_header.protocol == 'ICMP':

@@ -32,7 +32,7 @@ int tcp_check_packet(struct sr_packet * packet)
 }
 
 struct sr_packet * tcp_construct_packet(struct sr_packet * packet, uint32_t src_ip,
-                          int src_port, uint32_t dst_ip, int dst_port)
+                                        int src_port, uint32_t dst_ip, int dst_port, char * thru_interface)
 {
     uint8_t * packet_data = malloc(packet->len);
     struct sr_packet * ret;
@@ -46,7 +46,7 @@ struct sr_packet * tcp_construct_packet(struct sr_packet * packet, uint32_t src_
     B_IP_HDR(packet_data)->ip_dst.s_addr = dst_ip;
     B_IP_HDR(packet_data)->ip_sum = checksum_ipheader(B_IP_HDR(packet_data));
     
-    ret = router_construct_packet(packet->sr, packet_data, packet->len, packet->interface);
+    ret = router_construct_packet(packet->sr, packet_data, packet->len, thru_interface);
     free(packet_data);
     return ret;
 }
@@ -73,12 +73,13 @@ void tcp_handle_incoming_not_for_us(struct sr_packet * packet)
                     /* allocate out_port, lookup src_ip from thru_interface, and add to NAT table  */
                     if(nat_out(packet->sr,&src_ip,&src_port,dst_ip,dst_port,thru_interface))
                     {
-                        packet2 = tcp_construct_packet(packet,src_ip,src_port,dst_ip,dst_port);
-                        ip_forward_packet(packet2,next_hop,thru_interface);
+                        packet2 = tcp_construct_packet(packet,src_ip,src_port,dst_ip,dst_port,thru_interface);
+                        ip_forward(packet2);
                         router_free_packet(packet2);
                     }
                 }
-                else if(strcmp(thru_interface, packet->interface) == 0)
+                else if(strcmp(thru_interface, packet->interface) == 0 ||
+                        !interface_list_inbound(packet->sr, thru_interface))
                 {
                     ip_forward(packet);
                 }
@@ -113,8 +114,8 @@ void tcp_handle_incoming_for_us(struct sr_packet * packet)
             if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table, dst_ip,
                                                 &next_hop, thru_interface))
             {
-                packet2 = tcp_construct_packet(packet,src_ip,src_port,dst_ip,dst_port);
-                ip_forward_packet(packet2,next_hop,thru_interface);
+                packet2 = tcp_construct_packet(packet,src_ip,src_port,dst_ip,dst_port, thru_interface);
+                ip_send(packet2,next_hop,thru_interface);
                 router_free_packet(packet2);            
             }
         }

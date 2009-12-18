@@ -29,6 +29,10 @@ struct sr_packet * router_construct_packet(struct sr_instance * sr,
 void router_free_packet(struct sr_packet * packet)
 {
     free(packet->packet);
+    if(packet->interface)
+    {
+        free(packet->interface);
+    }
     free(packet);
 }
 
@@ -151,11 +155,7 @@ void router_load_static_routes(struct sr_instance * sr)
 
 struct sr_packet * router_copy_packet(struct sr_packet * packet)
 {
-    struct sr_packet * ret = (struct sr_packet *)malloc(sizeof(struct sr_packet));
-    *ret = *packet;
-    ret->packet = (uint8_t *)malloc(packet->len);
-    memcpy(ret->packet,packet->packet,packet->len);
-    return ret;
+    return router_construct_packet(packet->sr, packet->packet, packet->len, packet->interface);
 }
 
 

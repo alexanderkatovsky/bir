@@ -59,7 +59,7 @@ void __ospf_forward_incoming_lsu_a(struct sr_vns_if * vns_if, struct neighbour *
     {
         IP_HDR(packet)->ip_src = src;
         IP_HDR(packet)->ip_dst = dst;
-        ip_forward_packet(packet,n->ip,vns_if->name);
+        ip_send(packet,n->ip,vns_if->name);
     }
 }
 

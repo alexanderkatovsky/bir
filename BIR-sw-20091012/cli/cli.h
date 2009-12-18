@@ -32,7 +32,7 @@ typedef struct {
 } gross_arp_t;
 
 typedef struct {
-    const char* intf_name;
+    char* intf_name;
     uint32_t ip;
     uint32_t subnet_mask;
 } gross_intf_t;

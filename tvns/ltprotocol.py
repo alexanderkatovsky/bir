@@ -82,10 +82,14 @@ class LTTwistedProtocol(Protocol):
         self.plen = 0
         self.connected = False
 
+    def send(self, ltm):
+        import time
+        print "LLTTwistedProtocol %f\n"%time.time()
+        self.transport.write(self.factory.lt_protocol.pack_with_header(ltm))
+
     def connectionMade(self):
         # add function to transport so it is easy to send an LTProtocol message with it
         self.connected = True
-        self.send = lambda ltm : self.transport.write(self.factory.lt_protocol.pack_with_header(ltm))
         self.factory.new_conn_callback(self)
 
     def connectionLost(self, reason):
