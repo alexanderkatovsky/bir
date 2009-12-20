@@ -144,6 +144,15 @@ class VNSHardwareInfo(LTMessage):
     def pack(self):
         return ''.join([intf.pack() for intf in self.interfaces])
 
+    @staticmethod
+    def unpack(body):
+        ret = []
+        rest = body
+        while rest != "":
+            ret.append(struct.unpack(VNSInterface.FORMAT, rest[0:VNSInterface.SIZE]))
+            rest = rest[VNSInterface.SIZE:]
+        return ret
+
     def __str__(self):
         return 'Hardware Info: %s' % ' || '.join([str(intf) for intf in self.interfaces])
 VNS_MESSAGES.append(VNSHardwareInfo)

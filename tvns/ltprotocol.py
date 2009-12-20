@@ -98,6 +98,7 @@ class LTTwistedProtocol(Protocol):
 
     def dataReceived(self, data):
         """Called when data is received on a connection."""
+        print "data received"
         self.packet += data
         self.plen += len(data)
         len_fmt = "> " + self.factory.lt_protocol.len_type
