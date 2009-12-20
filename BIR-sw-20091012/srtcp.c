@@ -66,7 +66,7 @@ void tcp_handle_incoming_not_for_us(struct sr_packet * packet)
         if(interface_list_inbound(packet->sr, packet->interface))
         {
             if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table, dst_ip,
-                                                &next_hop, thru_interface))
+                                                &next_hop, thru_interface, 1))
             {
                 if(interface_list_outbound(packet->sr, thru_interface))
                 {
@@ -83,6 +83,10 @@ void tcp_handle_incoming_not_for_us(struct sr_packet * packet)
                 {
                     ip_forward(packet);
                 }
+            }
+            else
+            {
+                icmp_send_host_unreachable(packet);
             }
         }
         else
@@ -112,7 +116,7 @@ void tcp_handle_incoming_for_us(struct sr_packet * packet)
         else if(nat_in(packet->sr,src_ip,src_port,&dst_ip,&dst_port))
         {
             if(forwarding_table_lookup_next_hop(ROUTER(packet->sr)->fwd_table, dst_ip,
-                                                &next_hop, thru_interface))
+                                                &next_hop, thru_interface, 0))
             {
                 packet2 = tcp_construct_packet(packet,src_ip,src_port,dst_ip,dst_port, thru_interface);
                 ip_send(packet2,next_hop,thru_interface);

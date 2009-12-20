@@ -62,20 +62,30 @@ void icmp_send_host_unreachable(struct sr_packet * packet)
 }
 
 
-void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num, int id, int ttl)
+int icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num, int id, int ttl)
 {
     int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) +
         sizeof(struct icmphdr);
     struct sr_packet * packet;
+    int ret = 0;
+    uint32_t ip_src, next_hop;
+    uint8_t * data;
+    char thru_interface[SR_NAMELEN];
 
-    uint8_t * data = (uint8_t *)malloc(len);
-    icmp_construct_header(data,8,0,id,seq_num,0);
-    ip_construct_ip_header(data,len,0,ttl,IP_P_ICMP,ROUTER(sr)->rid,ip);
-    ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
-    packet = router_construct_packet(sr,data,len,NULL);
-    ip_forward(packet);
-    router_free_packet(packet);
-    free(data);
+    if(forwarding_table_lookup_next_hop(FORWARDING_TABLE(sr),ip,&next_hop,thru_interface, 0) &&
+       interface_list_get_MAC_and_IP_from_name(INTERFACE_LIST(sr),thru_interface,NULL,&ip_src))
+    {
+        ret = 1;
+        data = (uint8_t *)malloc(len);
+        icmp_construct_header(data,8,0,id,seq_num,0);
+        ip_construct_ip_header(data,len,0,ttl,IP_P_ICMP,ip_src,ip);
+        ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
+        packet = router_construct_packet(sr,data,len,NULL);
+        ret = ip_send_packet(packet);
+        router_free_packet(packet);
+        free(data);
+    }
+    return ret;
 }
 
 void icmp_reply(struct sr_packet * packet)
@@ -96,7 +106,7 @@ void icmp_reply(struct sr_packet * packet)
                            iph->ip_src.s_addr);
     ip_construct_eth_header(data,0,0,ETHERTYPE_IP);
     packet2 = router_construct_packet(packet->sr,data,len + xtra_len,NULL);
-    ip_forward(packet2);
+    ip_send_packet(packet2);
     router_free_packet(packet2);
     free(data);
 }

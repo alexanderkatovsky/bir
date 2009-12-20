@@ -58,7 +58,11 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 
     ip.subnet = interface->ip & interface->mask;
     ip.mask   = interface->mask;
-    forwarding_table_add(sr, &ip, 0, interface->name,1);
+    forwarding_table_add(sr, &ip, 0, interface->name,1,0);
+    if(interface_list_outbound(sr,interface->name))
+    {
+        forwarding_table_add(sr, &ip, 0, interface->name,1,1);
+    }
     forwarding_table_hw_write(sr);
 
     if(router->rid == 0)
@@ -130,6 +134,10 @@ void router_destroy(struct sr_router * router)
     if(router->opt.outbound)
     {
         assoc_array_delete_array(router->opt.outbound, assoc_array_delete_self);
+    }
+    if(router->opt.ospf_disabled_interfaces)
+    {
+        assoc_array_delete_array(router->opt.ospf_disabled_interfaces, assoc_array_delete_self);
     }    
 
 #ifdef _CPUMODE_
@@ -148,7 +156,7 @@ void router_load_static_routes(struct sr_instance * sr)
     {
         ip.subnet = rt_entry->dest.s_addr;
         ip.mask   = rt_entry->mask.s_addr;
-        forwarding_table_add(sr, &ip, rt_entry->gw.s_addr, rt_entry->interface,0);
+        forwarding_table_add(sr, &ip, rt_entry->gw.s_addr, rt_entry->interface,0,0);
         rt_entry = rt_entry->next;
     }
 }
@@ -181,11 +189,13 @@ int router_cmp_MAC(void * k1, void * k2)
 void sr_router_default_options(struct sr_options * opt)
 {
     opt->arp_proxy = 0;
+    opt->disable_ospf = 0;
     opt->aid = 0;
 
     opt->RCPPort = -1;
     opt->inbound = NULL;
     opt->outbound = NULL;
+    opt->ospf_disabled_interfaces = NULL;
 
     opt->verbose = 0;
     opt->show_ip = 0;

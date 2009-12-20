@@ -90,15 +90,14 @@ int router_is_interface_enabled( struct sr_instance* sr, void* intf ) {
  * Returns whether OSPF is enabled (0 if disabled, otherwise it is enabled).
  */
 int router_is_ospf_enabled( struct sr_instance* sr ) {
-    fprintf( stderr, "not yet implemented: router_is_ospf_enabled\n" );
-    return 0;
+    return !OPTIONS(sr)->disable_ospf;
 }
 
 /**
  * Sets whether OSPF is enabled.
  */
 void router_set_ospf_enabled( struct sr_instance* sr, int enabled ) {
-    fprintf( stderr, "not yet implemented: router_set_ospf_enabled\n" );
+    OPTIONS(sr)->disable_ospf = 0;
 }
 
 /** Adds a route to the appropriate routing table. */
@@ -107,7 +106,11 @@ void rtable_route_add( struct sr_instance* sr,
                        char * intf,
                        int is_static_route ) {
     struct ip_address ip = {dest,mask};
-    forwarding_table_add(sr,&ip,gw,intf,!is_static_route);
+    if(interface_list_outbound(sr, intf))
+    {
+        forwarding_table_add(sr,&ip,gw,intf,!is_static_route,1);
+    }
+    forwarding_table_add(sr,&ip,gw,intf,!is_static_route,0);
 }
 
 /** Removes the specified route from the routing table, if present. */

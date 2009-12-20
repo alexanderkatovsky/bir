@@ -70,6 +70,7 @@ class LTProtocol():
             return self.msg_types[type_val].unpack(body)
         else:
             return None # unknown message type
+        
 
 class LTTwistedProtocol(Protocol):
     """A Twisted protocol whose messages begin with length and type."""
@@ -83,8 +84,6 @@ class LTTwistedProtocol(Protocol):
         self.connected = False
 
     def send(self, ltm):
-        import time
-        print "LLTTwistedProtocol %f\n"%time.time()
         self.transport.write(self.factory.lt_protocol.pack_with_header(ltm))
 
     def connectionMade(self):
@@ -188,6 +187,7 @@ class LTTwistedClient(ReconnectingClientFactory):
         self.ip = ip
         self.port = port
         reactor.connectTCP(ip, port, self)
+        reactor.run()
 
     def startedConnecting(self, _):
         if self.verbose:

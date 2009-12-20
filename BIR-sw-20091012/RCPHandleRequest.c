@@ -62,7 +62,7 @@ void RCPGetForwardingTable(struct sr_instance * sr, struct RCPData * data, int i
     struct RCPGetForwardingTable_s * ts;
     int i = 0;
     struct RCPGetForwardingTable_i ti = {list,0};
-    forwarding_table_loop(FORWARDING_TABLE(sr),RCPGetForwardingTable_a,&ti,isdynamic);
+    forwarding_table_loop(FORWARDING_TABLE(sr),RCPGetForwardingTable_a,&ti,isdynamic,0);
     raw = malloc(ti.len);
     while((ts = fifo_pop(ti.list)))
     {

@@ -22,12 +22,14 @@ struct sr_options
 {
     /* arp proxy (respond to arp request if the destination address is in the forwarding table) */
     int arp_proxy;
+    int disable_ospf;
     int aid;
     int RCPPort;
     /* inbound nat interfaces */
     struct assoc_array * inbound;
     /* outbound nat interfaces */
     struct assoc_array * outbound;
+    struct assoc_array * ospf_disabled_interfaces;
 
 
     int verbose;

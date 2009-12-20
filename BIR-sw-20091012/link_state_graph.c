@@ -74,12 +74,29 @@ struct link_state_node * __link_state_graph_insert_node(struct link_state_graph 
     return lsn;
 }
 
+int __link_state_graph_link_cmp(void * d1, void * d2)
+{
+    struct link * l1 = (struct link *)d1;
+    struct link * l2 = (struct link *)d2;
+
+    return
+        l1->ip.subnet == l2->ip.subnet &&
+        l1->ip.mask   == l2->ip.mask   &&
+        l1->rid       == l2->rid;
+}
+
+/* called by link_state_graph_update_links ->  ospf_handle_incoming_lsu; updates the
+ * link state graph for a node and returns 1 if the forwarding table needs updating
+ * */
 int link_state_graph_update_links_list(struct sr_instance * sr,
                                        struct assoc_array ** links, uint32_t num, struct ospfv2_lsu * adv)
 {
     uint32_t i;
-    struct assoc_array * links2 = assoc_array_create(__links_getter,__link_cmp);
+    struct assoc_array * links2;
     struct link * lk;
+    int ret = 0;
+
+    links2 = assoc_array_create(__links_getter,__link_cmp);
 
     for(i = 0; i < num; i++)
     {
@@ -87,29 +104,44 @@ int link_state_graph_update_links_list(struct sr_instance * sr,
         lk->ip.subnet = adv[i].subnet;
         lk->ip.mask = adv[i].mask;
         lk->rid = adv[i].rid;
-        assoc_array_insert(links2,lk);
+        if(assoc_array_read(links2,&lk->ip) == NULL)
+        {
+            assoc_array_insert(links2,lk);
+        }
+        else
+        {
+            free(lk);
+        }
     }
 
+    if(!assoc_array_eq(*links, links2, __link_state_graph_link_cmp))
+    {
+        ret = 1;
+    }
     assoc_array_delete_array(*links,link_state_graph_links_list_delete_link);
     *links = links2;
-    return 1;
+
+    return ret;
 }
 
-struct link_state_graph_dijkstra_initial_i
+struct dijkstra_i
 {
+    struct linked_list * dl;
     struct linked_list * dijkstra_list;
-    int outbound;
+    struct assoc_array * visited;
     struct sr_instance * sr;
+    struct dijkstra * d;
+    int nat;
 };
 
 void link_state_graph_dijkstra_initial(struct sr_vns_if * vns_if, struct neighbour * n, void * userdata)
 {
-    struct link_state_graph_dijkstra_initial_i * dii = (struct link_state_graph_dijkstra_initial_i *)userdata;
+    struct dijkstra_i * di = (struct dijkstra_i *)userdata;
     struct ip_address address = {n->ip, n->nmask};
     struct dijkstra * d;
-    int outbound = interface_list_outbound(dii->sr, vns_if->name);
+    int outbound = interface_list_outbound(di->sr, vns_if->name);
 
-    if((outbound && dii->outbound) || (!outbound && !dii->outbound))
+    if(!di->nat || outbound)
     {
         d = (struct dijkstra *)malloc(sizeof(struct dijkstra));
         d->address = address;
@@ -117,17 +149,9 @@ void link_state_graph_dijkstra_initial(struct sr_vns_if * vns_if, struct neighbo
         d->next_hop = n->ip;
         strcpy(d->interface, vns_if->name);
     
-        linked_list_add(dii->dijkstra_list, d);
+        linked_list_add(di->dijkstra_list, d);
     }
 }
-
-struct dijkstra_i
-{
-    struct linked_list * dl;
-    struct assoc_array * visited;
-    struct sr_instance * sr;
-    struct dijkstra * d;
-};
 
 int link_state_graph_insert_links(void * data, void * userdata)
 {
@@ -148,9 +172,10 @@ int link_state_graph_dijkstra_next(void * data, void * userdata)
     struct dijkstra_i * di = (struct dijkstra_i *)userdata;
     uint32_t * v;
     struct link_state_node * lsn = (struct link_state_node *)assoc_array_read(LSG(di->sr)->array,&d->rid);
-    if(!forwarding_table_dynamic_entry_exists(FORWARDING_TABLE(di->sr),&d->address))
+
+    if(!forwarding_table_dynamic_entry_exists(FORWARDING_TABLE(di->sr),&d->address, di->nat))
     {
-        forwarding_table_add(di->sr,&d->address,d->next_hop,d->interface,1);
+        forwarding_table_add(di->sr,&d->address,d->next_hop,d->interface,1, di->nat);
     }
     if((lsn != NULL) && (assoc_array_read(di->visited,&d->rid) == NULL))
     {
@@ -181,15 +206,15 @@ void link_state_graph_delete_vistited(void * data)
 
 void __link_state_graph_add_if_routes_a(struct sr_vns_if * iface, void * userdata)
 {
-    struct link_state_graph_dijkstra_initial_i * dii = (struct link_state_graph_dijkstra_initial_i *)userdata;
+    struct dijkstra_i * di = (struct dijkstra_i *)userdata;
     struct ip_address ip = {iface->ip & iface->mask, iface->mask};
-    int outbound = interface_list_outbound(dii->sr, iface->name);
+    int outbound = interface_list_outbound(di->sr, iface->name);
 
-    if((outbound && dii->outbound) || (!outbound && !dii->outbound))
+    if(!di->nat || outbound)
     {
-        if(!forwarding_table_dynamic_entry_exists(FORWARDING_TABLE(dii->sr),&ip))
+        if(!forwarding_table_dynamic_entry_exists(FORWARDING_TABLE(di->sr),&ip,di->nat))
         {
-            forwarding_table_add(dii->sr, &ip, 0, iface->name,1);
+            forwarding_table_add(di->sr, &ip, 0, iface->name,1,di->nat);
         }
     }
 }
@@ -219,31 +244,30 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
     struct dijkstra_i di;
     struct __link_state_graph_deprecate_non_visited_nodes_i vni;
     struct link_state_node * lsn;
-    struct link_state_graph_dijkstra_initial_i dii;
-    int nat = router_nat_enabled(sr);
 
     /*clear dynamic entries and lock mutex*/
     forwarding_table_start_dijkstra(sr);
     
     di.sr = sr;
-    di.visited = assoc_array_create(link_state_graph_visited_get_key, assoc_array_key_comp_int);
 
-    dii.sr = sr;
-
-    for(; nat >= 0; nat--)
+    for(di.nat = router_nat_enabled(sr); di.nat >= 0; di.nat--)
     {
-        dii.dijkstra_list = linked_list_create();
-        dii.outbound = nat;
-        interface_list_loop_through_neighbours(INTERFACE_LIST(sr), link_state_graph_dijkstra_initial, &dii);
-        while(!linked_list_empty(dii.dijkstra_list))
+        di.visited = assoc_array_create(link_state_graph_visited_get_key, assoc_array_key_comp_int);
+        di.dijkstra_list = linked_list_create();
+        interface_list_loop_through_neighbours(INTERFACE_LIST(sr), link_state_graph_dijkstra_initial, &di);
+        while(!linked_list_empty(di.dijkstra_list))
         {
             di.dl = linked_list_create();
-            linked_list_walk_list(dii.dijkstra_list, link_state_graph_dijkstra_next, &di);
-            linked_list_delete_list(dii.dijkstra_list, link_state_graph_delete_dijkstra_list);
-            dii.dijkstra_list = di.dl;
+            linked_list_walk_list(di.dijkstra_list, link_state_graph_dijkstra_next, &di);
+            linked_list_delete_list(di.dijkstra_list, link_state_graph_delete_dijkstra_list);
+            di.dijkstra_list = di.dl;
         }
-        interface_list_loop_interfaces(sr, __link_state_graph_add_if_routes_a, &dii);
-        linked_list_delete_list(dii.dijkstra_list,link_state_graph_delete_dijkstra_list);
+        interface_list_loop_interfaces(sr, __link_state_graph_add_if_routes_a, &di);
+        linked_list_delete_list(di.dijkstra_list,link_state_graph_delete_dijkstra_list);
+        if(di.nat)
+        {
+            assoc_array_delete_array(di.visited, link_state_graph_delete_vistited);
+        }
     }
 
     vni.visited = di.visited;

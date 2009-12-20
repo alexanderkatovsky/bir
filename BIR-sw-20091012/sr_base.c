@@ -134,11 +134,13 @@ int sr_init_low_level_subystem(int argc, char **argv)
     int option_index = 0;
     
     const struct option long_options[] = {
-        { "arp_proxy"  ,   no_argument, &opt.arp_proxy, 0 },
+        { "arp_proxy"  ,   no_argument, &opt.arp_proxy, 1 },
+        { "disable_ospf"  ,   no_argument, &opt.disable_ospf, 1 },
         { "aid"        ,   required_argument, &opt.aid, 0 },
         { "RCPPort"    ,   required_argument, &opt.RCPPort, 0 },
         { "inbound"    ,   required_argument, 0, 0 },
         { "outbound"   ,   required_argument, 0, 0 },
+        { "ospf_disabled_interfaces"   ,   required_argument, 0, 0 },
 #ifdef _DEBUG_
         { "verbose" ,   no_argument, &opt.verbose, 1 },
         { "show_ip" ,   no_argument, &opt.show_ip, 1 },
@@ -192,6 +194,13 @@ int sr_init_low_level_subystem(int argc, char **argv)
                         opt.outbound = str_split(optarg,',');
                     }
                 }
+                else if(strcmp(long_options[option_index].name, "ospf_disabled_interfaces") == 0)
+                {
+                    if(opt.ospf_disabled_interfaces == NULL)
+                    {
+                        opt.ospf_disabled_interfaces = str_split(optarg,',');
+                    }
+                }                
                 else
                 {
                     *(long_options[option_index].flag) = atoi((char *) optarg);
@@ -486,15 +495,18 @@ static void usage(char* argv0)
     printf("Format: %s [-h] [-v host] [-s server] [-p VNS port] \n",argv0);
     printf("           [-t topo id] [-P cli port] [-i cpu config file]\n");
     printf("\nLong Options:\n");
-    printf("  --arp_proxy   turn on arp proxying\n");
-    printf("  --aid         router  area id\n");
-    printf("  --RCPPort     Port for RCP Server\n");
-    printf("  --inbound     Inbound NAT interfaces comma separated(e.g. eth0,eth1)\n");
-    printf("  --outbound    Outbound NAT interfaces comma separated(e.g. eth0,eth1)\n");
+    printf("  --arp_proxy     turn on arp proxying\n");
+    printf("  --disable_ospf  turn off ospf\n");    
+    printf("  --aid           router  area id\n");
+    printf("  --RCPPort       Port for RCP Server\n");
+    printf("  --inbound       Inbound NAT interfaces comma separated (e.g. eth0,eth1)\n");
+    printf("  --outbound      Outbound NAT interfaces comma separated (e.g. eth0,eth1)\n");
+    printf("  --ospf_disabled_interfaces\n");
+    printf("                  Interfaces OSPF disabled comma separated (e.g. eth0,eth1)");
     
 #ifdef _DEBUG_
-    printf("  --verbose     Show every packet\n");
+    printf("  --verbose       Show every packet\n");
     printf("  --show_{ip,arp,icmp,tcp,ospf,ospf_hello,ospf_lsu}\n");
-    printf("                Show only this type of packet\n");
+    printf("                  Show only this type of packet\n");
 #endif
 } /* -- usage -- */

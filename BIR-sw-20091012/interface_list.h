@@ -24,6 +24,7 @@ struct interface_list_entry
     uint32_t aid;
     int i;
     uint32_t port;
+    int ospf;
 
     enum e_nat_type nat_type;
 
@@ -75,4 +76,8 @@ int interface_list_set_enabled(struct sr_instance * sr, char * iface, int enable
 int interface_list_inbound(struct sr_instance * sr, char * name);
 int interface_list_outbound(struct sr_instance * sr, char * name);
 int interface_list_nat_enabled(struct sr_instance * sr, char * name);
+
+int interface_list_forward_packet(struct sr_instance * sr, char * from, char * to);
+int interface_list_forward_lsu(struct sr_instance * sr, char * from, char * to);
+int interface_list_ospf_enabled(struct sr_instance * sr, char * interface);
 #endif

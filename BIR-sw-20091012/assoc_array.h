@@ -35,6 +35,8 @@ struct assoc_array
     struct AssocArrayNode * root;
     assoc_array_key_getter get;
     assoc_array_key_comp   cmp;
+
+    int total;
 };
 
 void assoc_array_insert(struct assoc_array * array, void * data);
@@ -49,5 +51,9 @@ void assoc_array_walk_array(struct assoc_array * array, int (* fn)(void *, void 
 struct assoc_array * assoc_array_create(assoc_array_key_getter,assoc_array_key_comp);
 int assoc_array_validate(struct assoc_array * array);
 int assoc_array_empty(struct assoc_array * array);
+int assoc_array_length(struct assoc_array * array);
+
+/* eq tests for equality of data; returns 1 if equal, 0 if not  */
+int assoc_array_eq(struct assoc_array * a1, struct assoc_array * a2, int (* eq)(void *, void *));
 
 #endif

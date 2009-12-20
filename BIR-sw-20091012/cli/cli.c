@@ -405,7 +405,8 @@ void cli_show_ip_intf() {
 }
 
 void cli_show_ip_route() {
-    forwarding_table_dynamic_show(FORWARDING_TABLE(get_sr()),cli_printf);
+    forwarding_table_dynamic_show(FORWARDING_TABLE(get_sr()),cli_printf,0);
+    forwarding_table_dynamic_show(FORWARDING_TABLE(get_sr()),cli_printf,1);    
     forwarding_table_static_show(FORWARDING_TABLE(get_sr()),cli_printf);
 }
 
@@ -675,7 +676,12 @@ static uint32_t traceroute_ip;
  */
 static void cli_send_ping( int client_fd, uint32_t ip ) {
     ping_outstanding = 1;
-    icmp_send_ping(get_sr(),ip,0,0,63);
+    if(!icmp_send_ping(get_sr(),ip,0,0,63))
+    {
+        ping_outstanding = 0;
+        cli_printf("not in forwarding table\n");
+        cli_send_prompt();
+    }
 }
 
 void cli_dest_unreach(struct icmphdr * icmp, uint32_t ip)
@@ -751,7 +757,7 @@ void cli_shutdown() {
 void cli_traceroute( gross_ip_t* data )
 {
     trace_outstanding = 1;
-    traceroute_seq = 2;
+    traceroute_seq = 1;
     traceroute_ip = data->ip;
     icmp_send_ping(get_sr(), data->ip, 1, 0, traceroute_seq);
     skip_next_prompt = 1;

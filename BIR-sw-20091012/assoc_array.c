@@ -46,6 +46,7 @@ struct AssocArrayNode * __assoc_array_insert(struct assoc_array * array, struct 
     if(node == NULL)
     {
         node = (struct AssocArrayNode *) malloc(sizeof(struct AssocArrayNode));
+        array->total ++;        
         node->data = data;
         node->array = array;
         node->level = 1;
@@ -100,6 +101,7 @@ struct AssocArrayNode * __assoc_array_delete(struct assoc_array * array,
             }
             else
             {
+                array->total -- ;
                 if(node->right)
                 {
                     *node = *(succ = node->right);
@@ -168,6 +170,7 @@ void __assoc_array_delete_array(struct AssocArrayNode * node, void (* delete)(vo
         }
         __assoc_array_delete_array(node->left,delete);
         __assoc_array_delete_array(node->right,delete);
+        free(node);
     }
 }
 
@@ -236,6 +239,7 @@ void assoc_array_walk_array(struct assoc_array * array,
 struct assoc_array * assoc_array_create(assoc_array_key_getter get, assoc_array_key_comp cmp)
 {
     struct assoc_array * array = (struct assoc_array *)malloc(sizeof(struct assoc_array));
+    array->total = 0;
     array->root = NULL;
     array->get = get;
     array->cmp = cmp;
@@ -330,4 +334,40 @@ void * assoc_array_get_self(void * data)
 void assoc_array_delete_self(void * data)
 {
     free(data);
+}
+
+int assoc_array_length(struct assoc_array * array)
+{
+    return array->total;
+}
+
+struct __assoc_array_eq_i
+{
+    struct assoc_array * array1;    
+    struct assoc_array * array2;
+    int (* eq)(void *, void *);
+    int ret;
+};
+
+int __assoc_array_eq_a(void * data, void * userdata)
+{
+    struct __assoc_array_eq_i * ei = (struct __assoc_array_eq_i *)userdata;
+    void * data2 = assoc_array_read(ei->array2, ei->array1->get(data));
+    if(data2 == NULL || !ei->eq(data,data2))
+    {
+        ei->ret = 0;
+        return 1;
+    }
+    return 0;
+}
+
+int assoc_array_eq(struct assoc_array * a1, struct assoc_array * a2, int (* eq)(void *, void *))
+{
+    struct __assoc_array_eq_i ei = {a1,a2,eq,1};
+    if(assoc_array_length(a1) != assoc_array_length(a2))
+    {
+        return 0;
+    }
+    assoc_array_walk_array(a1,__assoc_array_eq_a,&ei);
+    return ei.ret;
 }

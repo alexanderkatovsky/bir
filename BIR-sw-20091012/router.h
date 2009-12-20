@@ -94,6 +94,7 @@ void arp_request(struct sr_instance * sr, uint32_t ip, char * interface);
 
 void ip_handle_incoming_packet(struct sr_packet * packet);
 void ip_send(struct sr_packet * packet, uint32_t next_hop, char * thru_interface);
+int ip_send_packet(struct sr_packet * packet);
 void ip_forward(struct sr_packet * packet);
 void ip_construct_eth_header(uint8_t * packet, const uint8_t * dest_MAC, const uint8_t * src_MAC, uint16_t type);
 void ip_construct_ip_header(uint8_t * packet, uint16_t len,
@@ -109,7 +110,7 @@ void icmp_handle_incoming_packet(struct sr_packet * packet);
 void icmp_send_port_unreachable(struct sr_packet * packet);
 void icmp_send_time_exceeded(struct sr_packet * packet);
 void icmp_send_host_unreachable(struct sr_packet * packet);
-void icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num, int id, int ttl);
+int icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num, int id, int ttl);
 
 int router_cmp_MAC(void * k1, void * k2);
 int router_nat_enabled(struct sr_instance * sr);

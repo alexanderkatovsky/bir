@@ -49,9 +49,9 @@ void arp_reply_to_request(struct sr_packet * packet)
     struct sr_ethernet_hdr * eth_hdr = ETH_HDR(packet);
     struct sr_vns_if * vnsif = interface_list_get_interface_by_ip(ROUTER(packet->sr)->iflist, arp_hdr->ar_tip);
     uint32_t temp;
-    
+
     if(vnsif || (OPTIONS(packet->sr)->arp_proxy &&
-                 forwarding_table_lookup_next_hop(FORWARDING_TABLE(packet->sr), arp_hdr->ar_tip, 0, 0)))
+                 forwarding_table_lookup_next_hop(FORWARDING_TABLE(packet->sr), arp_hdr->ar_tip, 0, 0, 0)))
     {
         arp_hdr->ar_op = htons(ARP_REPLY);
         temp = arp_hdr->ar_tip;

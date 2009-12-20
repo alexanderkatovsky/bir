@@ -381,6 +381,7 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     struct neighbour_list * n_list = neighbour_list_create();
     struct assoc_array * inbound = OPTIONS(list->sr)->inbound;
     struct assoc_array * outbound = OPTIONS(list->sr)->outbound;
+    struct assoc_array * ospf_disabled = OPTIONS(list->sr)->ospf_disabled_interfaces;
     *interface_copy = *interface;
     entry->vns_if = interface_copy;
     entry->n_list = n_list;
@@ -390,6 +391,7 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     entry->up = 1;
     list->total += 1;
     entry->nat_type = E_NAT_TYPE_NONE;
+    entry->ospf = 1;
 
     mutex_lock(list->mutex);
     bi_assoc_array_insert(list->array,entry);
@@ -403,6 +405,11 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     else if(outbound && assoc_array_read(outbound, interface->name))
     {
         entry->nat_type = E_NAT_TYPE_OUTBOUND;
+    }
+    
+    if(ospf_disabled && assoc_array_read(ospf_disabled, interface->name))
+    {
+        entry->ospf = 0;
     }
 
     interface_list_hw_nat(list->sr, entry->i, entry->nat_type);
@@ -707,8 +714,10 @@ int interface_list_set_enabled(struct sr_instance * sr, char * iface, int enable
 
 int interface_list_nat_type(struct sr_instance * sr, char * name, enum e_nat_type type)
 {
+    if(name == NULL) return 0;
+    struct interface_list_entry * e;
     mutex_lock(INTERFACE_LIST(sr)->mutex);
-    struct interface_list_entry * e = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, name);
+    e = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, name);
     mutex_unlock(INTERFACE_LIST(sr)->mutex);
     if(e)
     {
@@ -730,4 +739,30 @@ int interface_list_outbound(struct sr_instance * sr, char * name)
 int interface_list_nat_enabled(struct sr_instance * sr, char * name)
 {
     return !interface_list_nat_type(sr, name, E_NAT_TYPE_NONE);
+}
+
+int interface_list_forward_packet(struct sr_instance * sr, char * from, char * to)
+{
+    int ret = 
+        (!interface_list_inbound(sr,from) && !interface_list_inbound(sr,to)) ||
+        strcmp(from,to) == 0;
+    return ret;
+}
+
+int interface_list_forward_lsu(struct sr_instance * sr, char * from, char * to)
+{
+    return
+        (!interface_list_inbound(sr,from) || strcmp(from,to) == 0) &&
+        interface_list_ospf_enabled(sr, from) &&
+        interface_list_ospf_enabled(sr, to);
+}
+
+int interface_list_ospf_enabled(struct sr_instance * sr, char * interface)
+{
+    struct interface_list_entry * entry = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, interface);
+    if(entry)
+    {
+        return !OPTIONS(sr)->disable_ospf && entry->ospf;
+    }
+    return 0;
 }

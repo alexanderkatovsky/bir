@@ -80,6 +80,7 @@ class HTTPHandler:
         try:
             pkt = IPConstructor.eth_packet.parse(packet)
             if pkt.ethernet_header.type == 'ARP':
+                print "ARP"
                 pkt.ethernet_header.dest = pkt.ethernet_header.src
                 pkt.ethernet_header.src = intf_mac
                 pkt.next.dst_ip = pkt.next.src_ip
