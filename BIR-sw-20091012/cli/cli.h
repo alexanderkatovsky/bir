@@ -115,6 +115,7 @@ void cli_show_ip_arp();
 void cli_show_ip_intf();
 void cli_show_ip_route();
 void cli_show_nat();
+void cli_show_dhcp();
 
 void cli_show_opt();
 void cli_show_opt_verbose();

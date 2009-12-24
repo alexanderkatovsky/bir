@@ -100,6 +100,7 @@ void router_create(struct sr_instance * sr, struct sr_options * opt)
     arp_reply_waiting_list_create(sr);
     link_state_graph_create(sr);
     nat_create(sr);
+    dhcp_create(sr);
     ret->rid = 0;
     ret->ospf_seq = 0;
     ret->opt = *opt;
@@ -127,6 +128,7 @@ void router_destroy(struct sr_router * router)
     arp_reply_waiting_list_destroy(router->arwl);
     link_state_graph_destroy(router->lsg);
     nat_destroy(router->nat);
+    dhcp_destroy(router->dhcp);
     if(router->opt.inbound)
     {
         assoc_array_delete_array(router->opt.inbound, assoc_array_delete_self);
@@ -138,6 +140,10 @@ void router_destroy(struct sr_router * router)
     if(router->opt.ospf_disabled_interfaces)
     {
         assoc_array_delete_array(router->opt.ospf_disabled_interfaces, assoc_array_delete_self);
+    }
+    if(router->opt.dhcp)
+    {
+        assoc_array_delete_array(router->opt.dhcp, assoc_array_delete_self);
     }    
 
 #ifdef _CPUMODE_
@@ -196,6 +202,7 @@ void sr_router_default_options(struct sr_options * opt)
     opt->inbound = NULL;
     opt->outbound = NULL;
     opt->ospf_disabled_interfaces = NULL;
+    opt->dhcp = NULL;
 
     opt->verbose = 0;
     opt->show_ip = 0;

@@ -44,6 +44,7 @@ void sr_integ_init(struct sr_instance* sr, struct sr_options * opt)
 
     router_create(sr,opt);
     sr->interface_subsystem = subsystem;
+    subsystem->routing_table = NULL;    
 } /* -- sr_integ_init -- */
 
 /*-----------------------------------------------------------------------------

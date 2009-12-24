@@ -389,6 +389,28 @@ void cli_show_ip() {
     cli_show_ip_intf();
     cli_show_ip_route();
     cli_show_nat();
+    cli_show_dhcp();
+}
+
+int cli_show_dhcp_a(void * data, void * userdata)
+{
+    struct dhcp_s * ds = (struct dhcp_s *)data;
+    cli_printf("%s\t",ds->name);
+    print_ip(ds->from, cli_printf);
+    print_ip(ds->to, cli_printf);
+    print_ip(ds->mask, cli_printf);
+    cli_printf("\n");
+    return 0;
+}
+
+void cli_show_dhcp()
+{
+    struct sr_instance * sr = get_sr();
+    if(OPTIONS(sr)->dhcp && assoc_array_length(OPTIONS(sr)->dhcp) > 0)
+    {
+        cli_printf("DHCP interfaces:\n");
+        assoc_array_walk_array(OPTIONS(sr)->dhcp,cli_show_dhcp_a,0);
+    }
 }
 
 void cli_show_nat()

@@ -97,8 +97,12 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
     }
     else
     {
+        if(dhcp_packet(packet))
+        {
+            dhcp_handle_incoming(packet);
+        }
         /* if packet is not for one of our interfaces then forward */
-        if(!interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_dst.s_addr) &&
+        else if(!interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_dst.s_addr) &&
            ntohl(ip_hdr->ip_dst.s_addr) != OSPF_AllSPFRouters)
         {
             if(ip_hdr->ip_ttl <= 1)
@@ -107,7 +111,7 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
             }
             else
             {
-                if(ip_hdr->ip_p == IP_P_TCP)
+                if(ip_hdr->ip_p == IP_P_TCP || ip_hdr->ip_p == IP_P_UDP)
                 {
                     tcp_handle_incoming_not_for_us(packet);
                 }
@@ -124,7 +128,7 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
             case IP_P_ICMP:
                 icmp_handle_incoming_packet(packet);
                 break;
-            case IP_P_TCP:
+            case IP_P_TCP: case IP_P_UDP:
                 tcp_handle_incoming_for_us(packet);
                 break;
             case IP_P_OSPF:

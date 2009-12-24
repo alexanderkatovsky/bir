@@ -5,4 +5,4 @@ cli.o: cli.c cli.h cli_help.h ../eth_headers.h cli_network.h helper.h \
   ../eth_headers.h ../forwarding_table.h ../sr_rt.h ../arp_cache.h \
   ../arp_reply_waiting_list.h ../fifo.h ../pwospf_protocol.h \
   ../link_state_graph.h ../linked_list.h ../nat.h ../nf2util.h ../RCP.h \
-  ../reg_defines.h cli_stubs.h
+  ../dhcp.h ../reg_defines.h cli_stubs.h

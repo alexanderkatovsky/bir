@@ -60,6 +60,12 @@
 #include "sr_rt.h"
 #include "../common.h"
 #include "assoc_array.h"
+#include "../dhcp.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include "../fifo.h"
+
 
 extern char* optarg;
 
@@ -74,30 +80,101 @@ static void sr_destroy_instance(struct sr_instance* sr);
 /** run the command-line interface on CLI_PORT */
 #define CLI_PORT 2300
 
-struct assoc_array * str_split(const char * str, char delim)
+struct fifo * str_split_fifo(const char * str, char delim)
 {
     int i = 0,j = 0;
     char * buf;
-    struct assoc_array * ret = assoc_array_create(assoc_array_get_self, assoc_array_key_comp_str);
+    struct fifo * ret = fifo_create();
     while(str[i] != '\0')
     {
         if(str[i] == delim)
         {
-            buf = malloc(i - j + 1);
+            buf = malloc(i - j + 2);
             memcpy(buf, str + j, i - j);
             buf[i - j + 1] = '\0';
-            assoc_array_insert(ret, buf);
+            fifo_push(ret, buf);
             j = i+1;
         }
         i++;
     }
-    buf = malloc(i - j + 1);
+    buf = malloc(i - j + 2);
     memcpy(buf, str + j, i - j);
     buf[i - j + 1] = '\0';
-    assoc_array_insert(ret, buf);
+    fifo_push(ret, buf);
     return ret;
 }
 
+struct assoc_array * str_split(const char * str, char delim)
+{
+    struct assoc_array * ret = assoc_array_create(assoc_array_get_self, assoc_array_key_comp_str);
+    struct fifo * f = str_split_fifo(str,delim);
+    char * el;
+    while((el = fifo_pop(f)))
+    {
+        assoc_array_insert(ret,el);
+    }
+    fifo_destroy(f);
+    return ret;
+}
+
+void dhcp_opt(struct sr_options * opt, const char * optarg)
+{
+    struct fifo * f = str_split_fifo(optarg,',');
+    NEW_STRUCT(dhcp,dhcp_s);
+    char * val;
+    int i = 0;
+    while((val = fifo_pop(f)))
+    {
+        switch(i)
+        {
+        case 0:
+            strcpy(dhcp->name, val);
+            break;
+        case 1:
+            dhcp->from = inet_addr(val);
+            break;
+        case 2:
+            dhcp->to = inet_addr(val);
+            break;
+        case 3:
+            dhcp->mask = inet_addr(val);
+            if((dhcp->from & dhcp->mask) != (dhcp->to & dhcp->mask))
+            {
+                i = -1;
+            }
+            break;
+        }        
+        i++;
+        free(val);
+        if(i == 4)
+        {
+            break;
+        }
+    }
+
+    fifo_destroy(f);
+
+    if(i == 4)
+    {
+        if(opt->dhcp == NULL)
+        {
+            opt->dhcp = assoc_array_create(dhcp_s_get_key,assoc_array_key_comp_str);
+        }
+
+        if(assoc_array_read(opt->dhcp,dhcp->name))
+        {
+            free(dhcp);
+        }
+        else
+        {
+            assoc_array_insert(opt->dhcp, dhcp);
+        }
+    }
+    else
+    {
+        free(dhcp);
+    }
+}
 
 /*----------------------------------------------------------------------------
  * sr_init_low_level_subystem
@@ -141,6 +218,7 @@ int sr_init_low_level_subystem(int argc, char **argv)
         { "inbound"    ,   required_argument, 0, 0 },
         { "outbound"   ,   required_argument, 0, 0 },
         { "ospf_disabled_interfaces"   ,   required_argument, 0, 0 },
+        { "dhcp"   ,   required_argument, 0, 0 },        
 #ifdef _DEBUG_
         { "verbose" ,   no_argument, &opt.verbose, 1 },
         { "show_ip" ,   no_argument, &opt.show_ip, 1 },
@@ -200,6 +278,10 @@ int sr_init_low_level_subystem(int argc, char **argv)
                     {
                         opt.ospf_disabled_interfaces = str_split(optarg,',');
                     }
+                }
+                else if(strcmp(long_options[option_index].name, "dhcp") == 0)
+                {
+                    dhcp_opt(&opt,optarg);
                 }                
                 else
                 {
@@ -263,7 +345,6 @@ int sr_init_low_level_subystem(int argc, char **argv)
                 rtable);
         exit(1);
     }
-
 
     printf("Loading routing table\n");
     printf("---------------------------------------------\n");
@@ -502,7 +583,10 @@ static void usage(char* argv0)
     printf("  --inbound       Inbound NAT interfaces comma separated (e.g. eth0,eth1)\n");
     printf("  --outbound      Outbound NAT interfaces comma separated (e.g. eth0,eth1)\n");
     printf("  --ospf_disabled_interfaces\n");
-    printf("                  Interfaces OSPF disabled comma separated (e.g. eth0,eth1)");
+    printf("                  Interfaces OSPF disabled comma separated (e.g. eth0,eth1)\n");
+    printf("  --dhcp [name] [from ip] [to ip] [subnet mask]\n");
+    printf("                  enables dhcp on interface 'name'\n");
+    printf("                  e.g. --dhcp eth0,192.168.2.0,192.168.2.100,255.255.255.0\n");
     
 #ifdef _DEBUG_
     printf("  --verbose       Show every packet\n");

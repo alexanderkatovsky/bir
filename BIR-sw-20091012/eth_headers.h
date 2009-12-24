@@ -41,9 +41,18 @@ struct tcp_pseudo_hdr
     uint16_t len;
 } __attribute__((packed));
 
+struct udp_header
+{
+    uint16_t src_port;
+    uint16_t dst_port;
+    uint16_t len;
+    uint16_t cksum;
+} __attribute__((packed));
+
 #define IP_P_ICMP 1
 #define IP_P_TCP  6
 #define IP_P_OSPF 89
+#define IP_P_UDP  17
 /*
  * Structure of an internet header, naked of options.
  */

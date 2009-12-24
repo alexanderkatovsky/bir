@@ -13,6 +13,7 @@
 #include "nat.h"
 #include "nf2util.h"
 #include "RCP.h"
+#include "dhcp.h"
 
 struct sr_packet
 {
@@ -30,6 +31,7 @@ struct sr_router
     struct arp_reply_waiting_list * arwl;
     struct link_state_graph * lsg;
     struct nat_table * nat;
+    struct dhcp_table * dhcp;
 
     char default_interface[SR_NAMELEN];
 
@@ -67,6 +69,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 #define LSG(sr) ((struct link_state_graph *)(ROUTER(sr)->lsg))
 #define OPTIONS(sr) (&(ROUTER(sr)->opt))
 #define NAT(sr) (ROUTER(sr)->nat)
+#define DHCP(sr) (ROUTER(sr)->dhcp)
 
 
 #define B_ETH_HDR(packet) ((struct sr_ethernet_hdr *) ((packet)))
@@ -78,6 +81,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 #define B_LSU_HDR(packet) ((struct ospfv2_lsu_hdr *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct ospfv2_hdr)))
 #define B_LSU_START(packet) ((struct ospfv2_lsu *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_lsu_hdr)))
 #define B_TCP_HDR(packet) ((struct tcpheader *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)))
+#define B_UDP_HDR(packet) ((struct udp_header *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)))
 
 #define ETH_HDR(packet) B_ETH_HDR((packet)->packet)
 #define ARP_HDR(packet) B_ARP_HDR((packet)->packet)
@@ -88,6 +92,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 #define LSU_HDR(packet) B_LSU_HDR((packet)->packet)
 #define LSU_START(packet) B_LSU_START((packet)->packet)
 #define TCP_HDR(packet) B_TCP_HDR((packet)->packet)
+#define UDP_HDR(packet) B_UDP_HDR((packet)->packet)
 
 void arp_handle_incoming_packet(struct sr_packet * packet);
 void arp_request(struct sr_instance * sr, uint32_t ip, char * interface);

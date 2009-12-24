@@ -30,7 +30,7 @@ struct sr_options
     /* outbound nat interfaces */
     struct assoc_array * outbound;
     struct assoc_array * ospf_disabled_interfaces;
-
+    struct assoc_array * dhcp;
 
     int verbose;
     int show_arp;
