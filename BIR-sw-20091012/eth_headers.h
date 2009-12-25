@@ -49,6 +49,25 @@ struct udp_header
     uint16_t cksum;
 } __attribute__((packed));
 
+struct dhcp_header
+{
+    uint8_t op;
+    uint8_t htype;
+    uint8_t hlen;
+    uint8_t hops;
+    uint32_t xid;
+    uint16_t secs;
+    uint16_t flags;
+    uint32_t c_ip;
+    uint32_t y_ip;
+    uint32_t s_ip;
+    uint32_t g_ip;
+    uint8_t c_mac[16];
+    uint8_t s_name[64];
+    uint8_t file[128];
+    uint32_t magic;
+}__attribute__((packed));
+
 #define IP_P_ICMP 1
 #define IP_P_TCP  6
 #define IP_P_OSPF 89

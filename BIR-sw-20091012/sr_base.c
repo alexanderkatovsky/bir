@@ -136,17 +136,10 @@ void dhcp_opt(struct sr_options * opt, const char * optarg)
         case 2:
             dhcp->to = inet_addr(val);
             break;
-        case 3:
-            dhcp->mask = inet_addr(val);
-            if((dhcp->from & dhcp->mask) != (dhcp->to & dhcp->mask))
-            {
-                i = -1;
-            }
-            break;
         }        
         i++;
         free(val);
-        if(i == 4)
+        if(i >= 3)
         {
             break;
         }
@@ -154,7 +147,7 @@ void dhcp_opt(struct sr_options * opt, const char * optarg)
 
     fifo_destroy(f);
 
-    if(i == 4)
+    if(i == 3)
     {
         if(opt->dhcp == NULL)
         {
@@ -225,6 +218,8 @@ int sr_init_low_level_subystem(int argc, char **argv)
         { "show_arp" ,   no_argument, &opt.show_arp, 1 },
         { "show_icmp" ,   no_argument, &opt.show_icmp, 1 },
         { "show_tcp" ,   no_argument, &opt.show_tcp, 1 },
+        { "show_udp" ,   no_argument, &opt.show_udp, 1 },
+        { "show_dhcp" ,   no_argument, &opt.show_dhcp, 1 },
         { "show_ospf" ,   no_argument, &opt.show_ospf, 1 },
         { "show_ospf_hello" ,   no_argument, &opt.show_ospf_hello, 1 },
         { "show_ospf_lsu" ,   no_argument, &opt.show_ospf_lsu, 1 },        
@@ -584,13 +579,13 @@ static void usage(char* argv0)
     printf("  --outbound      Outbound NAT interfaces comma separated (e.g. eth0,eth1)\n");
     printf("  --ospf_disabled_interfaces\n");
     printf("                  Interfaces OSPF disabled comma separated (e.g. eth0,eth1)\n");
-    printf("  --dhcp [name] [from ip] [to ip] [subnet mask]\n");
+    printf("  --dhcp [name],[from ip],[to ip] \n");
     printf("                  enables dhcp on interface 'name'\n");
-    printf("                  e.g. --dhcp eth0,192.168.2.0,192.168.2.100,255.255.255.0\n");
+    printf("                  e.g. --dhcp eth0,192.168.2.0,192.168.2.100\n");
     
 #ifdef _DEBUG_
     printf("  --verbose       Show every packet\n");
-    printf("  --show_{ip,arp,icmp,tcp,ospf,ospf_hello,ospf_lsu}\n");
+    printf("  --show_{ip,arp,icmp,tcp,udp,dhcp,ospf,ospf_hello,ospf_lsu}\n");
     printf("                  Show only this type of packet\n");
 #endif
 } /* -- usage -- */

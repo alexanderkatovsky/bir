@@ -11,12 +11,20 @@ struct sr_instance;
 
 struct sr_packet;
 
+#define DHCP_DISCOVER 1
+#define DHCP_OFFER    2
+#define DHCP_REQUEST  3
+#define DHCP_DECLINE  4
+#define DHCP_ACK      5
+
+#define DHCP_OPTION_MESSAGE_TYPE 53
+
+
 struct dhcp_s
 {
     char name[SR_NAMELEN];
     uint32_t from;
     uint32_t to;
-    uint32_t mask;
 };
 
 void * dhcp_s_get_key(void * data);
@@ -24,7 +32,7 @@ void * dhcp_s_get_key(void * data);
 struct dhcp_table_key
 {
     char interface[SR_NAMELEN];
-    struct ip_address ip;
+    uint32_t ip;
 };
 
 struct dhcp_table_entry

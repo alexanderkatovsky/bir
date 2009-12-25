@@ -3,7 +3,6 @@
 #include <string.h>
 #include <unistd.h>
 #include "fifo.h"
-#include "lwtcp/lwip/sys.h"
 #include "debug.h"
 #include "reg_defines.h"
 
@@ -71,42 +70,27 @@ int arp_clear_cache(void * data, void * user_data)
     return 0;
 }
 
-void arp_clear_cache_thread(void * arg)
+void arp_cache_thread_run(struct sr_instance * sr)
 {
-    struct sr_instance * sr = (struct sr_instance *)arg;
     struct arp_cache * cache = ARP_CACHE(sr);
     struct fifo * delete_list = fifo_create();
     struct arp_cache_entry * entry;
     int hw;
-
-    while(1)
+    hw = 0;
+        
+    mutex_lock(cache->mutex);
+    bi_assoc_array_walk_array(cache->array,arp_clear_cache,delete_list);
+    while((entry = fifo_pop(delete_list)))
     {
-        usleep(1000000);
-        if(ROUTER(sr)->ready)
-        {
-            hw = 0;
-        
-            if(cache->exit_signal == 0)
-            {
-                cache->exit_signal = 1;
-                fifo_destroy(delete_list);
-                return;
-            }
-        
-            mutex_lock(cache->mutex);
-            bi_assoc_array_walk_array(cache->array,arp_clear_cache,delete_list);
-            while((entry = fifo_pop(delete_list)))
-            {
-                hw = 1;
-                free(bi_assoc_array_delete_1(cache->array,&entry->ip));
-            }
-            if(hw)
-            {
-                arp_cache_hw_write(sr);
-            }
-            mutex_unlock(cache->mutex);
-        }
+        hw = 1;
+        free(bi_assoc_array_delete_1(cache->array,&entry->ip));
     }
+    if(hw)
+    {
+        arp_cache_hw_write(sr);
+    }
+    fifo_destroy(delete_list);
+    mutex_unlock(cache->mutex);
 }
 
 void * arp_cache_get_key(void * data)
@@ -126,12 +110,10 @@ void arp_cache_create(struct sr_instance * sr)
                                        arp_cache_get_MAC,router_cmp_MAC);
     ret->array_s = bi_assoc_array_create(arp_cache_get_key,assoc_array_key_comp_int,
                                        arp_cache_get_MAC,router_cmp_MAC);
-    ret->exit_signal = 1;
     ret->mutex = mutex_create();
 
     ROUTER(sr)->a_cache = ret;
-
-    sys_thread_new(arp_clear_cache_thread,sr);    
+    router_add_thread(sr,arp_cache_thread_run, NULL);
 }
 
 void __delete_arp_cache(void * data)
@@ -141,10 +123,6 @@ void __delete_arp_cache(void * data)
 
 void arp_cache_destroy(struct arp_cache * cache)
 {
-    cache->exit_signal = 0;
-    while(cache->exit_signal == 0)
-    {
-    }
     mutex_destroy(cache->mutex);
     bi_assoc_array_delete_array(cache->array,__delete_arp_cache);
     bi_assoc_array_delete_array(cache->array_s,__delete_arp_cache);    

@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include "router.h"
 #include "reg_defines.h"
-#include "lwtcp/lwip/sys.h"
 
 
 void nat_hw_insert_entry(struct sr_instance * sr, struct nat_entry * entry)
@@ -101,29 +100,11 @@ void nat_depricate_entries(struct sr_instance * sr)
     fifo_destroy(delete);
 }
 
-void nat_thread(void * data)
+void nat_thread_run(struct sr_instance * sr)
 {
-    struct sr_instance * sr = (struct sr_instance *)data;
-
-    while(1)
-    {
-        if(ROUTER(sr)->ready)
-        {
-            mutex_lock(NAT(sr)->mutex);
-
-            if(NAT(sr)->exit_signal == 0)
-            {
-                NAT(sr)->exit_signal = 1;
-                return;
-            }
-
-            nat_depricate_entries(sr);
-            
-            mutex_unlock(NAT(sr)->mutex);
-        }
-        
-        usleep(1000000);
-    }    
+    mutex_lock(NAT(sr)->mutex);
+    nat_depricate_entries(sr);
+    mutex_unlock(NAT(sr)->mutex);
 }
 
 void * nat_get_INBOUND(void * data)
@@ -176,20 +157,14 @@ void nat_create(struct sr_instance * sr)
     ROUTER(sr)->nat = ret;
     ret->table = bi_assoc_array_create(nat_get_INBOUND,nat_entry_ip_port_cmp,nat_get_OUTBOUND,nat_entry_OUTBOUND_cmp);
     
-    ret->exit_signal = 1;
     ret->mutex = mutex_create();
     nat_hw_init(sr);
     ret->hw_i = 0;
-    sys_thread_new(nat_thread,sr);
+    router_add_thread(sr,nat_thread_run, NULL);
 }
 
 void nat_destroy(struct nat_table * nat)
 {
-    nat->exit_signal = 0;
-    while(nat->exit_signal == 0)
-    {
-        usleep(10000);
-    }
     bi_assoc_array_delete_array(nat->table, assoc_array_delete_self);
     mutex_destroy(nat->mutex);
     free(nat);

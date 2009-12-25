@@ -103,7 +103,7 @@ void ip_handle_incoming_packet(struct sr_packet * packet)
         }
         /* if packet is not for one of our interfaces then forward */
         else if(!interface_list_ip_exists(ROUTER(packet->sr)->iflist, ip_hdr->ip_dst.s_addr) &&
-           ntohl(ip_hdr->ip_dst.s_addr) != OSPF_AllSPFRouters)
+                ntohl(ip_hdr->ip_dst.s_addr) != OSPF_AllSPFRouters)
         {
             if(ip_hdr->ip_ttl <= 1)
             {
@@ -176,4 +176,14 @@ void ip_construct_ip_header(uint8_t * packet, uint16_t len,
     ip_to->ip_p = p;
     ip_to->ip_ttl = ttl;
     ip_to->ip_sum = checksum_ipheader(ip_to);
+}
+
+
+void ip_construct_udp_header(uint8_t * data, uint16_t udp_len, uint16_t src_port, uint16_t dst_port)
+{
+    struct udp_header * udp = B_UDP_HDR(data);
+    udp->src_port = htons(src_port);
+    udp->dst_port = htons(dst_port);
+    udp->len = htons(udp_len);
+    udp->cksum = 0;
 }

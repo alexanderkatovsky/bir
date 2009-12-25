@@ -23,6 +23,13 @@ struct sr_packet
     char * interface;
 };
 
+struct sr_thread
+{
+    int i;
+    void (*run)(struct sr_instance *);
+    void (*end)(struct sr_instance *);
+};
+
 struct sr_router
 {
     struct interface_list * iflist;
@@ -38,7 +45,8 @@ struct sr_router
     uint32_t rid;
     uint32_t ospf_seq;
 
-    int ready;
+    int exit_signal;
+    struct assoc_array * threads;
 
     struct sr_options opt;
     struct RCPServer * rcp_server;
@@ -82,6 +90,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 #define B_LSU_START(packet) ((struct ospfv2_lsu *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_lsu_hdr)))
 #define B_TCP_HDR(packet) ((struct tcpheader *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)))
 #define B_UDP_HDR(packet) ((struct udp_header *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)))
+#define B_DHCP_HDR(packet) ((struct dhcp_header *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct udp_header)))
 
 #define ETH_HDR(packet) B_ETH_HDR((packet)->packet)
 #define ARP_HDR(packet) B_ARP_HDR((packet)->packet)
@@ -93,6 +102,7 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
 #define LSU_START(packet) B_LSU_START((packet)->packet)
 #define TCP_HDR(packet) B_TCP_HDR((packet)->packet)
 #define UDP_HDR(packet) B_UDP_HDR((packet)->packet)
+#define DHCP_HDR(packet) B_DHCP_HDR((packet)->packet)
 
 void arp_handle_incoming_packet(struct sr_packet * packet);
 void arp_request(struct sr_instance * sr, uint32_t ip, char * interface);
@@ -105,6 +115,7 @@ void ip_construct_eth_header(uint8_t * packet, const uint8_t * dest_MAC, const u
 void ip_construct_ip_header(uint8_t * packet, uint16_t len,
                             uint16_t id, uint8_t ttl,
                             uint8_t p, uint32_t ip_src, uint32_t ip_dest);
+void ip_construct_udp_header(uint8_t * data, uint16_t len, uint16_t src_port, uint16_t dst_port);
 
 unsigned short checksum_ipheader(const struct ip * ip_hdr);
 unsigned short checksum_icmpheader(const uint8_t * icmp_hdr, unsigned int len);
@@ -119,6 +130,8 @@ int icmp_send_ping(struct sr_instance * sr, uint32_t ip, uint32_t seq_num, int i
 
 int router_cmp_MAC(void * k1, void * k2);
 int router_nat_enabled(struct sr_instance * sr);
+void router_add_thread(struct sr_instance * sr, void (*run)(struct sr_instance *),
+                       void (*end)(struct sr_instance *));
 
 void ospf_handle_incoming_packet(struct sr_packet * packet);
 void ospf_send_hello(struct sr_instance * sr, struct interface_list_entry * ifentry);

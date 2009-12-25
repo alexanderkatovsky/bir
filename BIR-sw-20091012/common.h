@@ -39,7 +39,9 @@ struct sr_options
     int show_ospf_hello;
     int show_ospf_lsu;
     int show_icmp;
-    int show_tcp;    
+    int show_tcp;
+    int show_udp;
+    int show_dhcp;
 };
 
 void sr_router_default_options(struct sr_options * opt);

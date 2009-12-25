@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "router.h"
-#include "lwtcp/lwip/sys.h"
 #include "debug.h"
 
 void * arwl_key_get(void * data)
@@ -60,37 +59,22 @@ int arp_handler_incr(void * data, void * user_data)
     return 0;
 }
 
-void arp_request_handler_thread(void * arg)
+void arp_reply_waiting_list_thread_run(struct sr_instance * sr)
 {
-    struct sr_instance * sr = (struct sr_instance *)arg;
     struct arp_reply_waiting_list * list = ARWL(sr);
     struct fifo * delete_list = fifo_create();
     struct arwl_entry * entry;
 
-    while(1)
+    mutex_lock(list->mutex);
+    assoc_array_walk_array(list->array,arp_handler_incr,delete_list);
+        
+    while((entry = fifo_pop(delete_list)))
     {
-        usleep(1000000);
-
-        if(ROUTER(sr)->ready)
-        {
-            if(list->exit_signal == 0)
-            {
-                list->exit_signal = 1;
-                fifo_destroy(delete_list);
-                return;
-            }
-        
-            mutex_lock(list->mutex);
-            assoc_array_walk_array(list->array,arp_handler_incr,delete_list);
-        
-            while((entry = fifo_pop(delete_list)))
-            {
-                arp_reply_waiting_list_alert_host_unreachable(entry);
-                __delete_arwl(assoc_array_delete(list->array,&entry->next_hop));
-            }
-            mutex_unlock(list->mutex);
-        }
+        arp_reply_waiting_list_alert_host_unreachable(entry);
+        __delete_arwl(assoc_array_delete(list->array,&entry->next_hop));
     }
+    fifo_destroy(delete_list);
+    mutex_unlock(list->mutex);
 }
 
 void arp_reply_waiting_list_create(struct sr_instance * sr)
@@ -98,18 +82,12 @@ void arp_reply_waiting_list_create(struct sr_instance * sr)
     NEW_STRUCT(ret,arp_reply_waiting_list);
     ROUTER(sr)->arwl = ret;
     ret->array = assoc_array_create(arwl_key_get,assoc_array_key_comp_int);
-    ret->exit_signal = 1;
     ret->mutex = mutex_create();
-    
-    sys_thread_new(arp_request_handler_thread,sr);
+    router_add_thread(sr,arp_reply_waiting_list_thread_run, NULL);
 }
 
 void arp_reply_waiting_list_destroy(struct arp_reply_waiting_list * list)
 {
-    list->exit_signal = 0;
-    while(list->exit_signal == 0)
-    {
-    }
     assoc_array_delete_array(list->array,__delete_arwl);
     mutex_destroy(list->mutex);
     free(list);       

@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "router.h"
-#include "lwtcp/lwip/sys.h"
 #include "reg_defines.h"
 
 static int output_ports[4] = { 1 << 0, 1 << 2, 1 << 4, 1 << 6 };
@@ -284,50 +283,33 @@ int interface_list_scan_interfaces(void * data, void * user_data)
     return 0;
 }
     
-void interface_list_thread(void * data)
+void interface_list_thread_run(struct sr_instance * sr)
 {
-    struct sr_instance * sr = (struct sr_instance *)data;
     struct interface_list * iflist = INTERFACE_LIST(sr);
 
-    while(1)
+    mutex_lock(iflist->mutex);
+    bi_assoc_array_walk_array(iflist->array,interface_list_scan_interfaces,iflist->sr);
+    if(iflist->time_to_hello <= 0)
     {
-        if(ROUTER(sr)->ready)
-        {
-            mutex_lock(iflist->mutex);
-
-            if(iflist->exit_signal == 0)
-            {
-                iflist->exit_signal = 1;
-                return;
-            }
-        
-            bi_assoc_array_walk_array(iflist->array,interface_list_scan_interfaces,iflist->sr);
-
-            if(iflist->time_to_hello <= 0)
-            {
-                interface_list_send_hello(iflist);
-                iflist->time_to_hello = OSPF_DEFAULT_HELLOINT;
-            }
-            else
-            {
-                iflist->time_to_hello -= 1;
-            }
-
-            if(iflist->time_to_flood <= 0)
-            {
-                interface_list_send_flood(iflist->sr);
-                iflist->time_to_flood = OSPF_DEFAULT_LSUINT;
-            }
-            else
-            {
-                iflist->time_to_flood -= 1;
-            }
-
-            mutex_unlock(iflist->mutex);
-        }
-        
-        usleep(1000000);
+        interface_list_send_hello(iflist);
+        iflist->time_to_hello = OSPF_DEFAULT_HELLOINT;
     }
+    else
+    {
+        iflist->time_to_hello -= 1;
+    }
+
+    if(iflist->time_to_flood <= 0)
+    {
+        interface_list_send_flood(iflist->sr);
+        iflist->time_to_flood = OSPF_DEFAULT_LSUINT;
+    }
+    else
+    {
+        iflist->time_to_flood -= 1;
+    }
+
+    mutex_unlock(iflist->mutex);
 }
 
 void * interface_list_get_IP(void * data)
@@ -347,13 +329,11 @@ void interface_list_create(struct sr_instance * sr)
     ret->array = bi_assoc_array_create(interface_list_get_IP,assoc_array_key_comp_int,
                                        interface_list_get_name,assoc_array_key_comp_str);
     ret->total = 0;
-    ret->exit_signal = 1;
     ret->sr = sr;
     ret->time_to_hello = 0;
     ret->time_to_flood = OSPF_DEFAULT_LSUINT;
     ret->mutex = mutex_create();
-
-    sys_thread_new(interface_list_thread,sr);
+    router_add_thread(sr,interface_list_thread_run, NULL);
 }
 
 void __delete_interface_list(void * data)
@@ -366,10 +346,6 @@ void __delete_interface_list(void * data)
 void interface_list_destroy(struct interface_list * list)
 {
     mutex_destroy(list->mutex);
-    list->exit_signal = 0;
-    while(list->exit_signal == 0)
-    {
-    }
     bi_assoc_array_delete_array(list->array,__delete_interface_list);
     free(list);
 }

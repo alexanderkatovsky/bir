@@ -33,7 +33,6 @@ struct arp_reply_waiting_list
 {
     struct assoc_array * array;
     struct sr_mutex * mutex;
-    int exit_signal;
 };
 
 void arp_reply_waiting_list_create(struct sr_instance * sr);

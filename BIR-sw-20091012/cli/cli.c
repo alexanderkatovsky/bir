@@ -398,7 +398,6 @@ int cli_show_dhcp_a(void * data, void * userdata)
     cli_printf("%s\t",ds->name);
     print_ip(ds->from, cli_printf);
     print_ip(ds->to, cli_printf);
-    print_ip(ds->mask, cli_printf);
     cli_printf("\n");
     return 0;
 }

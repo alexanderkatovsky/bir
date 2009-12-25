@@ -170,6 +170,43 @@ void dump_ospf_hdr(const uint8_t * packet, unsigned int len)
     }
 }
 
+void dump_dhcp_header(const uint8_t * packet, unsigned int len)
+{
+    struct dhcp_header * dhcp =
+        ((struct dhcp_header *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip) + sizeof(struct udp_header)));
+    Debug("DHCP header    :\n");
+    Debug("    op         :   %d\n", dhcp->op);
+    Debug("    htype      :   %d\n", dhcp->htype);
+    Debug("    hlen       :   %d\n", dhcp->hlen);
+    Debug("    hops       :   %d\n", dhcp->hops);
+    Debug("    xid        :   0x%08x\n", ntohl(dhcp->xid));
+    Debug("    secs       :   %d\n", ntohs(dhcp->secs));
+    Debug("    flags      :   0x%04x\n", ntohs(dhcp->flags));
+    Debug("    c_ip       :   "); dump_ip(dhcp->c_ip);Debug("\n");
+    Debug("    y_ip       :   "); dump_ip(dhcp->y_ip);Debug("\n");
+    Debug("    s_ip       :   "); dump_ip(dhcp->s_ip);Debug("\n");
+    Debug("    g_ip       :   "); dump_ip(dhcp->g_ip);Debug("\n");
+    Debug("    c_mac      :   "); dump_mac(dhcp->c_mac);Debug("\n");
+    Debug("    s_name     :   %s\n", dhcp->s_name);
+    Debug("    file       :   %s\n", dhcp->file);
+    Debug("    magic      :   0x%08x\n", dhcp->magic); 
+}
+
+void dump_udp_hdr(const uint8_t * packet, unsigned int len)
+{
+    struct udp_header * udp = ((struct udp_header *)((packet) + sizeof(struct sr_ethernet_hdr) + sizeof(struct ip)));
+    Debug("UDP header     :\n");
+    Debug("    src port   :   %d\n", ntohs(udp->src_port));
+    Debug("    dst port   :   %d\n", ntohs(udp->dst_port));
+    Debug("    len        :   %d\n", ntohs(udp->len));
+    Debug("    cksum      :   0x%x\n", ntohs(udp->cksum));
+
+    if(ntohs(udp->dst_port) == 67 || ntohs(udp->dst_port) == 68)
+    {
+        dump_dhcp_header(packet,len);
+    }
+}
+
 void dump_ip_hdr(const uint8_t * packet, unsigned int len)
 {
     struct ip * ip_hdr = (struct ip *) (packet + sizeof(struct sr_ethernet_hdr));
@@ -192,6 +229,9 @@ void dump_ip_hdr(const uint8_t * packet, unsigned int len)
         break;
     case IP_P_TCP:
         dump_tcp_hdr(packet,len);
+        break;
+    case IP_P_UDP:
+        dump_udp_hdr(packet,len);
         break;
     case IP_P_OSPF:
         dump_ospf_hdr(packet,len);
@@ -220,6 +260,12 @@ int __debug_validate(struct sr_options * opt, const uint8_t * packet)
             else if(ospf_type == OSPF_TYPE_LSU) return opt->show_ospf_lsu;
         }
         else if(ip_type == IP_P_TCP) return opt->show_tcp;
+        else if(ip_type == IP_P_UDP)
+        {
+            if(opt->show_udp) return 1;
+            if(ntohs(B_UDP_HDR(packet)->dst_port) == 67 || ntohs(B_UDP_HDR(packet)->dst_port) == 68)
+                return opt->show_dhcp;
+        }
     }
     return 0;  
 }

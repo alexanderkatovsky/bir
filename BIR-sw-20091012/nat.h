@@ -39,7 +39,6 @@ struct nat_table
     /*the next entry to write to in the NAT hardware table*/
     int hw_i;
 
-    int exit_signal;
     struct sr_mutex * mutex;
 };
 

@@ -3,6 +3,59 @@
 #include <stdlib.h>
 #include "sr_ifsys.h"
 #include "nf2.h"
+#include "lwtcp/lwip/sys.h"
+
+int router_thread_run(void * data, void * userdata)
+{
+    struct sr_thread * t = (struct sr_thread *)data;
+    struct sr_instance * sr = (struct sr_instance *)userdata;
+
+    if(t->run)
+    {
+        t->run(sr);
+    }
+    return 0;
+}
+
+int router_thread_end(void * data, void * userdata)
+{
+    struct sr_thread * t = (struct sr_thread *)data;
+    struct sr_instance * sr = (struct sr_instance *)userdata;
+    if(t->end)
+    {
+        t->end(sr);
+    }
+    return 0;
+}
+
+void router_thread(void * data)
+{
+    struct sr_instance * sr = (struct sr_instance *)data;
+
+    while(1)
+    {
+        assoc_array_walk_array(ROUTER(sr)->threads,router_thread_run,sr);
+        if(ROUTER(sr)->exit_signal == 0)
+        {
+            assoc_array_walk_array(ROUTER(sr)->threads,router_thread_end,sr);
+            ROUTER(sr)->exit_signal = 1;
+            return;
+        }
+        usleep(1000000);
+    }
+}
+
+
+void router_add_thread(struct sr_instance * sr, void (*run)(struct sr_instance *),
+                       void (*end)(struct sr_instance *))
+{
+    NEW_STRUCT(ret, sr_thread);
+    ret->i = assoc_array_length(ROUTER(sr)->threads);
+    ret->run = run;
+    ret->end = end;
+
+    assoc_array_insert(ROUTER(sr)->threads,ret);
+}
 
 struct sr_packet * router_construct_packet(struct sr_instance * sr,
                                            const uint8_t * packet, unsigned int len, const char* interface)
@@ -73,11 +126,17 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
     strcpy(router->default_interface,interface->name);
 }
 
+void * router_thread_key(void * data)
+{
+    return &((struct sr_thread *)data)->i;
+}
+
 void router_create(struct sr_instance * sr, struct sr_options * opt)
 {
     NEW_STRUCT(ret,sr_router);
+    ret->threads = assoc_array_create(router_thread_key, assoc_array_key_comp_int);
     sr->router = ret;
-    ret->ready = 0;
+    ret->exit_signal = 1;
 
 #ifdef _CPUMODE_
     strcpy(ret->device.device_name,DEFAULT_IFACE);
@@ -93,7 +152,6 @@ void router_create(struct sr_instance * sr, struct sr_options * opt)
     writeReg(&ret->device, CPCI_REG_CTRL, 0x00010100);
     usleep(2000);
 #endif
-    
     interface_list_create(sr);
     forwarding_table_create(sr);
     arp_cache_create(sr);
@@ -104,7 +162,6 @@ void router_create(struct sr_instance * sr, struct sr_options * opt)
     ret->rid = 0;
     ret->ospf_seq = 0;
     ret->opt = *opt;
-    ret->ready = 1;
 
     if(ret->opt.RCPPort != -1)
     {
@@ -114,10 +171,17 @@ void router_create(struct sr_instance * sr, struct sr_options * opt)
     {
         ret->rcp_server = 0;
     }
+    sys_thread_new(router_thread,sr);
 }
 
 void router_destroy(struct sr_router * router)
 {
+    router->exit_signal = 0;
+    while(router->exit_signal == 0)
+    {
+        usleep(1000);
+    }
+    assoc_array_delete_array(router->threads,assoc_array_delete_self);
     if(router->rcp_server)
     {
         RCPServerDestroy(router->rcp_server);
@@ -211,7 +275,9 @@ void sr_router_default_options(struct sr_options * opt)
     opt->show_ospf_hello = 0;
     opt->show_ospf_lsu = 0;
     opt->show_icmp = 0;
-    opt->show_tcp = 0; 
+    opt->show_tcp = 0;
+    opt->show_udp = 0;
+    opt->show_dhcp = 0;
 }
 
 int router_nat_enabled(struct sr_instance * sr)

@@ -37,7 +37,6 @@ struct interface_list
     struct sr_instance * sr;
     int time_to_hello;
     int time_to_flood;
-    int exit_signal;
     int total;
 
     struct sr_mutex * mutex;

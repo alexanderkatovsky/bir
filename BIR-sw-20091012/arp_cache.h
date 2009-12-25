@@ -26,7 +26,6 @@ struct arp_cache
     struct bi_assoc_array * array_s;    
 
     struct sr_mutex * mutex;
-    int exit_signal;
 };
 
 void arp_cache_create(struct sr_instance * sr);
