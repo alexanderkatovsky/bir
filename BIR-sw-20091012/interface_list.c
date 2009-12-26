@@ -77,14 +77,17 @@ void interface_list_hw_nat(struct sr_instance * sr, int i, enum e_nat_type type)
 
     if(type == E_NAT_TYPE_INBOUND)
     {
-        writeReg(device, NAT_ENABLE_IF, 1);
-        writeReg(device, NAT_INBOUND_IF, i);
+        writeReg(device, NAT_IFACE_MODE, 1);
     }
     else if(type == E_NAT_TYPE_OUTBOUND)
     {
-        writeReg(device, NAT_ENABLE_IF, 1);
-        writeReg(device, NAT_OUTBOUND_IF, i);
+        writeReg(device, NAT_IFACE_MODE, 2);
     }
+    else if(type == E_NAT_TYPE_NONE)
+    {
+        writeReg(device, NAT_IFACE_MODE, 0);
+    }
+    writeReg(device, NAT_IFACE_WR_ADDR, i);
 #endif
 }
 

@@ -27,6 +27,9 @@ struct nat_entry
     struct nat_entry_ip_port inbound;
     struct nat_entry_OUTBOUND outbound;
 
+    uint32_t in_iface;
+    uint32_t out_iface;
+    
     int ttl;
     int hw_i;
 };
@@ -45,7 +48,7 @@ struct nat_table
 void nat_destroy(struct nat_table * nat);
 void nat_create(struct sr_instance * sr);
 int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port, uint32_t dst_ip,
-            uint16_t dst_port, char * out_iface);
+            uint16_t dst_port, char * out_iface, char * in_iface);
 int nat_in(struct sr_instance * sr, uint32_t src_ip, uint16_t src_port, uint32_t * dst_ip, uint16_t * dst_port);
 
 void nat_show(struct sr_instance * sr, print_t print);

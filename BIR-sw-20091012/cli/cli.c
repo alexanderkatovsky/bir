@@ -283,23 +283,45 @@ void cli_show_hw_arp() {
     }
 }
 
+void cli_show_hw_nat_if(struct sr_vns_if * iface, void * data)
+{
+    struct nf2device* device = &ROUTER(get_sr())->device;
+    uint32_t mode;
+    uint32_t port = interface_list_get_output_port(get_sr(), iface->name);
+    writeReg(device, NAT_IFACE_RD_ADDR, port);
+    readReg(device, NAT_IFACE_MODE, &mode);
+
+    cli_printf("%s (port %d): %d (%s)\n", iface->name, port, mode,
+               (mode == 0) ? "disabled" : (mode == 1 ? "inbound" : (mode == 2 ? "outbound" : "invalid")));
+}
+
 void cli_show_hw_nat()
 {
     int i;
     struct nf2device* device = &ROUTER(get_sr())->device;
-    uint32_t out_ip,out_port,dst_ip,dst_port,src_ip,src_port;    
+    uint32_t out_ip,out_port,dst_ip,dst_port,src_ip,src_port;
+    char * if_in, * if_out;
+    uint32_t p_if_in, p_if_out;
+
+    cli_printf("Interface NAT status:\n");
+    interface_list_loop_interfaces(get_sr(), cli_show_hw_nat_if, 0);
 
     cli_printf("\nNAT table:\n");
     for(i = 0; i < NAT_TABLE_DEPTH; i++)
     {
         writeReg(device, NAT_TABLE_RD_ADDR, i);
 
-        readReg(device, NAT_TABLE_NAT_OUT_IP, &out_ip);
-        readReg(device, NAT_TABLE_NAT_OUT_PORT, &out_port);
+        readReg(device, NAT_TABLE_IP_NAT_OUT, &out_ip);
+        readReg(device, NAT_TABLE_PORT_NAT_OUT, &out_port);
         readReg(device, NAT_TABLE_IP_DST, &dst_ip);
-        readReg(device, NAT_TABLE_DST_PORT, &dst_port);
-        readReg(device, NAT_TABLE_IP_SRC, &src_ip);
-        readReg(device, NAT_TABLE_SRC_PORT, &src_port);
+        readReg(device, NAT_TABLE_PORT_DST, &dst_port);
+        readReg(device, NAT_TABLE_IP_HOST, &src_ip);
+        readReg(device, NAT_TABLE_PORT_HOST, &src_port);
+        readReg(device, NAT_TABLE_IF_NAT_IN, &p_if_in);
+        readReg(device, NAT_TABLE_IF_NAT_OUT, &p_if_out);
+
+        if_in = interface_list_get_ifname_from_port(get_sr(), p_if_in);
+        if_out = interface_list_get_ifname_from_port(get_sr(), p_if_out);
 
         src_ip = htonl(src_ip);
         out_ip = htonl(out_ip);
@@ -311,7 +333,7 @@ void cli_show_hw_nat()
             print_ip(htonl(out_ip),cli_printf);cli_printf(":0x%04x ",out_port);
             print_ip(htonl(dst_ip),cli_printf);cli_printf(":0x%04x ",dst_port);
             
-            cli_printf("\n");
+            cli_printf(" %s %s\n",if_in, if_out);
         }
     }    
 }

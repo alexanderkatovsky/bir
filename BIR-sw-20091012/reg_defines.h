@@ -541,17 +541,24 @@
 // Name: DRAM (DRAM)
 // Description: DRAM
 
-#define NAT_INBOUND_IF              0xdeadbeef
-#define NAT_OUTBOUND_IF             0xdeadbeef
-#define NAT_ENABLE_IF               0xdeadbeef
-#define NAT_TABLE_NAT_OUT_IP        0xdeadbeef
-#define NAT_TABLE_IP_SRC            0xdeadbeef
-#define NAT_TABLE_IP_DST            0xdeadbeef
-#define NAT_TABLE_SRC_PORT          0xdeadbeef
-#define NAT_TABLE_DST_PORT          0xdeadbeef
-#define NAT_TABLE_NAT_OUT_PORT      0xdeadbeef
-#define NAT_TABLE_RD_ADDR           0xdeadbeef
-#define NAT_TABLE_WR_ADDR           0xdeadbeef
+#define NAT_IFACE_MODE             0x1
+#define NAT_IFACE_WR_ADDR          0x1
+#define NAT_IFACE_RD_ADDR          0x1
+
+#define NAT_TABLE_IP_HOST          0x1
+#define NAT_TABLE_IP_DST           0x1
+#define NAT_TABLE_IP_NAT_OUT       0x1
+
+#define NAT_TABLE_PORT_HOST        0x1
+#define NAT_TABLE_PORT_DST         0x1
+#define NAT_TABLE_PORT_NAT_OUT     0x1
+
+#define NAT_TABLE_IF_NAT_IN        0x1
+#define NAT_TABLE_IF_NAT_OUT       0x1
+
+#define NAT_TABLE_RD_ADDR          0x1
+#define NAT_TABLE_WR_ADDR          0x1
+
 #define NAT_TABLE_DEPTH             31
 
 #endif

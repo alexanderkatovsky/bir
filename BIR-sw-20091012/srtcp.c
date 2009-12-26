@@ -84,7 +84,7 @@ void tcp_handle_incoming_not_for_us(struct sr_packet * packet)
                 if(interface_list_outbound(packet->sr, thru_interface))
                 {
                     /* allocate out_port, lookup src_ip from thru_interface, and add to NAT table  */
-                    if(nat_out(packet->sr,&src_ip,&src_port,dst_ip,dst_port,thru_interface))
+                    if(nat_out(packet->sr,&src_ip,&src_port,dst_ip,dst_port,thru_interface,packet->interface))
                     {
                         packet2 = tcp_construct_packet(packet,src_ip,src_port,dst_ip,dst_port,thru_interface);
                         ip_forward(packet2);

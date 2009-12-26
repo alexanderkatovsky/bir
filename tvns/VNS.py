@@ -55,7 +55,7 @@ class VirtualNode(Node):
         """Forwards to the user responsible for handling packets for this virtual node"""
         if (intf.mac == packet[0:6]) or (packet[0:6] == zeromac):
             if self.conn is not None:
-                print "sending to r1 %f"%time.time()
+                print "sending %s to %s:%s %f"%(repr(packet),self.name,intf.name,time.time())
                 self.conn.send(VNSPacket(intf.name, packet))
 
 class Host(Node):
@@ -99,6 +99,7 @@ class TunHost(Node, Thread):
     def run(self):
         while 1:
             buf = os.read(self.__fd,1500)
+            print "tun, recv " + repr(buf)
             for intf in self.interfaces:
                 self.send_packet(intf,buf[4:])
 

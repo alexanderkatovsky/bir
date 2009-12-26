@@ -84,6 +84,7 @@ class LTTwistedProtocol(Protocol):
         self.connected = False
 
     def send(self, ltm):
+        print "sending..." + str(ltm)
         self.transport.write(self.factory.lt_protocol.pack_with_header(ltm))
 
     def connectionMade(self):

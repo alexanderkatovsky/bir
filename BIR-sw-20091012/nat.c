@@ -13,8 +13,8 @@ void nat_hw_insert_entry(struct sr_instance * sr, struct nat_entry * entry)
     unsigned int port;
 
     writeReg(device, NAT_TABLE_RD_ADDR, NAT(sr)->hw_i);
-    readReg(device, NAT_TABLE_IP_SRC, &ipp.ip);
-    readReg(device, NAT_TABLE_SRC_PORT, &port);
+    readReg(device, NAT_TABLE_IP_HOST, &ipp.ip);
+    readReg(device, NAT_TABLE_PORT_HOST, &port);
     ipp.port = port;
     ipp.ip = htonl(ipp.ip);
 
@@ -23,12 +23,14 @@ void nat_hw_insert_entry(struct sr_instance * sr, struct nat_entry * entry)
         entry2->hw_i = -1;
     }
 
-    writeReg(device, NAT_TABLE_NAT_OUT_IP, ntohl(entry->outbound.out.ip));
-    writeReg(device, NAT_TABLE_NAT_OUT_PORT, entry->outbound.out.port);
+    writeReg(device, NAT_TABLE_IP_NAT_OUT, ntohl(entry->outbound.out.ip));
+    writeReg(device, NAT_TABLE_PORT_NAT_OUT, entry->outbound.out.port);
     writeReg(device, NAT_TABLE_IP_DST, ntohl(entry->outbound.dst.ip));
-    writeReg(device, NAT_TABLE_DST_PORT, entry->outbound.dst.port);
-    writeReg(device, NAT_TABLE_IP_SRC, ntohl(entry->inbound.ip));
-    writeReg(device, NAT_TABLE_SRC_PORT, entry->inbound.port);
+    writeReg(device, NAT_TABLE_PORT_DST, entry->outbound.dst.port);
+    writeReg(device, NAT_TABLE_IP_HOST, ntohl(entry->inbound.ip));
+    writeReg(device, NAT_TABLE_PORT_HOST, entry->inbound.port);
+    writeReg(device, NAT_TABLE_IF_NAT_IN, entry->in_iface);
+    writeReg(device, NAT_TABLE_IF_NAT_OUT, entry->out_iface);
     writeReg(device, NAT_TABLE_WR_ADDR, NAT(sr)->hw_i);
     
     entry->hw_i = NAT(sr)->hw_i;
@@ -44,13 +46,15 @@ void nat_hw_delete_entry(struct sr_instance * sr, int i)
     struct nf2device * device = &ROUTER(sr)->device;
 
     if(i != -1)
-    {
-        writeReg(device, NAT_TABLE_NAT_OUT_IP, 0);
-        writeReg(device, NAT_TABLE_NAT_OUT_PORT, 0);
+    {        
+        writeReg(device, NAT_TABLE_IP_NAT_OUT, 0);
+        writeReg(device, NAT_TABLE_PORT_NAT_OUT, 0);
         writeReg(device, NAT_TABLE_IP_DST, 0);
-        writeReg(device, NAT_TABLE_DST_PORT, 0);
-        writeReg(device, NAT_TABLE_IP_SRC, 0);
-        writeReg(device, NAT_TABLE_SRC_PORT, 0);
+        writeReg(device, NAT_TABLE_PORT_DST, 0);
+        writeReg(device, NAT_TABLE_IP_HOST, 0);
+        writeReg(device, NAT_TABLE_PORT_HOST, 0);
+        writeReg(device, NAT_TABLE_IF_NAT_IN, 0);
+        writeReg(device, NAT_TABLE_IF_NAT_OUT, 0);
         writeReg(device, NAT_TABLE_WR_ADDR, i);
     }
 #endif
@@ -187,7 +191,7 @@ int nat_port_alloc(struct sr_instance * sr, struct nat_entry_OUTBOUND * outbound
 }
 
 int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
-            uint32_t dst_ip, uint16_t dst_port, char * out_iface)
+            uint32_t dst_ip, uint16_t dst_port, char * out_iface, char * in_iface)
 {
     struct nat_entry_ip_port src = {*src_ip, *src_port};
     struct nat_entry * entry;
@@ -225,6 +229,9 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
         entry->outbound.out.ip = *src_ip;
         entry->outbound.dst.ip = dst_ip;
         entry->outbound.dst.port = dst_port;
+
+        entry->in_iface = interface_list_get_output_port(sr,in_iface);
+        entry->out_iface = interface_list_get_output_port(sr,out_iface);
 
         if(nat_port_alloc(sr,&entry->outbound))
         {
