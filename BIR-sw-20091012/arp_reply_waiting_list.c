@@ -41,7 +41,6 @@ int arp_handler_incr(void * data, void * user_data)
     {
         if(entry->request_number >= ARP_REQUEST_MAX)
         {
-            Debug("\n\nARP timeout ");dump_ip(entry->next_hop);Debug("\n\n");
             fifo_push(delete_list,entry);            
         }
         else

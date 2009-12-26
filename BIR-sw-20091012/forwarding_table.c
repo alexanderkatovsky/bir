@@ -84,7 +84,6 @@ int forwarding_table_lookup_next_hop(struct forwarding_table * fwd_table,
                                      uint32_t ip, uint32_t * next_hop, char * thru, int nat)
 {
     struct __LPMSearch srch = {0,ip,0,next_hop,thru};
-    printf("\nlookup\n");
     mutex_lock(fwd_table->mutex);
     
     assoc_array_walk_array(nat ? fwd_table->array_nat : fwd_table->array_d, __LPMSearchFn,(void*)&srch);
