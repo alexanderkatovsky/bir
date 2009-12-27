@@ -556,6 +556,13 @@
 #define NAT_TABLE_IF_NAT_IN        0x1
 #define NAT_TABLE_IF_NAT_OUT       0x1
 
+#define NAT_TABLE_ENTRY_COUNTER    0x1
+
+#define NAT_TABLE_ENTRY_MAC_NEXT_HOP_HI  0x1
+#define NAT_TABLE_ENTRY_MAC_NEXT_HOP_LO  0x1
+#define NAT_TABLE_ENTRY_MAC_HOST_HI  0x1
+#define NAT_TABLE_ENTRY_MAC_HOST_LO  0x1
+
 #define NAT_TABLE_RD_ADDR          0x1
 #define NAT_TABLE_WR_ADDR          0x1
 

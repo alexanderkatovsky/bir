@@ -4,13 +4,14 @@
 #include "reg_defines.h"
 
 
-void nat_hw_insert_entry(struct sr_instance * sr, struct nat_entry * entry)
+void nat_hw_insert_entry(struct sr_instance * sr, struct nat_entry * entry, uint8_t * src_MAC, uint8_t * dst_MAC)
 {
 #ifdef _CPUMODE_
     struct nf2device * device = &ROUTER(sr)->device;
     struct nat_entry_ip_port ipp;
     struct nat_entry * entry2;
     unsigned int port;
+    uint32_t mac_hi,mac_lo;
 
     writeReg(device, NAT_TABLE_RD_ADDR, NAT(sr)->hw_i);
     readReg(device, NAT_TABLE_IP_HOST, &ipp.ip);
@@ -31,8 +32,18 @@ void nat_hw_insert_entry(struct sr_instance * sr, struct nat_entry * entry)
     writeReg(device, NAT_TABLE_PORT_HOST, entry->inbound.port);
     writeReg(device, NAT_TABLE_IF_NAT_IN, entry->in_iface);
     writeReg(device, NAT_TABLE_IF_NAT_OUT, entry->out_iface);
-    writeReg(device, NAT_TABLE_WR_ADDR, NAT(sr)->hw_i);
+
+    mac_lo = ntohl(*((uint32_t *)(src_MAC+2)));
+    mac_hi = ntohl(*((uint32_t*)(src_MAC))) >> 16;
+    writeReg(device, NAT_TABLE_ENTRY_MAC_HOST_LO, mac_lo);
+    writeReg(device, NAT_TABLE_ENTRY_MAC_HOST_HI, mac_hi);        
+
+    mac_lo = ntohl(*((uint32_t *)(dst_MAC+2)));
+    mac_hi = ntohl(*((uint32_t*)(dst_MAC))) >> 16;
+    writeReg(device, NAT_TABLE_ENTRY_MAC_NEXT_HOP_LO, mac_lo);
+    writeReg(device, NAT_TABLE_ENTRY_MAC_NEXT_HOP_HI, mac_hi);
     
+    writeReg(device, NAT_TABLE_WR_ADDR, NAT(sr)->hw_i);
     entry->hw_i = NAT(sr)->hw_i;
 
     NAT(sr)->hw_i += 1;
@@ -55,6 +66,11 @@ void nat_hw_delete_entry(struct sr_instance * sr, int i)
         writeReg(device, NAT_TABLE_PORT_HOST, 0);
         writeReg(device, NAT_TABLE_IF_NAT_IN, 0);
         writeReg(device, NAT_TABLE_IF_NAT_OUT, 0);
+        writeReg(device, NAT_TABLE_ENTRY_COUNTER, 0);
+        writeReg(device, NAT_TABLE_ENTRY_MAC_NEXT_HOP_HI, 0);
+        writeReg(device, NAT_TABLE_ENTRY_MAC_NEXT_HOP_LO, 0);
+        writeReg(device, NAT_TABLE_ENTRY_MAC_HOST_HI, 0);
+        writeReg(device, NAT_TABLE_ENTRY_MAC_HOST_LO, 0);        
         writeReg(device, NAT_TABLE_WR_ADDR, i);
     }
 #endif
@@ -71,16 +87,36 @@ void nat_hw_init(struct sr_instance * sr)
 #endif
 }
 
+struct nat_depricate_entries_s
+{
+    struct fifo * delete;
+    struct sr_instance * sr;
+};
+
 int nat_depricate_entries_a(void * data, void * userdata)
 {
     struct nat_entry * entry = (struct nat_entry *)data;
-    struct fifo * delete = (struct fifo *)userdata;
+    struct nat_depricate_entries_s * es = (struct nat_depricate_entries_s *)userdata;
 
+#ifdef _CPUMODE_ 
+    uint32_t counter;
+    struct nf2device * device = &ROUTER(es->sr)->device;
+    if(entry->hw_i >= 0)
+    {
+        writeReg(device, NAT_TABLE_WR_ADDR, entry->hw_i);
+        readReg(device, NAT_TABLE_ENTRY_COUNTER, &counter);
+        if(counter > entry->entry_counter)
+        {
+            entry->ttl = NAT_TTL;
+            entry->entry_counter = counter;
+        }
+    }
+#endif
     entry->ttl -= 1;
 
     if(entry->ttl == 0)
     {
-        fifo_push(delete, entry);
+        fifo_push(es->delete, entry);
     }
     
     return 0;
@@ -90,8 +126,9 @@ void nat_depricate_entries(struct sr_instance * sr)
 {
     struct fifo * delete = fifo_create();
     struct nat_entry * entry;
+    struct nat_depricate_entries_s es = {delete,sr};
 
-    bi_assoc_array_walk_array(NAT(sr)->table, nat_depricate_entries_a,  delete);
+    bi_assoc_array_walk_array(NAT(sr)->table, nat_depricate_entries_a,  &es);
 
     while((entry = fifo_pop(delete)))
     {
@@ -191,11 +228,15 @@ int nat_port_alloc(struct sr_instance * sr, struct nat_entry_OUTBOUND * outbound
 }
 
 int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
-            uint32_t dst_ip, uint16_t dst_port, char * out_iface, char * in_iface)
+            uint32_t dst_ip, uint16_t dst_port, char * out_iface, char * in_iface, uint8_t * src_MAC, uint32_t next_hop)
 {
     struct nat_entry_ip_port src = {*src_ip, *src_port};
     struct nat_entry * entry;
     int ret = 0;
+#ifdef _CPUMODE_
+    uint8_t dst_MAC[ETHER_ADDR_LEN];
+    int hww = arp_cache_get_MAC_from_ip(ARP_CACHE(sr), next_hop, dst_MAC);
+#endif    
 
     mutex_lock(NAT(sr)->mutex);
 
@@ -218,8 +259,13 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
             entry->outbound.dst.ip = dst_ip;
             entry->outbound.dst.port = dst_port; 
             bi_assoc_array_insert(NAT(sr)->table, entry);
-            nat_hw_delete_entry(sr,entry->hw_i);
-            nat_hw_insert_entry(sr,entry);
+#ifdef _CPUMODE_
+            if(hww)
+            {
+                nat_hw_delete_entry(sr,entry->hw_i);
+                nat_hw_insert_entry(sr,entry,src_MAC,dst_MAC);
+            }
+#endif
         }
     }
     else
@@ -229,6 +275,8 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
         entry->outbound.out.ip = *src_ip;
         entry->outbound.dst.ip = dst_ip;
         entry->outbound.dst.port = dst_port;
+        entry->entry_counter = 0;
+        entry->hw_i = -1;
 
         entry->in_iface = interface_list_get_output_port(sr,in_iface);
         entry->out_iface = interface_list_get_output_port(sr,out_iface);
@@ -238,7 +286,12 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
             ret = 1;
             *src_port = entry->outbound.out.port;
             bi_assoc_array_insert(NAT(sr)->table, entry);
-            nat_hw_insert_entry(sr,entry);
+#ifdef _CPUMODE_
+            if(hww)
+            {
+                nat_hw_insert_entry(sr,entry,src_MAC,dst_MAC);
+            }
+#endif            
         }
         else
         {

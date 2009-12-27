@@ -302,6 +302,9 @@ void cli_show_hw_nat()
     uint32_t out_ip,out_port,dst_ip,dst_port,src_ip,src_port;
     char * if_in, * if_out;
     uint32_t p_if_in, p_if_out;
+    uint32_t counter, mac_hi, mac_lo;
+    uint8_t src_mac[ETHER_ADDR_LEN];
+    uint8_t dst_mac[ETHER_ADDR_LEN];
 
     cli_printf("Interface NAT status:\n");
     interface_list_loop_interfaces(get_sr(), cli_show_hw_nat_if, 0);
@@ -319,6 +322,17 @@ void cli_show_hw_nat()
         readReg(device, NAT_TABLE_PORT_HOST, &src_port);
         readReg(device, NAT_TABLE_IF_NAT_IN, &p_if_in);
         readReg(device, NAT_TABLE_IF_NAT_OUT, &p_if_out);
+        readReg(device, NAT_TABLE_ENTRY_COUNTER, &counter);
+
+        readReg(device, NAT_TABLE_ENTRY_MAC_HOST_LO, &mac_lo);
+        readReg(device, NAT_TABLE_ENTRY_MAC_HOST_HI, &mac_hi);
+        *((uint32_t *)(src_mac+2)) = htonl(mac_lo);
+        *((uint16_t *)(src_mac)) = htonl(mac_hi) >> 16;
+
+        readReg(device, NAT_TABLE_ENTRY_MAC_NEXT_HOP_LO, &mac_lo);
+        readReg(device, NAT_TABLE_ENTRY_MAC_NEXT_HOP_HI, &mac_hi);
+        *((uint32_t *)(dst_mac+2)) = htonl(mac_lo);
+        *((uint16_t *)(dst_mac)) = htonl(mac_hi) >> 16;        
 
         if_in = interface_list_get_ifname_from_port(get_sr(), p_if_in);
         if_out = interface_list_get_ifname_from_port(get_sr(), p_if_out);
@@ -333,7 +347,10 @@ void cli_show_hw_nat()
             print_ip(htonl(out_ip),cli_printf);cli_printf(":0x%04x ",out_port);
             print_ip(htonl(dst_ip),cli_printf);cli_printf(":0x%04x ",dst_port);
             
-            cli_printf(" %s %s\n",if_in, if_out);
+            cli_printf(" %s %s ",if_in, if_out);
+            print_mac(src_mac,cli_printf);
+            print_mac(dst_mac,cli_printf);
+            cli_printf(" %d\n",counter);
         }
     }    
 }
