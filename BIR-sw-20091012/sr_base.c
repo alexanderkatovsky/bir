@@ -563,11 +563,16 @@ static void sr_destroy_instance(struct sr_instance* sr)
 static void usage(char* argv0)
 {
 #ifdef _DEBUG_
-    const char * debug_str = " (debug) ";
+    const char * debug_str = " (Debug,";
 #else
-    const char * debug_str = " ";
+    const char * debug_str = " (Release,";
 #endif
-    printf("Simple Router Client%s\nCompiled At: (%s %s)\n", debug_str, __TIME__, __DATE__);
+#ifdef _CPUMODE_
+    const char * cpu_str = " CPU) ";
+#else
+    const char * cpu_str = " VNS) ";
+#endif    
+    printf("Simple Router Client%s%s\nCompiled At: (%s %s)\n", debug_str, cpu_str, __TIME__, __DATE__);
     printf("Format: %s [-h] [-v host] [-s server] [-p VNS port] \n",argv0);
     printf("           [-t topo id] [-P cli port] [-i cpu config file]\n");
     printf("\nLong Options:\n");
