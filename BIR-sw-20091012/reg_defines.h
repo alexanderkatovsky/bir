@@ -538,34 +538,28 @@
 #define OQ_QUEUE_7_QUEUE_NUM_WORDS_LEFT               0x2001e3c
 #define OQ_QUEUE_7_QUEUE_FULL_THRESH                  0x2001e40
 
-// Name: DRAM (DRAM)
-// Description: DRAM
+#define NAT_TABLE_ENTRY_IP_HOST           0x2000080
+#define NAT_TABLE_ENTRY_IP_DST            0x2000084
+#define NAT_TABLE_ENTRY_PORT_HOST         0x2000088
+#define NAT_TABLE_ENTRY_PORT_DST          0x200008c
+#define NAT_TABLE_ENTRY_IP_NAT_OUT        0x2000090
+#define NAT_TABLE_ENTRY_PORT_NAT_OUT      0x2000094
+#define NAT_TABLE_ENTRY_IF_NAT_IN         0x2000098
+#define NAT_TABLE_ENTRY_IF_NAT_OUT        0x200009c
+#define NAT_TABLE_ENTRY_MAC_HOST_HI       0x20000a0
+#define NAT_TABLE_ENTRY_MAC_HOST_LO       0x20000a4
+#define NAT_TABLE_ENTRY_MAC_NEXT_HOP_HI   0x20000a8
+#define NAT_TABLE_ENTRY_MAC_NEXT_HOP_LO   0x20000ac
+#define NAT_TABLE_ENTRY_COUNTER           0x20000b0
+#define NAT_TABLE_RD_ADDR                 0x20000b4
+#define NAT_TABLE_WR_ADDR                 0x20000b8
+#define NAT_IFACE_MODE                    0x20000bc
+#define NAT_IFACE_WR_ADDR                 0x20000c0
+#define NAT_IFACE_RD_ADDR                 0x20000c4
+#define NAT_NUM_MISSES                    0x20000c8
+#define NAT_NUM_FORWARDED                 0x20000cc
 
-#define NAT_IFACE_MODE             0x1
-#define NAT_IFACE_WR_ADDR          0x1
-#define NAT_IFACE_RD_ADDR          0x1
-
-#define NAT_TABLE_IP_HOST          0x1
-#define NAT_TABLE_IP_DST           0x1
-#define NAT_TABLE_IP_NAT_OUT       0x1
-
-#define NAT_TABLE_PORT_HOST        0x1
-#define NAT_TABLE_PORT_DST         0x1
-#define NAT_TABLE_PORT_NAT_OUT     0x1
-
-#define NAT_TABLE_IF_NAT_IN        0x1
-#define NAT_TABLE_IF_NAT_OUT       0x1
-
-#define NAT_TABLE_ENTRY_COUNTER    0x1
-
-#define NAT_TABLE_ENTRY_MAC_NEXT_HOP_HI  0x1
-#define NAT_TABLE_ENTRY_MAC_NEXT_HOP_LO  0x1
-#define NAT_TABLE_ENTRY_MAC_HOST_HI  0x1
-#define NAT_TABLE_ENTRY_MAC_HOST_LO  0x1
-
-#define NAT_TABLE_RD_ADDR          0x1
-#define NAT_TABLE_WR_ADDR          0x1
-
-#define NAT_TABLE_DEPTH             31
+#define NAT_TABLE_STATE                   0x20000ec
+#define NAT_TABLE_DEPTH             32
 
 #endif
