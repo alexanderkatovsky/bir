@@ -8,7 +8,7 @@ AC_CONFIG_HEADER([config.h])
 
 
 AC_MSG_CHECKING(whether to enable optimization)
-AC_ARG_ENABLE(release, [  --enable-release         Release build (default Debug build)], 
+AC_ARG_ENABLE(release, [  --enable-release        Release build (default Debug build)], 
                       [optimize=yes], 
                       [optimize=no])
 if test "x$optimize" = "xyes"; then

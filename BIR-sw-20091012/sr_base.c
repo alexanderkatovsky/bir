@@ -573,8 +573,12 @@ static void usage(char* argv0)
     const char * cpu_str = " VNS) ";
 #endif    
     printf("Simple Router Client%s%s\nCompiled At: (%s %s)\n", debug_str, cpu_str, __TIME__, __DATE__);
+#ifdef _CPUMODE_
+    printf("Format: %s [-h] [-P cli port] [-i cpu config file]\n",argv0);
+#else
     printf("Format: %s [-h] [-v host] [-s server] [-p VNS port] \n",argv0);
-    printf("           [-t topo id] [-P cli port] [-i cpu config file]\n");
+    printf("           [-t topo id] [-P cli port]\n");
+#endif
     printf("\nLong Options:\n");
     printf("  --arp_proxy     turn on arp proxying\n");
     printf("  --disable_ospf  turn off ospf\n");    
