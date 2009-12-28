@@ -19,9 +19,8 @@ SR_SRCS = $(SR_H_SRCS) $(SR_C_SRCS)
 SR_SRCS_MAIN = sr_main.c
 SR_SRCS_BASE = nf2util.c
 
-SR_OBJS = $(patsubst %.c, %.o, $(SR_SRCS))
-libsr.a : $(SR_OBJS)
-	ar rcu libsr.a $(SR_OBJS)
+lib_LIBRARIES=libsr.a
+libsr_a_SOURCES=$(SR_SRCS)
 
 AM_CFLAGS=-Wall -D_GNU_SOURCE -I lwtcp -I cli -D_LINUX_ 
 AM_LDFLAGS=-lpthread #-z muldefs
