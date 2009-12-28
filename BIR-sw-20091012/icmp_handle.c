@@ -116,7 +116,7 @@ void icmp_handle_reply(struct sr_packet * packet)
     cli_ping_reply(IP_HDR(packet)->ip_src.s_addr);
 }
 
-void icmp_dest_unreach(struct sr_packet * packet)
+void icmp_handle_dest_unreach(struct sr_packet * packet)
 {
     int start_h = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
     struct icmphdr * icmp;
@@ -127,7 +127,7 @@ void icmp_dest_unreach(struct sr_packet * packet)
     }
 }
 
-void icmp_time_exceeded(struct sr_packet * packet)
+void icmp_handle_time_exceeded(struct sr_packet * packet)
 {
     int start_h = sizeof(struct sr_ethernet_hdr) + sizeof(struct ip);
     struct icmphdr * icmp;
@@ -160,10 +160,10 @@ void icmp_handle_incoming_packet(struct sr_packet * packet)
             icmp_handle_reply(packet);
             break;
         case ICMP_DEST_UNREACH:
-            icmp_dest_unreach(packet);
+            icmp_handle_dest_unreach(packet);
             break;
         case ICMP_TIME_EXCEEDED:
-            icmp_time_exceeded(packet);
+            icmp_handle_time_exceeded(packet);
             break;
         }
     }
