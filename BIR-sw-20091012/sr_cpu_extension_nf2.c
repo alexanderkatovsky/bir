@@ -243,8 +243,6 @@ int sr_cpu_output(struct sr_instance* sr /* borrowed */,
     assert(buf);
     assert(iface);
 
-	Debug("Sending %d bytes to %s...\n", len, iface);
-
     for(i = 0; i < nports; i++)
     {
         if(strcmp(iface, cpu_ports[i].iface_name) == 0)

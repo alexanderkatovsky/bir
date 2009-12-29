@@ -70,7 +70,7 @@ void interface_list_update_hw(struct sr_instance * sr)
 #endif
 }
 
-void interface_list_hw_nat(struct sr_instance * sr, int i, enum e_nat_type type)
+void interface_list_hw_nat(struct sr_instance * sr, int port, enum e_nat_type type)
 {
 #ifdef _CPUMODE_
     struct nf2device * device = &ROUTER(sr)->device;
@@ -87,7 +87,7 @@ void interface_list_hw_nat(struct sr_instance * sr, int i, enum e_nat_type type)
     {
         writeReg(device, NAT_IFACE_MODE, 0);
     }
-    writeReg(device, NAT_IFACE_WR_ADDR, i);
+    writeReg(device, NAT_IFACE_WR_ADDR, port);
 #endif
 }
 
@@ -378,7 +378,7 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
         entry->ospf = 0;
     }
 
-    interface_list_hw_nat(list->sr, entry->i, entry->nat_type);
+    interface_list_hw_nat(list->sr, entry->port, entry->nat_type);
 }
 
 struct sr_vns_if * interface_list_get_interface_by_ip(struct interface_list * list, uint32_t ip)
