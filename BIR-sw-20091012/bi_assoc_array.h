@@ -20,4 +20,6 @@ void bi_assoc_array_walk_array(struct bi_assoc_array * array, int (* fn)(void *,
 struct bi_assoc_array * bi_assoc_array_create(assoc_array_key_getter,assoc_array_key_comp,
                                               assoc_array_key_getter,assoc_array_key_comp);
 
+int bi_assoc_array_length(struct bi_assoc_array * array);
+
 #endif

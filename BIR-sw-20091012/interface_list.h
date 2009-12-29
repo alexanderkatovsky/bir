@@ -77,6 +77,6 @@ int interface_list_outbound(struct sr_instance * sr, char * name);
 int interface_list_nat_enabled(struct sr_instance * sr, char * name);
 
 int interface_list_forward_packet(struct sr_instance * sr, char * from, char * to);
-int interface_list_forward_lsu(struct sr_instance * sr, char * from, char * to);
+int interface_list_forward_lsu(struct sr_instance * sr, char * from, char * to, uint32_t from_ip);
 int interface_list_ospf_enabled(struct sr_instance * sr, char * interface);
 #endif

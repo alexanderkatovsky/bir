@@ -292,7 +292,8 @@ void interface_list_thread_run(struct sr_instance * sr)
 
     mutex_lock(iflist->mutex);
     bi_assoc_array_walk_array(iflist->array,interface_list_scan_interfaces,iflist->sr);
-    if(iflist->time_to_hello <= 0)
+
+    if(iflist->time_to_hello <= 0 && bi_assoc_array_length(iflist->array) > 0)
     {
         interface_list_send_hello(iflist);
         iflist->time_to_hello = OSPF_DEFAULT_HELLOINT;
@@ -302,7 +303,7 @@ void interface_list_thread_run(struct sr_instance * sr)
         iflist->time_to_hello -= 1;
     }
 
-    if(iflist->time_to_flood <= 0)
+    if(iflist->time_to_flood <= 0 && bi_assoc_array_length(iflist->array) > 0)
     {
         interface_list_send_flood(iflist->sr);
         iflist->time_to_flood = OSPF_DEFAULT_LSUINT;
@@ -375,7 +376,7 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
     mutex_lock(list->mutex);
     bi_assoc_array_insert(list->array,entry);
     interface_list_update_hw(list->sr);
-    mutex_unlock(list->mutex);    
+    mutex_unlock(list->mutex);
     
     if(inbound && assoc_array_read(inbound, interface->name))
     {
@@ -728,12 +729,14 @@ int interface_list_forward_packet(struct sr_instance * sr, char * from, char * t
     return ret;
 }
 
-int interface_list_forward_lsu(struct sr_instance * sr, char * from, char * to)
+int interface_list_forward_lsu(struct sr_instance * sr, char * from, char * to, uint32_t from_ip)
 {
-    return
-        (!interface_list_inbound(sr,from) || strcmp(from,to) == 0) &&
-        interface_list_ospf_enabled(sr, from) &&
-        interface_list_ospf_enabled(sr, to);
+    return interface_list_ospf_enabled(sr, from) &&
+        interface_list_ospf_enabled(sr, to) &&
+        ((!interface_list_inbound(sr,from) && !interface_list_inbound(sr,to)) ||
+         (interface_list_inbound(sr,to) &&
+          forwarding_table_lookup_next_hop(FORWARDING_TABLE(sr), from_ip,0,0,1)) ||
+         strcmp(from,to) == 0);
 }
 
 int interface_list_ospf_enabled(struct sr_instance * sr, char * interface)

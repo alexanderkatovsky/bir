@@ -28,28 +28,19 @@ int __link_cmp(void * a, void * b)
     struct link * l1 = (struct link *)a;
     struct link * l2 = (struct link *)b;
     int ret = ip_address_cmp(&l1->ip, &l2->ip);
-    if(ret == 0)
+    if(ret == ASSOC_ARRAY_KEY_EQ)
     {
-        ret = (l1->rid <= l2->rid);
+        if(l1->rid < l2->rid) return ASSOC_ARRAY_KEY_LT;
+        if(l1->rid > l2->rid) return ASSOC_ARRAY_KEY_LT;
+        return ASSOC_ARRAY_KEY_EQ;
     }
     return ret;
 }
 
-void link_state_graph_links_list_delete_link(void * data)
-{
-    free((struct link *)data);
-}
-
-void * __links_getter(void * data)
-{
-    return &((struct link *)data)->ip;
-}
-
-
 void link_state_graph_free_node(void * data)
 {
     struct link_state_node * lsn = (struct link_state_node *)data;
-    assoc_array_delete_array(lsn->links,link_state_graph_links_list_delete_link);
+    assoc_array_delete_array(lsn->links,assoc_array_delete_self);
     free(lsn);
 }
 
@@ -69,7 +60,7 @@ struct link_state_node * __link_state_graph_insert_node(struct link_state_graph 
     lsn = (struct link_state_node *)malloc(sizeof(struct link_state_node));
     lsn->rid = rid;
     lsn->seq = -1;
-    lsn->links = assoc_array_create(__links_getter,__link_cmp);
+    lsn->links = assoc_array_create(assoc_array_get_self,__link_cmp);
     assoc_array_insert(lsg->array,lsn);
     return lsn;
 }
@@ -96,7 +87,7 @@ int link_state_graph_update_links_list(struct sr_instance * sr,
     struct link * lk;
     int ret = 0;
 
-    links2 = assoc_array_create(__links_getter,__link_cmp);
+    links2 = assoc_array_create(assoc_array_get_self,__link_cmp);
 
     for(i = 0; i < num; i++)
     {
@@ -104,7 +95,7 @@ int link_state_graph_update_links_list(struct sr_instance * sr,
         lk->ip.subnet = adv[i].subnet;
         lk->ip.mask = adv[i].mask;
         lk->rid = adv[i].rid;
-        if(assoc_array_read(links2,&lk->ip) == NULL)
+        if(assoc_array_read(links2,lk) == NULL)
         {
             assoc_array_insert(links2,lk);
         }
@@ -118,7 +109,7 @@ int link_state_graph_update_links_list(struct sr_instance * sr,
     {
         ret = 1;
     }
-    assoc_array_delete_array(*links,link_state_graph_links_list_delete_link);
+    assoc_array_delete_array(*links,assoc_array_delete_self);
     *links = links2;
 
     return ret;
@@ -295,6 +286,7 @@ int link_state_graph_update_links(struct sr_instance * sr,
     int ret = 1;
 
     lsn = (struct link_state_node *)assoc_array_read(lsg->array,&rid);
+
     if(lsn == NULL)
     {
         lsn = __link_state_graph_insert_node(lsg, rid);
@@ -303,7 +295,7 @@ int link_state_graph_update_links(struct sr_instance * sr,
     {
         ret = 0;
     }
-    
+
     if(ret)
     {
         lsn->seq = seq;

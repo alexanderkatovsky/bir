@@ -241,7 +241,15 @@ void __forwarding_table_show_a(uint32_t subnet, uint32_t mask, uint32_t next_hop
 
 void forwarding_table_dynamic_show(struct forwarding_table * ft, print_t print, int nat)
 {
-    print("Dynamic Forwarding Table:\n");
+    print("Dynamic Forwarding Table");
+    if(nat)
+    {
+        print(" (NAT):\n");
+    }
+    else
+    {
+        print(":\n");
+    }
     forwarding_table_loop(ft, __forwarding_table_show_a, print, 1, nat);
 }
 

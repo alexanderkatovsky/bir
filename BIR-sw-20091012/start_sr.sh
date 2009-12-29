@@ -13,10 +13,10 @@ folder=output_sr/`date "+%F:%H:%m:%S"`
 
 mkdir $folder
 
-./sr -r rtable.EMPTY -s localhost -v r1 -P 2301 $2 > $folder/1 &
+./sr -r rtable.EMPTY --verbose -s localhost -v r1 -P 2301 $2 > $folder/1 &
 
 for (( c=2; c<=$1; c++ ))
 do
     v=$((2300 + $c))
-    ./sr -r rtable.EMPTY -s localhost -v r$c -P $v > $folder/$c &
+    ./sr -r rtable.EMPTY -s localhost --verbose -v r$c -P $v > $folder/$c &
 done

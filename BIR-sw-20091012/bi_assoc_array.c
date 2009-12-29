@@ -70,3 +70,8 @@ struct bi_assoc_array * bi_assoc_array_create(assoc_array_key_getter get1, assoc
     ret->array_2 = assoc_array_create(get2,cmp2);
     return ret;
 }
+
+int bi_assoc_array_length(struct bi_assoc_array * array)
+{
+    return assoc_array_length(array->array_1);
+}

@@ -57,7 +57,8 @@ void __ospf_forward_incoming_lsu_a(struct sr_vns_if * vns_if, struct neighbour *
 {
     struct sr_packet * packet = (struct sr_packet *)userdata;
     struct in_addr dst = {n->ip};
-    if(interface_list_forward_lsu(packet->sr, packet->interface, vns_if->name))
+    if(interface_list_forward_lsu(packet->sr, packet->interface, vns_if->name,
+                                  LSU_HDR(packet)->num_adv ? LSU_START(packet)->subnet : 0))
     {
         IP_HDR(packet)->ip_dst = dst;
         IP_HDR(packet)->ip_sum = checksum_ipheader(IP_HDR(packet));
