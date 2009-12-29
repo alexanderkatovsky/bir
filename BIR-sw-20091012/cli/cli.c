@@ -343,14 +343,14 @@ void cli_show_hw_nat()
 
         if(out_ip != 0)
         {
-            print_ip(htonl(src_ip),cli_printf);cli_printf(":0x%04x ",src_port);
-            print_ip(htonl(out_ip),cli_printf);cli_printf(":0x%04x ",out_port);
-            print_ip(htonl(dst_ip),cli_printf);cli_printf(":0x%04x ",dst_port);
+            print_ip_port(src_ip,src_port,cli_printf);
+            print_ip_port(out_ip,out_port,cli_printf);
+            print_ip_port(dst_ip,dst_port,cli_printf);
             
-            cli_printf(" %s %s ",if_in, if_out);
+            cli_printf(" (in: %s) (out: %s) ",if_in, if_out);
             print_mac(src_mac,cli_printf);
             print_mac(dst_mac,cli_printf);
-            cli_printf(" %d\n",counter);
+            cli_printf("   (counter: %d)\n",counter);
         }
     }    
 }

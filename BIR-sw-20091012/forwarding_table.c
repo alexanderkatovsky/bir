@@ -295,6 +295,7 @@ void forwarding_table_hw_write(struct sr_instance * sr)
     struct __forwarding_table_hw_write_i  hwi = {0,sr};
     struct nf2device * device = &ROUTER(sr)->device;
     int i;
+    forwarding_table_loop(FORWARDING_TABLE(sr), __forwarding_table_hw_write_a, &hwi,0,0);
     forwarding_table_loop(FORWARDING_TABLE(sr), __forwarding_table_hw_write_a, &hwi,1,0);
 
     for(i = hwi.count; i < ROUTER_OP_LUT_ROUTE_TABLE_DEPTH; i++)
