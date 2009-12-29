@@ -265,6 +265,9 @@ struct __forwarding_table_hw_write_i
 {
     int count;
     struct sr_instance * sr;
+    int def; /* do we have a default entry */
+    uint32_t next_hop;
+    uint32_t port;
 };
 
 void __forwarding_table_hw_write_a(uint32_t subnet, uint32_t mask, uint32_t next_hop,
@@ -276,7 +279,7 @@ void __forwarding_table_hw_write_a(uint32_t subnet, uint32_t mask, uint32_t next
     {
         *finished = 1;
     }
-    else
+    else if(subnet > 0)
     {
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_IP, ntohl(subnet));
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_MASK, ntohl(mask));
@@ -286,17 +289,35 @@ void __forwarding_table_hw_write_a(uint32_t subnet, uint32_t mask, uint32_t next
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_WR_ADDR, hwi->count);
         hwi->count += 1;
     }
+
+    if(subnet == 0)
+    {
+        hwi->def = 1;
+        hwi->next_hop = next_hop;
+        hwi->port = interface_list_get_output_port(hwi->sr, interface);
+    }
 }
 #endif
 
 void forwarding_table_hw_write(struct sr_instance * sr)
 {
 #ifdef _CPUMODE_
-    struct __forwarding_table_hw_write_i  hwi = {0,sr};
+    struct __forwarding_table_hw_write_i  hwi = {0,sr,0,0,0};
     struct nf2device * device = &ROUTER(sr)->device;
     int i;
     forwarding_table_loop(FORWARDING_TABLE(sr), __forwarding_table_hw_write_a, &hwi,0,0);
     forwarding_table_loop(FORWARDING_TABLE(sr), __forwarding_table_hw_write_a, &hwi,1,0);
+
+    if(hwi.def)
+    {
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_IP, 0);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_MASK, 0);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_NEXT_HOP_IP, hwi.next_hop);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_OUTPUT_PORT, hwi.port);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_WR_ADDR,
+                 hwi.count >= ROUTER_OP_LUT_ROUTE_TABLE_DEPTH ? ROUTER_OP_LUT_ROUTE_TABLE_DEPTH - 1 : hwi.count);
+        hwi.count ++;
+    }
 
     for(i = hwi.count; i < ROUTER_OP_LUT_ROUTE_TABLE_DEPTH; i++)
     {
