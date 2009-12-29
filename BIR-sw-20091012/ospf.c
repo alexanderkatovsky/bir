@@ -37,7 +37,7 @@ void ospf_send_hello(struct sr_instance * sr, struct interface_list_entry * ifen
         sizeof(struct ospfv2_hdr) + sizeof(struct ospfv2_hello_hdr);
     uint8_t * packet;
 
-    if(!OPTIONS(sr)->disable_ospf)
+    if(interface_list_ospf_enabled(sr,ifentry->vns_if->name))
     {
         packet = (uint8_t *)malloc(len);
         ospf_construct_hello_header(packet,ifentry->vns_if->mask,OSPF_DEFAULT_HELLOINT);
