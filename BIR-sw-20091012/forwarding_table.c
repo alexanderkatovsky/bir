@@ -3,6 +3,7 @@
 #include <string.h>
 #include "router.h"
 #include "reg_defines.h"
+static void forwarding_table_hw_write(struct sr_instance * sr);
 
 static void * __forwarding_table_get_key_dest(void * data)
 {
@@ -14,15 +15,10 @@ static void * __forwarding_table_get_key_mask(void * data)
     return &((struct forwarding_table_subnet_list *)data)->mask;
 }
 
-static void __delete_forwarding_table_subnet_list(void * data)
-{
-    free((struct forwarding_table_entry *)data);
-}
-
 static void __delete_forwarding_table(void * data)
 {
     struct forwarding_table_subnet_list * ftsl = (struct forwarding_table_subnet_list *)data;
-    assoc_array_delete_array(ftsl->list,__delete_forwarding_table_subnet_list);
+    assoc_array_delete_array(ftsl->list,assoc_array_delete_self);
     free(ftsl);
 }
 
@@ -182,7 +178,7 @@ void forwarding_table_add(struct sr_instance * sr, struct ip_address * ip,
         assoc_array_insert(array,ftsl);
     }
     assoc_array_insert(ftsl->list,entry);
-    if(ft->running_dijkstra == 0)
+    if(ft->running_dijkstra == 0 && nat == 0)
     {
         forwarding_table_hw_write(sr);
     }
@@ -352,7 +348,7 @@ static void __combine_arrays(uint32_t subnet, uint32_t mask, uint32_t next_hop,
     assoc_array_insert(ftsl->list,entry);    
 }
 
-void forwarding_table_hw_write(struct sr_instance * sr)
+static void forwarding_table_hw_write(struct sr_instance * sr)
 {
 #ifdef _CPUMODE_
     struct __forwarding_table_hw_write_i  hwi = {0,sr,0,0,0};

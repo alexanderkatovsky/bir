@@ -116,7 +116,6 @@ void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface)
     {
         forwarding_table_add(sr, &ip, 0, interface->name,1,1);
     }
-    forwarding_table_hw_write(sr);
 
     if(router->rid == 0)
     {

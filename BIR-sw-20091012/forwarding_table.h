@@ -50,6 +50,5 @@ void forwarding_table_static_show(struct forwarding_table * ft, print_t print);
 void forwarding_table_loop(struct forwarding_table * ft,
                            void (*fn)(uint32_t,uint32_t,uint32_t,char*,void*,int*),
                            void * userdata, int isDynamic, int nat);
-void forwarding_table_hw_write(struct sr_instance * sr);
 #endif
 
