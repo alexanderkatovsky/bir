@@ -44,7 +44,7 @@ AC_PROG_RANLIB
 
 # Checks for libraries.
 AC_LANG_PUSH(C++)
-AC_CHECK_LIB(wt,)
+AC_CHECK_LIB(wt,Wt::WApplication::WApplication)
 AC_LANG_POP(C++)
 
 

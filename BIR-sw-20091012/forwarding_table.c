@@ -168,7 +168,7 @@ void forwarding_table_add(struct sr_instance * sr, struct ip_address * ip,
 
     if(__forwarding_table_get_entry(ft, array, ip, &ftsl, &fte))
     {
-        free(fte);
+        free(assoc_array_delete(ftsl->list,&fte->ip.subnet));
     }
     if(ftsl == NULL)
     {
@@ -239,6 +239,7 @@ void forwarding_table_loop(struct forwarding_table * ft,
     mutex_unlock(ft->mutex);
 }
 
+#ifdef _CPUMODE_
 
 static void __forwarding_table_loop(struct assoc_array * array,
                                     void (*fn)(uint32_t,uint32_t,uint32_t,char*,void*,int*),
@@ -248,6 +249,7 @@ static void __forwarding_table_loop(struct assoc_array * array,
     assoc_array_walk_array(array, __forwarding_table_loop_a, &li);
 }
 
+#endif
 
 void __forwarding_table_show_a(uint32_t subnet, uint32_t mask, uint32_t next_hop,
                                char * interface, void * userdata, int * finished)
@@ -318,7 +320,7 @@ void __forwarding_table_hw_write_a(uint32_t subnet, uint32_t mask, uint32_t next
         hwi->port = interface_list_get_output_port(hwi->sr, interface);
     }
 }
-#endif
+
 
 static void __combine_arrays(uint32_t subnet, uint32_t mask, uint32_t next_hop,
                              char * interface, void * userdata, int * finished)
@@ -336,7 +338,7 @@ static void __combine_arrays(uint32_t subnet, uint32_t mask, uint32_t next_hop,
 
     if(__forwarding_table_get_entry(NULL, array, &ip, &ftsl, &fte))
     {
-        free(fte);
+        free(assoc_array_delete(ftsl->list,&fte->ip.subnet));
     }
     if(ftsl == NULL)
     {
@@ -345,8 +347,10 @@ static void __combine_arrays(uint32_t subnet, uint32_t mask, uint32_t next_hop,
         ftsl->list = assoc_array_create(__forwarding_table_get_key_dest, assoc_array_key_comp_int);
         assoc_array_insert(array,ftsl);
     }
-    assoc_array_insert(ftsl->list,entry);    
+    assoc_array_insert(ftsl->list,entry);
 }
+
+#endif
 
 static void forwarding_table_hw_write(struct sr_instance * sr)
 {
