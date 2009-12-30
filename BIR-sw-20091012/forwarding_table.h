@@ -41,6 +41,7 @@ int forwarding_table_lookup_next_hop(struct forwarding_table * fwd_table, uint32
 int forwarding_table_dynamic_entry_exists(struct forwarding_table * ft, struct ip_address * ip, int nat);
 void forwarding_table_add(struct sr_instance * sr, struct ip_address * ip,
                           uint32_t next_hop, char * interface, int isDynamic, int nat);
+int forwarding_table_remove(struct sr_instance * sr, struct ip_address * ip, int isDynamic, int nat);
 void forwarding_table_start_dijkstra(struct sr_instance * sr);
 void forwarding_table_end_dijkstra(struct sr_instance * sr);
 void forwarding_table_dynamic_show(struct forwarding_table * ft, print_t print, int nat);

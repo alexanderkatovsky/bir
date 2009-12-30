@@ -131,6 +131,21 @@ int forwarding_table_static_entry_exists(struct forwarding_table * ft, struct ip
     return __forwarding_table_get_entry(ft, ft->array_s, ip, &ftsl, &fte);
 }
 
+int forwarding_table_remove(struct sr_instance * sr, struct ip_address * ip, int isDynamic, int nat)
+{
+    struct forwarding_table * ft = FORWARDING_TABLE(sr);
+    struct forwarding_table_entry * entry;
+    struct forwarding_table_subnet_list * sl;
+    struct assoc_array * array = isDynamic ? (nat ? ft->array_nat : ft->array_d) : ft->array_s;
+    if(__forwarding_table_get_entry(ft,array,ip,&sl,&entry))
+    {
+        assoc_array_delete(sl->list,&entry->ip);
+        free(entry);
+        return 1;
+    }
+    return 0;
+}
+
 void forwarding_table_add(struct sr_instance * sr, struct ip_address * ip,
                           uint32_t nh, char * interface, int isDynamic, int nat)
 {

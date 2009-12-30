@@ -117,8 +117,9 @@ void rtable_route_add( struct sr_instance* sr,
 int rtable_route_remove( struct sr_instance* sr,
                          uint32_t dest, uint32_t mask,
                          int is_static ) {
-    fprintf( stderr, "not yet implemented: rtable_route_remove\n" );
-    return 1;
+    struct ip_address ip = {dest,mask};
+    forwarding_table_remove(sr,&ip,!is_static,1);
+    return forwarding_table_remove(sr,&ip,!is_static,0);
 }
 
 /** Remove all routes from the router. */
