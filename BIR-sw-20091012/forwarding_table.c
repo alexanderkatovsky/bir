@@ -312,7 +312,7 @@ void forwarding_table_hw_write(struct sr_instance * sr)
     {
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_IP, 0);
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_MASK, 0);
-        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_NEXT_HOP_IP, hwi.next_hop);
+        writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_NEXT_HOP_IP, ntohl(hwi.next_hop));
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_OUTPUT_PORT, hwi.port);
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_WR_ADDR,
                  hwi.count >= ROUTER_OP_LUT_ROUTE_TABLE_DEPTH ? ROUTER_OP_LUT_ROUTE_TABLE_DEPTH - 1 : hwi.count);

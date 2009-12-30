@@ -103,7 +103,7 @@ int nat_depricate_entries_a(void * data, void * userdata)
     struct nf2device * device = &ROUTER(es->sr)->device;
     if(entry->hw_i >= 0)
     {
-        writeReg(device, NAT_TABLE_WR_ADDR, entry->hw_i);
+        writeReg(device, NAT_TABLE_RD_ADDR, entry->hw_i);
         readReg(device, NAT_TABLE_ENTRY_COUNTER, &counter);
         if(counter > entry->entry_counter)
         {
@@ -132,7 +132,6 @@ void nat_depricate_entries(struct sr_instance * sr)
 
     while((entry = fifo_pop(delete)))
     {
-/*        printf("deprecating entry %x\n",entry->outbound.out.port);*/
         bi_assoc_array_delete_1(NAT(sr)->table, &entry->inbound);
         nat_hw_delete_entry(sr,entry->hw_i);
         free(entry);
@@ -259,14 +258,15 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
             entry->outbound.dst.ip = dst_ip;
             entry->outbound.dst.port = dst_port; 
             bi_assoc_array_insert(NAT(sr)->table, entry);
-#ifdef _CPUMODE_
-            if(hww)
-            {
-                nat_hw_delete_entry(sr,entry->hw_i);
-                nat_hw_insert_entry(sr,entry,src_MAC,dst_MAC);
-            }
-#endif
         }
+#ifdef _CPUMODE_
+        if(hww)
+        {
+            nat_hw_delete_entry(sr,entry->hw_i);
+            entry->hw_i = -1;
+            nat_hw_insert_entry(sr,entry,src_MAC,dst_MAC);
+        }
+#endif        
     }
     else
     {

@@ -215,7 +215,6 @@ int sr_cpu_input(struct sr_instance* sr)
             if(FD_ISSET(cpu_ports[i].socket, &fds))
             {
                 rlen = recvfrom(cpu_ports[i].socket,buf,SR_MAX_BUF,0,0,0);
-                Debug("Received %d bytes from socket %d\n", rlen, i);
                 sr_integ_input(sr, buf, rlen, cpu_ports[i].iface_name);
             }
         }
