@@ -4,22 +4,22 @@
 #include "router.h"
 #include "reg_defines.h"
 
-void * __forwarding_table_get_key_dest(void * data)
+static void * __forwarding_table_get_key_dest(void * data)
 {
     return &((struct forwarding_table_entry *)data)->ip.subnet;
 }
 
-void * __forwarding_table_get_key_mask(void * data)
+static void * __forwarding_table_get_key_mask(void * data)
 {
     return &((struct forwarding_table_subnet_list *)data)->mask;
 }
 
-void __delete_forwarding_table_subnet_list(void * data)
+static void __delete_forwarding_table_subnet_list(void * data)
 {
     free((struct forwarding_table_entry *)data);
 }
 
-void __delete_forwarding_table(void * data)
+static void __delete_forwarding_table(void * data)
 {
     struct forwarding_table_subnet_list * ftsl = (struct forwarding_table_subnet_list *)data;
     assoc_array_delete_array(ftsl->list,__delete_forwarding_table_subnet_list);
@@ -55,7 +55,7 @@ struct __LPMSearch
     char * thru;
 };
 
-int __LPMSearchFn(void * data, void * user_data)
+static int __LPMSearchFn(void * data, void * user_data)
 {
     struct __LPMSearch * srch = (struct __LPMSearch *) user_data;
     struct forwarding_table_subnet_list * dl = (struct forwarding_table_subnet_list *) data;
@@ -106,14 +106,14 @@ int __forwarding_table_get_entry(struct forwarding_table * fwd_table,
                                  struct assoc_array * array, struct ip_address * ip,
                                  struct forwarding_table_subnet_list ** ftsl, struct forwarding_table_entry ** fte)
 {
-    mutex_lock(fwd_table->mutex);
+    if(fwd_table) mutex_lock(fwd_table->mutex);
     *fte = 0;
     *ftsl = (struct forwarding_table_subnet_list *) assoc_array_read(array,&ip->mask);
     if(*ftsl != NULL)
     {
         *fte = assoc_array_read((*ftsl)->list, &ip->subnet);
     }
-    mutex_unlock(fwd_table->mutex);
+    if(fwd_table) mutex_unlock(fwd_table->mutex);
     return (*fte != NULL);
 }
 
@@ -244,6 +244,15 @@ void forwarding_table_loop(struct forwarding_table * ft,
 }
 
 
+static void __forwarding_table_loop(struct assoc_array * array,
+                                    void (*fn)(uint32_t,uint32_t,uint32_t,char*,void*,int*),
+                                    void * userdata)
+{
+    struct __forwarding_table_loop_i li = {userdata,0,fn};
+    assoc_array_walk_array(array, __forwarding_table_loop_a, &li);
+}
+
+
 void __forwarding_table_show_a(uint32_t subnet, uint32_t mask, uint32_t next_hop,
                                char * interface, void * userdata, int * finished)
 {
@@ -315,14 +324,45 @@ void __forwarding_table_hw_write_a(uint32_t subnet, uint32_t mask, uint32_t next
 }
 #endif
 
+static void __combine_arrays(uint32_t subnet, uint32_t mask, uint32_t next_hop,
+                             char * interface, void * userdata, int * finished)
+{
+    struct assoc_array * array = (struct assoc_array *)userdata;
+    struct forwarding_table_subnet_list * ftsl;
+    struct forwarding_table_entry * fte;
+    NEW_STRUCT(entry,forwarding_table_entry);
+    struct ip_address ip = {subnet,mask};
+    
+    entry->ip.subnet = subnet;
+    entry->ip.mask = mask;
+    entry->next_hop = next_hop;
+    strcpy(entry->interface,interface);
+
+    if(__forwarding_table_get_entry(NULL, array, &ip, &ftsl, &fte))
+    {
+        free(fte);
+    }
+    if(ftsl == NULL)
+    {
+        ftsl = (struct forwarding_table_subnet_list *) malloc(sizeof(struct forwarding_table_subnet_list));
+        ftsl->mask = mask;
+        ftsl->list = assoc_array_create(__forwarding_table_get_key_dest, assoc_array_key_comp_int);
+        assoc_array_insert(array,ftsl);
+    }
+    assoc_array_insert(ftsl->list,entry);    
+}
+
 void forwarding_table_hw_write(struct sr_instance * sr)
 {
 #ifdef _CPUMODE_
     struct __forwarding_table_hw_write_i  hwi = {0,sr,0,0,0};
     struct nf2device * device = &ROUTER(sr)->device;
+    struct assoc_array * array = assoc_array_create(__forwarding_table_get_key_mask,assoc_array_key_comp_int);
     int i;
-    forwarding_table_loop(FORWARDING_TABLE(sr), __forwarding_table_hw_write_a, &hwi,0,0);
-    forwarding_table_loop(FORWARDING_TABLE(sr), __forwarding_table_hw_write_a, &hwi,1,0);
+
+    __forwarding_table_loop(FORWARDING_TABLE(sr)->array_d, __combine_arrays, array);
+    __forwarding_table_loop(FORWARDING_TABLE(sr)->array_s, __combine_arrays, array);
+    __forwarding_table_loop(array, __forwarding_table_hw_write_a, &hwi);
 
     if(hwi.def)
     {
@@ -343,5 +383,6 @@ void forwarding_table_hw_write(struct sr_instance * sr)
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_ENTRY_OUTPUT_PORT, 0);
         writeReg(device, ROUTER_OP_LUT_ROUTE_TABLE_WR_ADDR, i);
     }
+    assoc_array_delete_array(array,__delete_forwarding_table);
 #endif
 }

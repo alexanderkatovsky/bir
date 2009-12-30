@@ -33,7 +33,7 @@ else
    AC_MSG_RESULT(no)
 fi
 
-
+AC_LANG(C,C++)
 
 # Checks for programs.
 AC_PROG_CC
@@ -43,6 +43,10 @@ AC_PROG_LEX
 AC_PROG_RANLIB
 
 # Checks for libraries.
+AC_LANG_PUSH(C++)
+AC_CHECK_LIB(wt,)
+AC_LANG_POP(C++)
+
 
 # Checks for header files.
 AC_FUNC_ALLOCA
