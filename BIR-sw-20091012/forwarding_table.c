@@ -140,6 +140,7 @@ int forwarding_table_remove(struct sr_instance * sr, struct ip_address * ip, int
     if(__forwarding_table_get_entry(ft,array,ip,&sl,&entry))
     {
         assoc_array_delete(sl->list,&entry->ip);
+        forwarding_table_hw_write(sr);
         free(entry);
         return 1;
     }
