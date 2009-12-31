@@ -287,7 +287,7 @@ void cli_show_hw_nat_if(struct sr_vns_if * iface, void * data)
 {
     struct nf2device* device = &ROUTER(get_sr())->device;
     uint32_t mode;
-    uint32_t port = interface_list_get_output_port(get_sr(), iface->name);
+    uint32_t port = interface_list_get_nat_output_port(get_sr(), iface->name);
     writeReg(device, NAT_IFACE_RD_ADDR, port);
     readReg(device, NAT_IFACE_MODE, &mode);
 
@@ -334,8 +334,8 @@ void cli_show_hw_nat()
         *((uint32_t *)(dst_mac+2)) = htonl(mac_lo);
         *((uint16_t *)(dst_mac)) = htonl(mac_hi) >> 16;        
 
-        if_in = interface_list_get_ifname_from_port(get_sr(), p_if_in);
-        if_out = interface_list_get_ifname_from_port(get_sr(), p_if_out);
+        if_in = interface_list_get_ifname_from_nat_port(get_sr(), p_if_in);
+        if_out = interface_list_get_ifname_from_nat_port(get_sr(), p_if_out);
 
         src_ip = htonl(src_ip);
         out_ip = htonl(out_ip);

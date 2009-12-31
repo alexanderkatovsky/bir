@@ -42,11 +42,10 @@ AC_PROG_YACC
 AC_PROG_LEX
 AC_PROG_RANLIB
 
-# Checks for libraries.
 AC_LANG_PUSH(C++)
-AC_CHECK_LIB(wt,Wt::WApplication::WApplication)
+# Checks for libraries.
+AX_CXX_CHECK_LIB(wt, [Wt::WApplication::WApplication(const WEnvironment & environment)])
 AC_LANG_POP(C++)
-
 
 # Checks for header files.
 AC_FUNC_ALLOCA

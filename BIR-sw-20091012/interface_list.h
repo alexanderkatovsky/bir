@@ -67,7 +67,9 @@ void interface_list_send_flood(struct sr_instance * sr);
 void interface_list_show_neighbours(struct interface_list * iflist, print_t print);
 int interface_list_ip_in_network_on_interface(struct sr_instance * sr, struct ip_address * ip, char * interface);
 uint32_t interface_list_get_output_port(struct sr_instance * sr, char * interface);
+uint32_t interface_list_get_nat_output_port(struct sr_instance * sr, char * interface);
 char * interface_list_get_ifname_from_port(struct sr_instance * sr, uint32_t port);
+char * interface_list_get_ifname_from_nat_port(struct sr_instance * sr, uint32_t port);
 
 int interface_list_interface_up(struct sr_instance * sr, char * iface);
 int interface_list_set_enabled(struct sr_instance * sr, char * iface, int enabled);

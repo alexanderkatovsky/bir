@@ -378,7 +378,7 @@ void interface_list_add_interface(struct interface_list * list, struct sr_vns_if
         entry->ospf = 0;
     }
 
-    interface_list_hw_nat(list->sr, entry->port, entry->nat_type);
+    interface_list_hw_nat(list->sr, 2 * entry->i, entry->nat_type);
 }
 
 struct sr_vns_if * interface_list_get_interface_by_ip(struct interface_list * list, uint32_t ip)
@@ -618,10 +618,22 @@ uint32_t interface_list_get_output_port(struct sr_instance * sr, char * interfac
     return ret;
 }
 
+uint32_t interface_list_get_nat_output_port(struct sr_instance * sr, char * interface)
+{
+    struct interface_list_entry * entry = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array,interface);
+    uint32_t ret = 0;
+    if(entry != NULL)
+    {
+        ret = 2 * entry->i;
+    }
+    return ret;    
+}
+
 struct __interface_list_get_ifname_from_port_i
 {
     char * name;
     uint32_t port;
+    int nat;
 };
 
 int __interface_list_get_ifname_from_port_a(void * data, void * userdata)
@@ -631,7 +643,7 @@ int __interface_list_get_ifname_from_port_a(void * data, void * userdata)
         (struct __interface_list_get_ifname_from_port_i *)userdata;
     int ret = 0;
 
-    if(i->port == pi->port)
+    if(((pi->nat == 0) && (i->port == pi->port)) || ((pi->nat == 1) && (2 * i->i == pi->port)))
     {
         pi->name = i->vns_if->name;
         ret = 1;
@@ -641,7 +653,14 @@ int __interface_list_get_ifname_from_port_a(void * data, void * userdata)
 
 char * interface_list_get_ifname_from_port(struct sr_instance * sr, uint32_t port)
 {
-    struct __interface_list_get_ifname_from_port_i i = {0,port};
+    struct __interface_list_get_ifname_from_port_i i = {0,port,0};
+    bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array,__interface_list_get_ifname_from_port_a, &i);
+    return i.name;
+}
+
+char * interface_list_get_ifname_from_nat_port(struct sr_instance * sr, uint32_t port)
+{
+    struct __interface_list_get_ifname_from_port_i i = {0,port,1};
     bi_assoc_array_walk_array(INTERFACE_LIST(sr)->array,__interface_list_get_ifname_from_port_a, &i);
     return i.name;
 }
