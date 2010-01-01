@@ -1,6 +1,10 @@
 #ifndef ROUTER_H
 #define ROUTER_H
 
+#ifdef CPP
+extern "C" {
+#endif
+
 #include "interface_list.h"
 #include "forwarding_table.h"
 #include "eth_headers.h"
@@ -56,6 +60,7 @@ struct sr_router
 #endif
 };
 
+#define ROUTER_UPDATE_FWD_TABLE 0
 
 void router_create(struct sr_instance * sr, struct sr_options * opt);
 void router_destroy(struct sr_router * router);
@@ -68,6 +73,7 @@ void router_free_packet(struct sr_packet * );
 
 void router_swap_eth_header_and_send(struct sr_packet * packet);
 void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface);
+void router_notify(struct sr_instance * sr, int code);
 
 #define ROUTER(sr) ((struct sr_router*)((sr)->router))
 #define INTERFACE_LIST(sr) ((struct interface_list *)(ROUTER(sr)->iflist))
@@ -140,5 +146,13 @@ void ospf_construct_lsu_header(uint8_t * packet, uint16_t seq, uint32_t num_adv)
 
 void tcp_handle_incoming_not_for_us(struct sr_packet * packet);
 void tcp_handle_incoming_for_us(struct sr_packet * packet);
+
+#ifdef HAVE_WT
+const char * router_get_http_port(struct sr_instance * sr);
+#endif
+
+#ifdef CPP
+}
+#endif
 
 #endif

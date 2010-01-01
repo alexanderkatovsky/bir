@@ -385,4 +385,6 @@ static void forwarding_table_hw_write(struct sr_instance * sr)
     }
     assoc_array_delete_array(array,__delete_forwarding_table);
 #endif
+
+    router_notify(sr,ROUTER_UPDATE_FWD_TABLE);
 }

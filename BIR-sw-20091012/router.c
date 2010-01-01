@@ -5,6 +5,10 @@
 #include "nf2.h"
 #include "lwtcp/lwip/sys.h"
 
+#ifdef HAVE_WT
+#include "server/server.h"
+#endif
+
 int router_thread_run(void * data, void * userdata)
 {
     struct sr_thread * t = (struct sr_thread *)data;
@@ -170,7 +174,15 @@ void router_create(struct sr_instance * sr, struct sr_options * opt)
     {
         ret->rcp_server = 0;
     }
+
     sys_thread_new(router_thread,sr);
+
+#ifdef HAVE_WT
+    if(router_get_http_port(sr))
+    {
+        runserver(sr);
+    }
+#endif       
 }
 
 void router_destroy(struct sr_router * router)
@@ -207,7 +219,14 @@ void router_destroy(struct sr_router * router)
     if(router->opt.dhcp)
     {
         assoc_array_delete_array(router->opt.dhcp, assoc_array_delete_self);
-    }    
+    }
+#ifdef HAVE_WT
+    if(router->opt.http_port)
+    {
+        stopserver();
+        free(router->opt.http_port);
+    }
+#endif
 
 #ifdef _CPUMODE_
     closeDescriptor(&router->device);
@@ -277,9 +296,29 @@ void sr_router_default_options(struct sr_options * opt)
     opt->show_tcp = 0;
     opt->show_udp = 0;
     opt->show_dhcp = 0;
+    opt->http_port = NULL;
 }
 
 int router_nat_enabled(struct sr_instance * sr)
 {
     return ((OPTIONS(sr)->inbound != NULL) || (OPTIONS(sr)->outbound != NULL));
+}
+
+#ifdef HAVE_WT
+const char * router_get_http_port(struct sr_instance * sr)
+{
+    return OPTIONS(sr)->http_port;
+}
+#endif
+
+void router_notify(struct sr_instance * sr, int code)
+{
+    switch(code)
+    {
+    case ROUTER_UPDATE_FWD_TABLE:
+#ifdef HAVE_WT
+        if(router_get_http_port(sr)) server_update_fwdtable();
+#endif
+        break;
+    }
 }

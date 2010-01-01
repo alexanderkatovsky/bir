@@ -42,8 +42,8 @@
 /* Define to 1 if you have the <libintl.h> header file. */
 #undef HAVE_LIBINTL_H
 
-/* Define to 1 if you have the `wt' library (-lwt). */
-#undef HAVE_LIBWT
+/* Define to 1 if you have the `wthttp' library (-lwthttp). */
+#undef HAVE_LIBWTHTTP
 
 /* Define to 1 if your system has a GNU libc compatible `malloc' function, and
    to 0 otherwise. */
@@ -131,6 +131,9 @@
 
 /* Define to 1 if you have the `vprintf' function. */
 #undef HAVE_VPRINTF
+
+/* Define to 1 if you have the <Wt/WApplication> header file. */
+#undef HAVE_WT_WAPPLICATION
 
 /* Define to 1 if the system has the type `_Bool'. */
 #undef HAVE__BOOL

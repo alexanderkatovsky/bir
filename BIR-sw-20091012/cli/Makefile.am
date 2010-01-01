@@ -1,5 +1,5 @@
 BUILT_SOURCES=lex.yy.c y.tab.h y.tab.c 
-AM_CFLAGS=-Wall -D_GNU_SOURCE  -I ../lwtcp -I .. -I . -D_LINUX_ 
+AM_CFLAGS=-Wall -D_GNU_SOURCE  -I ../lwtcp -I .. -I . -D_LINUX_ $(DEBUG_C_FLAGS)
 
 lex.yy.c : cli_scanner.lex
 	$(LEX) -d cli_scanner.lex

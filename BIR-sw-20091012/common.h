@@ -42,6 +42,10 @@ struct sr_options
     int show_tcp;
     int show_udp;
     int show_dhcp;
+
+#ifdef HAVE_WT
+    char * http_port;
+#endif
 };
 
 void sr_router_default_options(struct sr_options * opt);

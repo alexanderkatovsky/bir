@@ -211,7 +211,10 @@ int sr_init_low_level_subystem(int argc, char **argv)
         { "inbound"    ,   required_argument, 0, 0 },
         { "outbound"   ,   required_argument, 0, 0 },
         { "ospf_disabled_interfaces"   ,   required_argument, 0, 0 },
-        { "dhcp"   ,   required_argument, 0, 0 },        
+        { "dhcp"   ,   required_argument, 0, 0 },
+#ifdef HAVE_WT
+        { "http_port"   ,   required_argument, 0, 0 },
+#endif
 #ifdef _DEBUG_
         { "verbose" ,   no_argument, &opt.verbose, 1 },
         { "show_ip" ,   no_argument, &opt.show_ip, 1 },
@@ -274,6 +277,17 @@ int sr_init_low_level_subystem(int argc, char **argv)
                         opt.ospf_disabled_interfaces = str_split(optarg,',');
                     }
                 }
+#ifdef HAVE_WT
+                else if(strcmp(long_options[option_index].name, "http_port") == 0)
+                {
+                    if(opt.http_port == NULL)
+                    {
+                        opt.http_port = (char*)malloc((strlen(optarg)+1) * sizeof(char));
+                        bzero(opt.http_port,strlen(optarg)+1);
+                        strcpy(opt.http_port,optarg);
+                    }
+                }
+#endif
                 else if(strcmp(long_options[option_index].name, "dhcp") == 0)
                 {
                     dhcp_opt(&opt,optarg);
@@ -597,4 +611,7 @@ static void usage(char* argv0)
     printf("  --show_{ip,arp,icmp,tcp,udp,dhcp,ospf,ospf_hello,ospf_lsu}\n");
     printf("                  Show only this type of packet\n");
 #endif
+#ifdef HAVE_WT
+    printf("  --http_port     Port for Wt HTTP server\n");
+#endif    
 } /* -- usage -- */

@@ -45,7 +45,7 @@ void assoc_array_insert(struct assoc_array * array, void * data);
  * Delete node at key; return the pointer to the data that was stored in this node
  * */
 void * assoc_array_delete(struct assoc_array * array, void * key);
-void assoc_array_delete_array(struct assoc_array * array, void (* delete)(void *));
+void assoc_array_delete_array(struct assoc_array * array, void (* _delete)(void *));
 void * assoc_array_read(struct assoc_array * array, void * key);
 void assoc_array_walk_array(struct assoc_array * array, int (* fn)(void *, void *), void * user_data);
 struct assoc_array * assoc_array_create(assoc_array_key_getter,assoc_array_key_comp);

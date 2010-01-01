@@ -13,7 +13,7 @@ struct bi_assoc_array
 void bi_assoc_array_insert(struct bi_assoc_array * array, void * data);
 void * bi_assoc_array_delete_1(struct bi_assoc_array * array, void * key);
 void * bi_assoc_array_delete_2(struct bi_assoc_array * array, void * key);
-void bi_assoc_array_delete_array(struct bi_assoc_array * array, void (* delete)(void *));
+void bi_assoc_array_delete_array(struct bi_assoc_array * array, void (* _delete)(void *));
 void * bi_assoc_array_read_1(struct bi_assoc_array * array, void * key);
 void * bi_assoc_array_read_2(struct bi_assoc_array * array, void * key);
 void bi_assoc_array_walk_array(struct bi_assoc_array * array, int (* fn)(void *, void *), void * user_data);

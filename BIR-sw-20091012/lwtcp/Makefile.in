@@ -97,10 +97,13 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CPU_C_FLAGS = @CPU_C_FLAGS@
 CXX = @CXX@
+CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEBUG_C_FLAGS = @DEBUG_C_FLAGS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 ECHO_C = @ECHO_C@
@@ -181,6 +184,7 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = lwip
+AM_CFLAGS = -Wall -D_GNU_SOURCE  -D_LINUX_ $(DEBUG_C_FLAGS)
 LWTCP_C_SRCS = tcp.c tcp_input.c tcp_output.c \
              mem.c memp.c stats.c sys.c \
              inet.c pbuf.c sys_arch.c \

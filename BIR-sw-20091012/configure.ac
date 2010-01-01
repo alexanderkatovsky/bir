@@ -12,13 +12,12 @@ AC_ARG_ENABLE(release, [  --enable-release        Release build (default Debug b
                       [optimize=yes], 
                       [optimize=no])
 if test "x$optimize" = "xyes"; then
-   CFLAGS="$CFLAGS -D_N_DEBUG_ -O3"
+   AC_SUBST(DEBUG_C_FLAGS,"-D_N_DEBUG_ -O3")
    AC_MSG_RESULT(yes)
 else
-   CFLAGS="$CFLAGS -g -D_DEBUG_ -O0"
+   AC_SUBST(DEBUG_C_FLAGS,"-g -D_DEBUG_ -O0")
    AC_MSG_RESULT(no)
 fi
-
 
 AC_MSG_CHECKING(whether to build for CPU)
 AC_ARG_ENABLE(CPU,      [  --enable-CPU            Build CPU binary (default VNS)], 
@@ -26,10 +25,10 @@ AC_ARG_ENABLE(CPU,      [  --enable-CPU            Build CPU binary (default VNS
                       [build_cpu=no])
 
 if test "x$build_cpu" = "xyes"; then
-   CFLAGS="$CFLAGS -D_CPUMODE_"
+   AC_SUBST(CPU_C_FLAGS,"-D_CPUMODE_")
    AC_MSG_RESULT(yes)
 else
-   CFLAGS="$CFLAGS -D_VNSMODE_"
+   AC_SUBST(CPU_C_FLAGS,"-D_VNSMODE_")
    AC_MSG_RESULT(no)
 fi
 
@@ -37,6 +36,7 @@ AC_LANG(C,C++)
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_CXX
 AC_PROG_AWK
 AC_PROG_YACC
 AC_PROG_LEX
@@ -44,8 +44,13 @@ AC_PROG_RANLIB
 
 AC_LANG_PUSH(C++)
 # Checks for libraries.
-AX_CXX_CHECK_LIB(wt, [Wt::WApplication::WApplication(const WEnvironment & environment)])
+have_wt=yes
+AX_CXX_CHECK_LIB(wthttp, [Wt::WServer::start()],,[have_wt=no])
+AC_CHECK_HEADERS([Wt/WApplication],,[have_wt=no])
 AC_LANG_POP(C++)
+
+AM_CONDITIONAL(TEST_HAVE_WT, [test "x$have_wt" = xyes])
+
 
 # Checks for header files.
 AC_FUNC_ALLOCA
@@ -85,3 +90,14 @@ AC_CHECK_FUNCS([bzero gethostbyname gethostname gettimeofday inet_ntoa memmove m
 
 AM_INIT_AUTOMAKE(sr, 1.0)
 AC_OUTPUT(Makefile cli/Makefile lwtcp/Makefile lwtcp/lwip/Makefile)
+
+
+if test "x$have_wt" = "xno"; then
+   echo ""
+   echo "================================================"
+   echo "     libwt has not been found.  "
+   echo "     The HTTP Server cannot be built. "
+   echo "     Install Wt from http://www.webtoolkit.eu/wt"
+   echo "================================================"
+   echo ""
+fi

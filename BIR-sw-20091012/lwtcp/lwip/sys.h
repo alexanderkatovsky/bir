@@ -35,6 +35,10 @@
 #ifndef __LWIP_SYS_H__
 #define __LWIP_SYS_H__
 
+#ifdef CPP
+extern "C" {
+#endif
+
 #include "lwip/arch.h"
 
 #define SYS_MBOX_NULL NULL
@@ -101,5 +105,11 @@ void sys_thread_new(void (* thread)(void *arg), void *arg);
    can be omitted when porting the stack. */
 /* Returns the current time in microseconds. */
 unsigned long sys_now(void);
+
+    
+#ifdef CPP
+}
+#endif
+
 
 #endif /* __LWIP_SYS_H__ */

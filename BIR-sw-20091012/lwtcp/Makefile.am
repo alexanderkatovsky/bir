@@ -1,4 +1,5 @@
 SUBDIRS=lwip
+AM_CFLAGS=-Wall -D_GNU_SOURCE  -D_LINUX_ $(DEBUG_C_FLAGS)
 LWTCP_C_SRCS = tcp.c tcp_input.c tcp_output.c \
              mem.c memp.c stats.c sys.c \
              inet.c pbuf.c sys_arch.c \

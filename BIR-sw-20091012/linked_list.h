@@ -6,7 +6,7 @@
 
 struct linked_list
 {
-    void (* delete)(void *);
+    void (* _delete)(void *);
     struct assoc_array * array;
     int head;
 };
@@ -19,7 +19,7 @@ struct linked_list_node
     struct linked_list * list;
 };
 
-void linked_list_delete_list(struct linked_list * list, void (* delete)(void *));
+void linked_list_delete_list(struct linked_list * list, void (* _delete)(void *));
 struct linked_list * linked_list_create();
 void linked_list_add(struct linked_list * list, void * data);
 void linked_list_walk_list(struct linked_list * list, int (* fn)(void *, void *), void * user_data);

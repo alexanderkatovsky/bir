@@ -31,7 +31,7 @@ int __link_cmp(void * a, void * b)
     if(ret == ASSOC_ARRAY_KEY_EQ)
     {
         if(l1->rid < l2->rid) return ASSOC_ARRAY_KEY_LT;
-        if(l1->rid > l2->rid) return ASSOC_ARRAY_KEY_LT;
+        if(l1->rid > l2->rid) return ASSOC_ARRAY_KEY_GT;
         return ASSOC_ARRAY_KEY_EQ;
     }
     return ret;

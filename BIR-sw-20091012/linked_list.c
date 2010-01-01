@@ -4,13 +4,13 @@
 void __linked_list_delete_list(void * data)
 {
     struct linked_list_node * node = (struct linked_list_node *)data;
-    node->list->delete(node->data);
+    node->list->_delete(node->data);
     free(node);
 }
 
 void linked_list_delete_list(struct linked_list * list, void (* delete)(void *))
 {
-    list->delete = delete;
+    list->_delete = delete;
     assoc_array_delete_array(list->array,__linked_list_delete_list);
     free(list);
 }
