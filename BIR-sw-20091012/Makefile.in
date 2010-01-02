@@ -79,8 +79,9 @@ am_libsr_a_OBJECTS = $(am__objects_3)
 libsr_a_OBJECTS = $(am_libsr_a_OBJECTS)
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am__sr_SOURCES_DIST = server/server.cc sr_main.c nf2util.c
-@TEST_HAVE_WT_TRUE@am__objects_4 = server.$(OBJEXT)
+am__sr_SOURCES_DIST = server/server.cc server/FwdTable.cc sr_main.c \
+	nf2util.c
+@TEST_HAVE_WT_TRUE@am__objects_4 = server.$(OBJEXT) FwdTable.$(OBJEXT)
 am__objects_5 = sr_main.$(OBJEXT)
 am__objects_6 = nf2util.$(OBJEXT)
 am_sr_OBJECTS = $(am__objects_4) $(am__objects_5) $(am__objects_6)
@@ -223,7 +224,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 @TEST_HAVE_WT_TRUE@WTCF = -DHAVE_WT
 @TEST_HAVE_WT_TRUE@WTLF = -lwt -lwthttp -lwtext
-@TEST_HAVE_WT_TRUE@WTSRCS = server/server.cc
+@TEST_HAVE_WT_TRUE@WTSRCS = server/server.cc server/FwdTable.cc
 AUTOMAKE_OPTIONS = foreign
 SUBDIRS = cli lwtcp .
 AM_CFLAGS = $(WTCF)  -Wall -D_GNU_SOURCE -I lwtcp -I cli -D_LINUX_ $(DEBUG_C_FLAGS) $(CPU_C_FLAGS)
@@ -370,6 +371,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FwdTable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RCP.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RCPHandleRequest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arp.Po@am__quote@
@@ -446,6 +448,20 @@ server.obj: server/server.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='server/server.cc' object='server.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o server.obj `if test -f 'server/server.cc'; then $(CYGPATH_W) 'server/server.cc'; else $(CYGPATH_W) '$(srcdir)/server/server.cc'; fi`
+
+FwdTable.o: server/FwdTable.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT FwdTable.o -MD -MP -MF $(DEPDIR)/FwdTable.Tpo -c -o FwdTable.o `test -f 'server/FwdTable.cc' || echo '$(srcdir)/'`server/FwdTable.cc
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/FwdTable.Tpo $(DEPDIR)/FwdTable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='server/FwdTable.cc' object='FwdTable.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o FwdTable.o `test -f 'server/FwdTable.cc' || echo '$(srcdir)/'`server/FwdTable.cc
+
+FwdTable.obj: server/FwdTable.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT FwdTable.obj -MD -MP -MF $(DEPDIR)/FwdTable.Tpo -c -o FwdTable.obj `if test -f 'server/FwdTable.cc'; then $(CYGPATH_W) 'server/FwdTable.cc'; else $(CYGPATH_W) '$(srcdir)/server/FwdTable.cc'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/FwdTable.Tpo $(DEPDIR)/FwdTable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='server/FwdTable.cc' object='FwdTable.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o FwdTable.obj `if test -f 'server/FwdTable.cc'; then $(CYGPATH_W) 'server/FwdTable.cc'; else $(CYGPATH_W) '$(srcdir)/server/FwdTable.cc'; fi`
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run `make' without going through this Makefile.

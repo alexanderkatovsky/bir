@@ -30,7 +30,6 @@ extern "C" {
 #include "../lwtcp/lwip/sys.h"
 #include <set>
 
-
 using namespace Wt;
 using namespace std;
 
@@ -48,11 +47,11 @@ public:
     void update_fwdtable(int);
 
     static struct sr_instance * SR;
+    static TestServer * server;
 protected:
     static set<TestApp * > _updateList;
     static struct sr_mutex * _updateMutex;
 };
-
 
 #endif
 
