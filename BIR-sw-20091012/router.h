@@ -60,7 +60,8 @@ struct sr_router
 #endif
 };
 
-#define ROUTER_UPDATE_FWD_TABLE 0
+#define ROUTER_UPDATE_FWD_TABLE   0
+#define ROUTER_UPDATE_FWD_TABLE_S 1
 
 void router_create(struct sr_instance * sr, struct sr_options * opt);
 void router_destroy(struct sr_router * router);

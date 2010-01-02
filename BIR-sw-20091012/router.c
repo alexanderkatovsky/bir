@@ -320,5 +320,10 @@ void router_notify(struct sr_instance * sr, int code)
         if(router_get_http_port(sr)) server_update_fwdtable();
 #endif
         break;
+    case ROUTER_UPDATE_FWD_TABLE_S:
+#ifdef HAVE_WT
+        if(router_get_http_port(sr)) server_update_fwdtable_s();
+#endif
+        break;        
     }
 }

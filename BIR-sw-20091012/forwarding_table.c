@@ -137,6 +137,7 @@ int forwarding_table_remove(struct sr_instance * sr, struct ip_address * ip, int
     {
         assoc_array_delete(sl->list,&entry->ip);
         forwarding_table_hw_write(sr);
+        router_notify(sr, isDynamic ? ROUTER_UPDATE_FWD_TABLE : ROUTER_UPDATE_FWD_TABLE_S);
         free(entry);
         return 1;
     }
@@ -181,6 +182,7 @@ void forwarding_table_add(struct sr_instance * sr, struct ip_address * ip,
     if(ft->running_dijkstra == 0 && nat == 0)
     {
         forwarding_table_hw_write(sr);
+        router_notify(sr, isDynamic ? ROUTER_UPDATE_FWD_TABLE : ROUTER_UPDATE_FWD_TABLE_S);
     }
 
     mutex_unlock(ft->mutex);
@@ -201,6 +203,7 @@ void forwarding_table_end_dijkstra(struct sr_instance * sr)
 {
     struct forwarding_table * fwd_table = FORWARDING_TABLE(sr);
     forwarding_table_hw_write(sr);
+    router_notify(sr, ROUTER_UPDATE_FWD_TABLE);
     fwd_table->running_dijkstra = 0;
     mutex_unlock(fwd_table->mutex);
 }
@@ -385,6 +388,4 @@ static void forwarding_table_hw_write(struct sr_instance * sr)
     }
     assoc_array_delete_array(array,__delete_forwarding_table);
 #endif
-
-    router_notify(sr,ROUTER_UPDATE_FWD_TABLE);
 }
