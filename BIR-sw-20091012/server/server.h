@@ -11,6 +11,8 @@ extern "C" {
     void stopserver();
     void server_update_fwdtable();
     void server_update_fwdtable_s();
+    void server_update_arptable();
+    void server_update_arptable_s();
 
 #ifdef CPP
 }
@@ -45,6 +47,7 @@ public:
     static void RemoveFromUpdateList(TestApp *);
 
     void update_fwdtable(int);
+    void update_arptable(int);
 
     static struct sr_instance * SR;
     static TestServer * server;

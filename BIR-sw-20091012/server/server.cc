@@ -12,8 +12,13 @@
 #include <Wt/WComboBox>
 #include <Wt/WPanel>
 #include <Wt/WBreak>
+#include <Wt/WStackedWidget>
+#include <Wt/WMenu>
+#include <Wt/WHBoxLayout>
+#include <Wt/WVBoxLayout>
 
 #include "FwdTable.h"
+#include "ARPTables.h"
 
 TestServer * TestServer::server = NULL;
 struct sr_instance * TestServer::SR = NULL;
@@ -21,60 +26,73 @@ struct sr_mutex * TestServer::_updateMutex = NULL;
 set<TestApp * > TestServer::_updateList;
 
 
-class FwdTables : public WContainerWidget
+class S_Router : public WContainerWidget
 {
-protected:
-    FwdTable * __fwd_d, * __fwd_s;
-    WPanel * __wpd, * __wps;
-public:
-    FwdTables()
-    {
-        __fwd_d = new FwdTable(1);
-        __fwd_s = new FwdTable(0);
+};
 
-        __wpd = new WPanel();
-        __wps = new WPanel();
+class S_OSPF : public WContainerWidget
+{
+};
 
-        __wpd->setTitle("Dynamic Forwarding Table");
-        __wps->setTitle("Static Forwarding Table");
-        
-        __wpd->setCentralWidget(__fwd_d);
-        __wps->setCentralWidget(__fwd_s);
-
-        __wpd->setCollapsible(true);
-        __wps->setCollapsible(true);
-
-        addWidget(__wpd);
-        addWidget(new WBreak());
-        addWidget(__wps);
-    }
-
-    void Update(int dyn)
-    {
-        if(dyn)
-        {
-            __fwd_d->Update();
-        }
-        else
-        {
-            __fwd_s->Update();
-        }
-    }    
+class S_NAT : public WContainerWidget
+{
 };
 
 class TestApp : public WApplication
 {
+    S_Router * __router;
     FwdTables * __fwd;
+    ARPTables * __arp;
+    S_OSPF * __ospf;
+    S_NAT * __nat;
+    WStackedWidget * __contentsStack;
+    
 public:
     TestApp(const WEnvironment & env) : WApplication(env)
     {
         enableUpdates();
+
+        __router = new S_Router();
         __fwd = new FwdTables();
-        root()->addWidget(__fwd);
+        __arp = new ARPTables();
+        __ospf = new S_OSPF();
+        __nat = new S_NAT();
+
+        __contentsStack = new WStackedWidget();
+        // Show scrollbars when needed ...
+        //__contentsStack->setOverflow(WContainerWidget::OverflowAuto);
+        // ... and work around a bug in IE (see setOverflow() documentation)
+        __contentsStack->setPositionScheme(Relative);
+        __contentsStack->setStyleClass("contents");
+
+        WMenu *menu = new WMenu(__contentsStack, Vertical, 0);
+        menu->setRenderAsList(true);
+        menu->setStyleClass("menu");
+/*        menu->setInternalPathEnabled();
+          menu->setInternalBasePath("/");*/
+
+        menu->addItem("Router Information", __router);
+        menu->addItem("Forwarding Tables", __fwd);
+        menu->addItem("ARP Tables", __arp);
+        menu->addItem("OSPF", __ospf);
+        menu->addItem("NAT Tables", __nat);
+
+/*        setInternalPath(initialInternalPath);*/
+        menu->select(0);
+
+        /*
+         * Add it all inside a layout
+         */
+        WHBoxLayout *horizLayout = new WHBoxLayout(root());
+        WVBoxLayout *vertLayout = new WVBoxLayout;
+
+        horizLayout->addWidget(menu, 0);
+        horizLayout->addLayout(vertLayout, 1);
+        vertLayout->addWidget(__contentsStack, 1);
+        
         TestServer::AddToUpdateList(this);
 
-        styleSheet().addRule(new WCssTextRule("table, th, td","border: 1px solid black; font-size:95%;"));
-        styleSheet().addRule(new WCssTextRule("td,th","padding:0.4em;"));
+        __style();    
     }
 
     ~TestApp()
@@ -87,6 +105,44 @@ public:
         UpdateLock lock = getUpdateLock();
         __fwd->Update(dyn);
         triggerUpdate();
+    }
+
+    void UpdateARPTable(int dyn)
+    {
+        UpdateLock lock = getUpdateLock();
+        __arp->Update(dyn);
+        triggerUpdate();
+    }    
+private:
+    void __style()
+    {
+        styleSheet().addRule(new WCssTextRule("ul.menu li","padding-top: 8px;"));
+        styleSheet().addRule(new WCssTextRule("ul.menu a",
+                                              "letter-spacing:1px;text-decoration:none;padding-bottom:5px;width:200px;"));
+        styleSheet().addRule(new WCssTextRule(
+                                 "ul.menu .itemselected, ul.menu .itemselected a, ul.menu .itemselected a",
+                                 "color: black;"
+                                 ""));
+        styleSheet().addRule(new WCssTextRule("ul.menu",
+                                              "margin:0px;"
+                                              "padding-left:0px;"
+                                              "list-style:none;"
+                                              "width:200px;"
+                                              "border-right: 3px solid #EEEEEE;"));
+
+        styleSheet().addRule(new WCssTextRule("ul.menu .item, ul.menu a.item, ul.menu .item a ",
+                                              "color: #7E7E7E;"));
+        styleSheet().addRule(new WCssTextRule("ul.menu a:hover, ul.menu .item a:hover",
+                                              "color: #70BD1A;"
+                                              "text-decoration: none;"));
+        styleSheet().addRule(new WCssTextRule("body, html",
+                                              "font-family:arial,sans-serif;"
+                                              "height: 100%;"
+                                              "width: 100%;"
+                                              "margin: 0px; padding: 0px; border: none;"
+                                              "overflow: hidden;"));
+        styleSheet().addRule(new WCssTextRule(".FwdTable td, .FwdTable th, .FwdTable > table",
+                                              "border: 1px solid black;padding:0.3em;"));        
     }
 };
 
@@ -101,6 +157,7 @@ TestServer::TestServer(struct sr_instance * sr, int argc, char ** argv) : WServe
     _updateMutex = mutex_create();
     setServerConfiguration(argc, argv);
     addEntryPoint(Application, createApplication);
+    TestServer::server = this;
         
     if(start())
     {
@@ -124,16 +181,35 @@ void TestServer::update_fwdtable(int dyn)
     mutex_unlock(_updateMutex);
 }
 
+void TestServer::update_arptable(int dyn)
+{
+    mutex_lock(_updateMutex);
+    for(set<TestApp *>::iterator ii=_updateList.begin(); ii!=_updateList.end(); ++ii)
+    {
+        (*ii)->UpdateARPTable(dyn);
+    }
+    mutex_unlock(_updateMutex);
+}
+
 void server_update_fwdtable()
 {
-    TestServer::server->update_fwdtable(1);
+    if(TestServer::server) TestServer::server->update_fwdtable(1);
 }
 
 void server_update_fwdtable_s()
 {
-    TestServer::server->update_fwdtable(0);
+    if(TestServer::server) TestServer::server->update_fwdtable(0);
 }
 
+void server_update_arptable()
+{
+    if(TestServer::server) TestServer::server->update_arptable(1);
+}
+
+void server_update_arptable_s()
+{
+    if(TestServer::server) TestServer::server->update_arptable(0);
+}
 
 void TestServer::AddToUpdateList(TestApp * app)
 {
@@ -187,7 +263,7 @@ static void __runserver(void * data)
 
         try
         {
-            TestServer::server = new TestServer(sr, i, conf);
+            new TestServer(sr, i, conf);
         }
         catch (WServer::Exception & e)
         {

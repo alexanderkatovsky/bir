@@ -77,7 +77,53 @@ public:
     void Update();
 };
 
+class FwdTables : public WContainerWidget
+{
+protected:
+    FwdTable * __fwd_d, * __fwd_s;
+    WPanel * __wpd, * __wps;
+public:
+    FwdTables();
+
+    void Update(int dyn)
+    {
+        if(dyn)
+        {
+            __fwd_d->Update();
+        }
+        else
+        {
+            __fwd_s->Update();
+        }
+    }
+};
+
 string ip_to_string(uint32_t ip);
+
+class IPEdit : public WLineEdit
+{
+public:
+    IPEdit() : WLineEdit("")
+    {
+        string ip1 ="(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)";
+        string ip_pattern = ip1 + "\\." + ip1 + "\\." + ip1 + "\\." + ip1;
+        setMinimumSize(WLength(10,WLength::FontEm), WLength(0));
+        setValidator(new WRegExpValidator(ip_pattern));
+    }
+};
+
+class MACEdit : public WLineEdit
+{
+public:
+    MACEdit() : WLineEdit("")
+    {
+        string mac1 = "[0-9a-fA-F][0-9a-fA-F]";
+        string mac_pattern = mac1 + ":" + mac1 + ":" + mac1 + ":" + mac1 + ":" + mac1 + ":" + mac1;
+        setMinimumSize(WLength(15,WLength::FontEm), WLength(0));
+        setValidator(new WRegExpValidator(mac_pattern));
+    }
+};
+
 
 
 #endif

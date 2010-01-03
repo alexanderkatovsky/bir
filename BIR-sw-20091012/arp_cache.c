@@ -62,6 +62,7 @@ int arp_clear_cache(void * data, void * user_data)
     struct fifo * delete_list = (struct fifo *)user_data;
 
     entry->ttl -= 1;
+
     if(entry->ttl <= 0)
     {
         fifo_push(delete_list,entry);
@@ -91,6 +92,8 @@ void arp_cache_thread_run(struct sr_instance * sr)
     }
     fifo_destroy(delete_list);
     mutex_unlock(cache->mutex);
+
+    router_notify(sr, ROUTER_UPDATE_ARP_TABLE);
 }
 
 void * arp_cache_get_key(void * data)
@@ -172,8 +175,10 @@ void arp_cache_add(struct sr_instance * sr, uint32_t ip, const uint8_t * MAC, in
         bi_assoc_array_insert(cache,entry);
     }
     entry->ttl = ARP_CACHE_TIMEOUT;
-    arp_cache_hw_write(sr);    
+    arp_cache_hw_write(sr);
     mutex_unlock(ARP_CACHE(sr)->mutex);
+
+    router_notify(sr, isDynamic ? ROUTER_UPDATE_ARP_TABLE : ROUTER_UPDATE_ARP_TABLE_S);
 }
 
 int arp_cache_remove_entry(struct sr_instance * sr, uint32_t ip, int isDynamic)
@@ -190,7 +195,32 @@ int arp_cache_remove_entry(struct sr_instance * sr, uint32_t ip, int isDynamic)
         arp_cache_hw_write(sr);
     }
     mutex_unlock(cache->mutex);
+    router_notify(sr, isDynamic ? ROUTER_UPDATE_ARP_TABLE : ROUTER_UPDATE_ARP_TABLE_S);
     return ret;
+}
+
+struct arp_cache_loop_i
+{
+    void (*fn)(uint32_t, uint8_t * MAC, int ttl, void *);
+    void * userdata;
+};
+
+int arp_cache_loop_a(void * data, void * userdata)
+{
+    struct arp_cache_entry * e = (struct arp_cache_entry *)data;
+    struct arp_cache_loop_i * li = (struct arp_cache_loop_i *)userdata;
+
+    li->fn(e->ip, e->MAC, e->ttl, li->userdata);
+    return 0;
+}
+
+void arp_cache_loop(struct sr_instance * sr, void (*fn)(uint32_t, uint8_t *, int, void *), void * userdata, int isDynamic)
+{
+    mutex_lock(ARP_CACHE(sr)->mutex);
+    struct arp_cache_loop_i i = {fn,userdata};
+    struct bi_assoc_array * array = isDynamic ? ARP_CACHE(sr)->array : ARP_CACHE(sr)->array_s;
+    bi_assoc_array_walk_array(array, arp_cache_loop_a, &i);
+    mutex_unlock(ARP_CACHE(sr)->mutex);
 }
 
 int __arp_cache_purge_a(void * data, void * userdata)
@@ -219,6 +249,7 @@ int arp_cache_purge(struct sr_instance * sr, int isDynamic)
     arp_cache_hw_write(sr);
     mutex_unlock(cache->mutex);
     fifo_destroy(delete_list);
+    router_notify(sr, isDynamic ? ROUTER_UPDATE_ARP_TABLE : ROUTER_UPDATE_ARP_TABLE_S);
     return i;
 }
 
@@ -232,6 +263,7 @@ void arp_cache_alert_packet_received(struct sr_packet * packet)
     if(entry != NULL)
     {
         entry->ttl = ARP_CACHE_TIMEOUT;
+        router_notify(packet->sr, ROUTER_UPDATE_ARP_TABLE);
     }
     mutex_unlock(cache->mutex);
 }

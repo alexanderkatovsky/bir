@@ -1,5 +1,5 @@
 #include "FwdTable.h"
-#include "../router.h"
+
 
 string ip_to_string(uint32_t ip)
 {
@@ -14,7 +14,9 @@ void FwdTable::add_entry()
        __wt_mask->validate() != WValidator::Valid ||
        __wt_next_hop->validate() != WValidator::Valid)
     {
-        WMessageBox::show("Error", "Invalid Entry", Ok);
+        WMessageBox::show("Error", "Invalid IP Entry."
+                          "An IP Address must have the form xx:xx:xx:xx"
+                          " where x is one of 0123456789", Ok);
     }
     else if(__wt_subnet->text().toUTF8() == "" ||
             __wt_mask->text().toUTF8() == "" ||
@@ -63,19 +65,14 @@ void FwdTable::Update()
     }
     if(!_isDynamic)
     {
-        string ip1 ="(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)";
-        string ip_pattern = ip1 + "\\." + ip1 + "\\." + ip1 + "\\." + ip1;
-        __wt_subnet = new WLineEdit("");
-        __wt_mask = new WLineEdit("");
-        __wt_next_hop = new WLineEdit("");
+        __wt_subnet = new IPEdit();
+        __wt_mask = new IPEdit();
+        __wt_next_hop = new IPEdit();
         __wt_interface = new WComboBox();
+
 
         interface_list_loop_interfaces(TestServer::SR, l_interfaces, __wt_interface);
 
-        __wt_subnet->setValidator(new WRegExpValidator(ip_pattern));
-        __wt_mask->setValidator(new WRegExpValidator(ip_pattern));
-        __wt_next_hop->setValidator(new WRegExpValidator(ip_pattern));
-            
         elementAt(arr.size()+1, 0)->addWidget(__wt_subnet);
         elementAt(arr.size()+1, 1)->addWidget(__wt_mask);
         elementAt(arr.size()+1, 2)->addWidget(__wt_next_hop);
@@ -86,4 +83,28 @@ void FwdTable::Update()
         wb->clicked().connect(SLOT(this, FwdTable::add_entry));
     }
     __arr = arr;
+}
+
+FwdTables::FwdTables()
+{
+    __fwd_d = new FwdTable(1);
+    __fwd_s = new FwdTable(0);
+
+    __wpd = new WPanel();
+    __wps = new WPanel();
+
+    __wpd->setTitle("Dynamic Forwarding Table");
+    __wps->setTitle("Static Forwarding Table");
+        
+    __wpd->setCentralWidget(__fwd_d);
+    __wps->setCentralWidget(__fwd_s);
+
+    __wpd->setCollapsible(true);
+    __wps->setCollapsible(true);
+
+    setStyleClass("FwdTable");
+
+    addWidget(__wpd);
+    addWidget(new WBreak());
+    addWidget(__wps);
 }

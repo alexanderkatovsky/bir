@@ -37,4 +37,5 @@ int arp_cache_purge(struct sr_instance * sr, int isDynamic);
 
 void arp_cache_show(struct arp_cache * cache,print_t print);
 void arp_cache_alert_packet_received(struct sr_packet * packet);
+void arp_cache_loop(struct sr_instance * sr, void (*fn)(uint32_t, uint8_t *, int, void *), void * userdata, int isDynamic);
 #endif
