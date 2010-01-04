@@ -49,11 +49,14 @@ class ARPTable : public WTable
     WLineEdit * __wt_mac;
     WLineEdit * __wt_ttl;
 
+    void __update();
+    void __updateTtl();
+
 public:
     ARPTable(int isDynamic = 1) : _isDynamic(isDynamic)
     {
         setHeaderCount(1);
-        Update();
+        Update(0);
     }
 
     static void l_arptable(uint32_t ip, uint8_t * MAC, int ttl, void * userdata)
@@ -68,7 +71,7 @@ public:
 
     void add_entry();
 
-    void Update();
+    void Update(int ttl);
 };
 
 class ARPTables : public WContainerWidget
@@ -79,20 +82,22 @@ protected:
 public:
     ARPTables();
 
-    void Update(int dyn)
+    void Update(int dyn, int ttl)
     {
         if(dyn)
         {
-            __arp_d->Update();
+            __arp_d->Update(ttl);
         }
         else
         {
-            __arp_s->Update();
+            __arp_s->Update(0);
         }
     }
 };
 
 string mac_to_string(uint8_t * MAC);
+uint32_t string_to_ip(string ip);
+void string_to_mac(string smac, uint8_t * mac);
 
 template <class T>
 bool from_string(T& t, const std::string& s, std::ios_base& (*f)(std::ios_base&))

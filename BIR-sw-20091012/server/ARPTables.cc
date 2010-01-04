@@ -2,6 +2,12 @@
 #include "ARPTables.h"
 #include "FwdTable.h"
 
+uint32_t string_to_ip(string ip)
+{
+    struct in_addr addr;
+    inet_aton(ip.c_str(), &addr);
+    return  addr.s_addr;
+}
 
 void string_to_mac(string smac, uint8_t * mac)
 {
@@ -29,15 +35,11 @@ void ARPTable::add_entry()
 {
     if(__wt_mac->validate() != WValidator::Valid)
     {
-        WMessageBox::show("Error", "Invalid IP Entry."
-                          "A MAC Address must have the form xx:xx:xx:xx:xx:xx"
-                          " where x is one of 0123456789abcdef", Ok);
+        TestServer::mac_err();
     }
     else if(__wt_ip->validate() != WValidator::Valid)
     {
-        WMessageBox::show("Error", "Invalid MAC Entry."
-                          "An IP Address must have the form xx:xx:xx:xx"
-                          " where x is one of 0123456789", Ok);
+        TestServer::ip_err();
     }
     else if(__wt_ip->text().toUTF8() == "" ||
             __wt_mac->text().toUTF8() == "")
@@ -46,16 +48,13 @@ void ARPTable::add_entry()
     }
     else
     {        
-        struct in_addr addr;
         uint8_t mac[ETHER_ADDR_LEN];
-        inet_aton(__wt_ip->text().toUTF8().c_str(), &addr);
-        uint32_t ip = addr.s_addr;
         string_to_mac(__wt_mac->text().toUTF8(), mac);
-        arp_cache_add(TestServer::SR, ip, mac, 0);
+        arp_cache_add(TestServer::SR, string_to_ip(__wt_ip->text().toUTF8()), mac, 0);
     }
 }
 
-void ARPTable::Update()
+void ARPTable::__update()
 {
     clear();
     elementAt(0, 0)->addWidget(new Wt::WText(" ip "));
@@ -96,6 +95,23 @@ void ARPTable::Update()
         wb->clicked().connect(SLOT(this, ARPTable::add_entry));
     }
     __arr = arr;
+}
+
+void ARPTable::__updateTtl()
+{
+    vector<TableElt> arr;
+
+    arp_cache_loop(TestServer::SR, l_arptable, &arr, _isDynamic);
+
+    for(unsigned int i = 0; i < arr.size(); i++)
+    {
+        reinterpret_cast<WText*>(elementAt(i+1, 2)->widget(0))->setText(to_string<int>(arr[i].ttl, dec));
+    }    
+}
+
+void ARPTable::Update(int ttl)
+{
+    (ttl && _isDynamic) ? __updateTtl() : __update();
 }
 
 ARPTables::ARPTables()

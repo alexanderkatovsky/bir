@@ -11,8 +11,9 @@ extern "C" {
     void stopserver();
     void server_update_fwdtable();
     void server_update_fwdtable_s();
-    void server_update_arptable();
+    void server_update_arptable(int ttl);
     void server_update_arptable_s();
+    void server_update_ip();
 
 #ifdef CPP
 }
@@ -31,6 +32,7 @@ extern "C" {
 #include <string>
 #include "../lwtcp/lwip/sys.h"
 #include <set>
+#include <Wt/WMessageBox>
 
 using namespace Wt;
 using namespace std;
@@ -47,10 +49,25 @@ public:
     static void RemoveFromUpdateList(TestApp *);
 
     void update_fwdtable(int);
-    void update_arptable(int);
+    void update_arptable(int,int);
+    void update_ip();
 
     static struct sr_instance * SR;
     static TestServer * server;
+
+    static void ip_err()
+    {
+        WMessageBox::show("Error", "Invalid IP Entry."
+                          "An IP Address must have the form X.X.X.X"
+                          " where X is a string from 0123456789", Ok);
+    }
+
+    static void mac_err()
+    {
+        WMessageBox::show("Error", "Invalid MAC Entry."
+                          "A MAC Address must have the form xx:xx:xx:xx:xx:xx"
+                          " where x is one of 0123456789abcdef", Ok);
+    }
 protected:
     static set<TestApp * > _updateList;
     static struct sr_mutex * _updateMutex;

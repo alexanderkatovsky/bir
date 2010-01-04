@@ -327,13 +327,54 @@ void router_notify(struct sr_instance * sr, int code)
         break;
     case ROUTER_UPDATE_ARP_TABLE:
 #ifdef HAVE_WT
-        if(router_get_http_port(sr)) server_update_arptable();
+        if(router_get_http_port(sr)) server_update_arptable(0);
 #endif
         break;
     case ROUTER_UPDATE_ARP_TABLE_S:
 #ifdef HAVE_WT
         if(router_get_http_port(sr)) server_update_arptable_s();
 #endif
-        break;        
+        break;
+    case ROUTER_UPDATE_ARP_TABLE_TTL:
+#ifdef HAVE_WT
+        if(router_get_http_port(sr)) server_update_arptable(1);
+#endif
+        break;
+    case ROUTER_UPDATE_IFACE_IP:
+#ifdef HAVE_WT
+        if(router_get_http_port(sr)) server_update_ip();
+#endif
+        break;
     }
+}
+
+uint32_t router_get_aid(struct sr_instance * sr)
+{
+    uint32_t aid;
+    interface_list_get_params(sr, ROUTER(sr)->default_interface, &aid, 0, 0, 0);
+    return aid;
+}
+
+struct __router_set_aid_i
+{
+    struct sr_instance * sr;
+    uint32_t aid;
+};
+
+void __router_set_aid_a(struct sr_vns_if * iface, void * data)
+{
+    struct __router_set_aid_i * ai = (struct __router_set_aid_i *)data;
+    interface_list_set_aid(ai->sr, iface->name, ai->aid);
+}
+
+uint32_t router_set_aid(struct sr_instance * sr, uint32_t aid)
+{
+    struct __router_set_aid_i ai = {sr,aid};
+    interface_list_loop_interfaces(sr, __router_set_aid_a, &ai);
+    router_notify(sr, ROUTER_UPDATE_IFACE_IP);
+}
+
+uint32_t router_set_rid(struct sr_instance * sr, uint32_t rid)
+{
+    ROUTER(sr)->rid = rid;
 }

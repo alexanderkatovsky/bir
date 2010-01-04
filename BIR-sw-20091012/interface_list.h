@@ -47,7 +47,13 @@ struct sr_vns_if * interface_list_get_interface_by_ip(struct interface_list * li
 struct sr_vns_if * interface_list_get_interface_by_name(struct interface_list * list, char * name);
 int interface_list_get_MAC_and_IP_from_name(struct interface_list * list,
                                             char * interface, uint8_t * MAC, uint32_t * ip);
+void interface_list_get_params(struct sr_instance * sr, char * name, uint32_t * aid, int * ospf,
+                               enum e_nat_type * nat_type, int * up);
 void interface_list_set_ip(struct sr_instance * sr, char * name, uint32_t ip, uint32_t subnet);
+void interface_list_set_aid(struct sr_instance * sr, char * name, uint32_t aid);
+void interface_list_set_mac(struct sr_instance * sr, char * name, uint8_t * mac);
+void interface_list_set_params(struct sr_instance * sr, char * name, uint32_t aid, int  ospf,
+                               enum e_nat_type nat_type, int up);
 void interface_list_create(struct sr_instance * sr);
 void interface_list_destroy(struct interface_list * list);
 int interface_list_ip_exists(struct interface_list * list, uint32_t ip);
@@ -81,4 +87,5 @@ int interface_list_nat_enabled(struct sr_instance * sr, char * name);
 int interface_list_forward_packet(struct sr_instance * sr, char * from, char * to);
 int interface_list_forward_lsu(struct sr_instance * sr, char * from, char * to, uint32_t from_ip);
 int interface_list_ospf_enabled(struct sr_instance * sr, char * interface);
+
 #endif

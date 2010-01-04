@@ -105,10 +105,15 @@ class IPEdit : public WLineEdit
 public:
     IPEdit() : WLineEdit("")
     {
+        Define(this);
+    }
+
+    static void Define(WLineEdit * edit)
+    {
         string ip1 ="(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)";
         string ip_pattern = ip1 + "\\." + ip1 + "\\." + ip1 + "\\." + ip1;
-        setMinimumSize(WLength(10,WLength::FontEm), WLength(0));
-        setValidator(new WRegExpValidator(ip_pattern));
+        edit->setMinimumSize(WLength(10,WLength::FontEm), WLength(0));
+        edit->setValidator(new WRegExpValidator(ip_pattern));
     }
 };
 
@@ -117,10 +122,15 @@ class MACEdit : public WLineEdit
 public:
     MACEdit() : WLineEdit("")
     {
+        Define(this);
+    }
+
+    static void Define(WLineEdit * edit)
+    {
         string mac1 = "[0-9a-fA-F][0-9a-fA-F]";
         string mac_pattern = mac1 + ":" + mac1 + ":" + mac1 + ":" + mac1 + ":" + mac1 + ":" + mac1;
-        setMinimumSize(WLength(15,WLength::FontEm), WLength(0));
-        setValidator(new WRegExpValidator(mac_pattern));
+        edit->setMinimumSize(WLength(15,WLength::FontEm), WLength(0));
+        edit->setValidator(new WRegExpValidator(mac_pattern));
     }
 };
 

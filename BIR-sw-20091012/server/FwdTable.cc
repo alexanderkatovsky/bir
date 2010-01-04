@@ -14,9 +14,7 @@ void FwdTable::add_entry()
        __wt_mask->validate() != WValidator::Valid ||
        __wt_next_hop->validate() != WValidator::Valid)
     {
-        WMessageBox::show("Error", "Invalid IP Entry."
-                          "An IP Address must have the form xx:xx:xx:xx"
-                          " where x is one of 0123456789", Ok);
+        TestServer::ip_err();
     }
     else if(__wt_subnet->text().toUTF8() == "" ||
             __wt_mask->text().toUTF8() == "" ||

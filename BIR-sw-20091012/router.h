@@ -60,10 +60,12 @@ struct sr_router
 #endif
 };
 
-#define ROUTER_UPDATE_FWD_TABLE   0
-#define ROUTER_UPDATE_FWD_TABLE_S 1
-#define ROUTER_UPDATE_ARP_TABLE   2
-#define ROUTER_UPDATE_ARP_TABLE_S 3    
+#define ROUTER_UPDATE_FWD_TABLE        0
+#define ROUTER_UPDATE_FWD_TABLE_S      1
+#define ROUTER_UPDATE_ARP_TABLE        2
+#define ROUTER_UPDATE_ARP_TABLE_S      3
+#define ROUTER_UPDATE_ARP_TABLE_TTL    4
+#define ROUTER_UPDATE_IFACE_IP         5
 
 void router_create(struct sr_instance * sr, struct sr_options * opt);
 void router_destroy(struct sr_router * router);
@@ -77,6 +79,9 @@ void router_free_packet(struct sr_packet * );
 void router_swap_eth_header_and_send(struct sr_packet * packet);
 void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface);
 void router_notify(struct sr_instance * sr, int code);
+uint32_t router_get_aid(struct sr_instance * sr);
+    uint32_t router_set_aid(struct sr_instance * sr, uint32_t aid);
+    uint32_t router_set_rid(struct sr_instance * sr, uint32_t rid);
 
 #define ROUTER(sr) ((struct sr_router*)((sr)->router))
 #define INTERFACE_LIST(sr) ((struct interface_list *)(ROUTER(sr)->iflist))

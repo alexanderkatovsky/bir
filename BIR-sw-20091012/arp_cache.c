@@ -93,7 +93,7 @@ void arp_cache_thread_run(struct sr_instance * sr)
     fifo_destroy(delete_list);
     mutex_unlock(cache->mutex);
 
-    router_notify(sr, ROUTER_UPDATE_ARP_TABLE);
+    router_notify(sr, hw ? ROUTER_UPDATE_ARP_TABLE : ROUTER_UPDATE_ARP_TABLE_TTL);
 }
 
 void * arp_cache_get_key(void * data)
@@ -263,7 +263,6 @@ void arp_cache_alert_packet_received(struct sr_packet * packet)
     if(entry != NULL)
     {
         entry->ttl = ARP_CACHE_TIMEOUT;
-        router_notify(packet->sr, ROUTER_UPDATE_ARP_TABLE);
     }
     mutex_unlock(cache->mutex);
 }

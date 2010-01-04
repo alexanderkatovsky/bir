@@ -417,16 +417,14 @@ void interface_list_set_ip(struct sr_instance * sr, char * name, uint32_t ip, ui
     struct interface_list * list = INTERFACE_LIST(sr);
     struct interface_list_entry * entry;
     mutex_lock(list->mutex);
-    if(bi_assoc_array_read_1(list->array, &ip) == NULL)
+    entry = bi_assoc_array_delete_2(list->array,name);
+    if(entry)
     {
-        entry = bi_assoc_array_delete_2(list->array,name);
-        if(entry)
-        {
-            entry->vns_if->ip = ip;
-            entry->vns_if->mask = subnet;
-            bi_assoc_array_insert(list->array,entry);
-            ospf_send_hello(sr,entry);
-        }
+        entry->vns_if->ip = ip;
+        entry->vns_if->mask = subnet;
+        bi_assoc_array_insert(list->array,entry);
+        ospf_send_hello(sr,entry);
+        router_notify(sr, ROUTER_UPDATE_IFACE_IP);
     }
     mutex_unlock(list->mutex);
 }
@@ -752,4 +750,53 @@ int interface_list_ospf_enabled(struct sr_instance * sr, char * interface)
         return !OPTIONS(sr)->disable_ospf && entry->ospf;
     }
     return 0;
+}
+
+void interface_list_get_params(struct sr_instance * sr, char * name, uint32_t * aid, int * ospf,
+                               enum e_nat_type * nat_type, int * up)
+{
+    struct interface_list_entry * entry = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, name);
+
+    if(entry)
+    {
+        if(aid) *aid = entry->aid;
+        if(ospf) *ospf = entry->ospf;
+        if(nat_type) *nat_type = entry->nat_type;
+        if(up) *up = entry->up;
+    }
+}
+
+void interface_list_set_params(struct sr_instance * sr, char * name, uint32_t aid, int  ospf,
+                               enum e_nat_type nat_type, int up)
+{
+    struct interface_list_entry * entry = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, name);
+
+    if(entry)
+    {
+        entry->aid = aid;
+        entry->ospf = ospf;
+        entry->nat_type = nat_type;
+        entry->up = up;
+        
+        link_state_graph_update_forwarding_table(sr);
+        router_notify(sr, ROUTER_UPDATE_IFACE_IP);
+    }
+}
+
+void interface_list_set_mac(struct sr_instance * sr, char * name, uint8_t * mac)
+{
+    struct interface_list_entry * entry = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, name);
+    if(entry)
+    {
+        memcpy(entry->vns_if->addr, mac, ETHER_ADDR_LEN);
+    }
+}
+
+void interface_list_set_aid(struct sr_instance * sr, char * name, uint32_t aid)
+{
+    struct interface_list_entry * entry = bi_assoc_array_read_2(INTERFACE_LIST(sr)->array, name);
+    if(entry)
+    {
+        entry->aid = aid;
+    }
 }

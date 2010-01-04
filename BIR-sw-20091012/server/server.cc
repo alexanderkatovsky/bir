@@ -19,16 +19,13 @@
 
 #include "FwdTable.h"
 #include "ARPTables.h"
+#include "S_Router.h"
 
 TestServer * TestServer::server = NULL;
 struct sr_instance * TestServer::SR = NULL;
 struct sr_mutex * TestServer::_updateMutex = NULL;
 set<TestApp * > TestServer::_updateList;
 
-
-class S_Router : public WContainerWidget
-{
-};
 
 class S_OSPF : public WContainerWidget
 {
@@ -60,7 +57,7 @@ public:
 
         __contentsStack = new WStackedWidget();
         // Show scrollbars when needed ...
-        //__contentsStack->setOverflow(WContainerWidget::OverflowAuto);
+        __contentsStack->setOverflow(WContainerWidget::OverflowAuto);
         // ... and work around a bug in IE (see setOverflow() documentation)
         __contentsStack->setPositionScheme(Relative);
         __contentsStack->setStyleClass("contents");
@@ -107,12 +104,19 @@ public:
         triggerUpdate();
     }
 
-    void UpdateARPTable(int dyn)
+    void UpdateARPTable(int dyn, int ttl)
     {
         UpdateLock lock = getUpdateLock();
-        __arp->Update(dyn);
+        __arp->Update(dyn,ttl);
         triggerUpdate();
-    }    
+    }
+
+    void UpdateIP()
+    {
+        UpdateLock lock = getUpdateLock();
+        __router->Update();
+        triggerUpdate();
+    }
 private:
     void __style()
     {
@@ -181,12 +185,22 @@ void TestServer::update_fwdtable(int dyn)
     mutex_unlock(_updateMutex);
 }
 
-void TestServer::update_arptable(int dyn)
+void TestServer::update_ip()
 {
     mutex_lock(_updateMutex);
     for(set<TestApp *>::iterator ii=_updateList.begin(); ii!=_updateList.end(); ++ii)
     {
-        (*ii)->UpdateARPTable(dyn);
+        (*ii)->UpdateIP();
+    }
+    mutex_unlock(_updateMutex);
+}
+
+void TestServer::update_arptable(int dyn, int ttl)
+{
+    mutex_lock(_updateMutex);
+    for(set<TestApp *>::iterator ii=_updateList.begin(); ii!=_updateList.end(); ++ii)
+    {
+        (*ii)->UpdateARPTable(dyn,ttl);
     }
     mutex_unlock(_updateMutex);
 }
@@ -196,19 +210,24 @@ void server_update_fwdtable()
     if(TestServer::server) TestServer::server->update_fwdtable(1);
 }
 
+void server_update_ip()
+{
+    if(TestServer::server) TestServer::server->update_ip();
+}
+
 void server_update_fwdtable_s()
 {
     if(TestServer::server) TestServer::server->update_fwdtable(0);
 }
 
-void server_update_arptable()
+void server_update_arptable(int ttl)
 {
-    if(TestServer::server) TestServer::server->update_arptable(1);
+    if(TestServer::server) TestServer::server->update_arptable(1,ttl);
 }
 
 void server_update_arptable_s()
 {
-    if(TestServer::server) TestServer::server->update_arptable(0);
+    if(TestServer::server) TestServer::server->update_arptable(0,0);
 }
 
 void TestServer::AddToUpdateList(TestApp * app)
