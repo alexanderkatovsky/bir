@@ -2,7 +2,7 @@ if TEST_HAVE_WT
 WTCF = -DHAVE_WT
 WTLF = -lwt -lwthttp -lwtext
 WTSRCS = server/server.cc server/FwdTable.cc server/ARPTables.cc \
-server/FwdTable.h server/ARPTables.h server/server.h
+server/FwdTable.h server/ARPTables.h server/server.h server/S_Router.h server/S_OSPF.h
 endif
 
 

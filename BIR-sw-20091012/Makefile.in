@@ -81,7 +81,8 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am__sr_SOURCES_DIST = server/server.cc server/FwdTable.cc \
 	server/ARPTables.cc server/FwdTable.h server/ARPTables.h \
-	server/server.h sr_main.c nf2util.c
+	server/server.h server/S_Router.h server/S_OSPF.h sr_main.c \
+	nf2util.c
 @TEST_HAVE_WT_TRUE@am__objects_4 = server.$(OBJEXT) FwdTable.$(OBJEXT) \
 @TEST_HAVE_WT_TRUE@	ARPTables.$(OBJEXT)
 am__objects_5 = sr_main.$(OBJEXT)
@@ -227,7 +228,7 @@ top_srcdir = @top_srcdir@
 @TEST_HAVE_WT_TRUE@WTCF = -DHAVE_WT
 @TEST_HAVE_WT_TRUE@WTLF = -lwt -lwthttp -lwtext
 @TEST_HAVE_WT_TRUE@WTSRCS = server/server.cc server/FwdTable.cc server/ARPTables.cc \
-@TEST_HAVE_WT_TRUE@server/FwdTable.h server/ARPTables.h server/server.h
+@TEST_HAVE_WT_TRUE@server/FwdTable.h server/ARPTables.h server/server.h server/S_Router.h server/S_OSPF.h
 
 AUTOMAKE_OPTIONS = foreign
 SUBDIRS = cli lwtcp .

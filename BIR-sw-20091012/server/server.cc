@@ -20,16 +20,12 @@
 #include "FwdTable.h"
 #include "ARPTables.h"
 #include "S_Router.h"
+#include "S_OSPF.h"
 
 TestServer * TestServer::server = NULL;
 struct sr_instance * TestServer::SR = NULL;
 struct sr_mutex * TestServer::_updateMutex = NULL;
 set<TestApp * > TestServer::_updateList;
-
-
-class S_OSPF : public WContainerWidget
-{
-};
 
 class S_NAT : public WContainerWidget
 {
@@ -124,6 +120,20 @@ public:
         __router->UpdateOSPF();
         triggerUpdate();
     }
+    
+    void UpdateOSPF()
+    {
+        UpdateLock lock = getUpdateLock();
+        __ospf->Update();
+        triggerUpdate();
+    }
+    
+    void UpdateOSPFTtl()
+    {
+        UpdateLock lock = getUpdateLock();
+        __ospf->UpdateTtl();
+        triggerUpdate();
+    }
 private:
     void __style()
     {
@@ -202,6 +212,28 @@ void TestServer::update_ip()
     mutex_unlock(_updateMutex);
 }
 
+void TestServer::update_ospf()
+{
+    mutex_lock(_updateMutex);
+    for(set<TestApp *>::iterator ii=_updateList.begin(); ii!=_updateList.end(); ++ii)
+    {
+        (*ii)->UpdateOSPF();
+    }
+    mutex_unlock(_updateMutex);
+}
+
+
+void TestServer::update_ospf_ttl()
+{
+    mutex_lock(_updateMutex);
+    for(set<TestApp *>::iterator ii=_updateList.begin(); ii!=_updateList.end(); ++ii)
+    {
+        (*ii)->UpdateOSPFTtl();
+    }
+    mutex_unlock(_updateMutex);
+}
+
+
 void TestServer::update_router_ttl()
 {
     mutex_lock(_updateMutex);
@@ -220,6 +252,16 @@ void TestServer::update_arptable(int dyn, int ttl)
         (*ii)->UpdateARPTable(dyn,ttl);
     }
     mutex_unlock(_updateMutex);
+}
+
+void server_update_ospf()
+{
+    if(TestServer::server) TestServer::server->update_ospf();
+}
+
+void server_update_ospf_ttl()
+{
+    if(TestServer::server) TestServer::server->update_ospf_ttl();
 }
 
 void server_update_router_ttl()

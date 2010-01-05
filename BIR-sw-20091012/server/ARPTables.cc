@@ -103,10 +103,13 @@ void ARPTable::__updateTtl()
 
     arp_cache_loop(TestServer::SR, l_arptable, &arr, _isDynamic);
 
-    for(unsigned int i = 0; i < arr.size(); i++)
+    if(arr.size() == __arr.size())
     {
-        reinterpret_cast<WText*>(elementAt(i+1, 2)->widget(0))->setText(to_string<int>(arr[i].ttl, dec));
-    }    
+        for(unsigned int i = 0; i < arr.size(); i++)
+        {
+            reinterpret_cast<WText*>(elementAt(i+1, 2)->widget(0))->setText(to_string<int>(arr[i].ttl, dec));
+        }
+    }
 }
 
 void ARPTable::Update(int ttl)

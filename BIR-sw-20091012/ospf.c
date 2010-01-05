@@ -84,6 +84,7 @@ void ospf_handle_incoming_lsu(struct sr_packet * packet)
             {
                 ospf_forward_incoming_lsu(packet);
             }
+            router_notify(packet->sr,ROUTER_UPDATE_OSPF);
         }
     }
 }
@@ -100,6 +101,7 @@ void ospf_handle_incoming_hello(struct sr_packet * packet)
                                           ntohl(ospf_hdr->aid),
                                           hello_hdr->nmask,
                                           ntohs(hello_hdr->helloint));
+    router_notify(packet->sr,ROUTER_UPDATE_OSPF);
 }
 
 void ospf_handle_incoming_packet(struct sr_packet * packet)

@@ -351,6 +351,16 @@ void router_notify(struct sr_instance * sr, int code)
 #ifdef HAVE_WT
         if(router_get_http_port(sr)) server_update_router_ttl();
 #endif
+        break;
+    case ROUTER_UPDATE_OSPF:
+#ifdef HAVE_WT
+        if(router_get_http_port(sr)) server_update_ospf();
+#endif
+        break;
+    case ROUTER_UPDATE_OSPF_TTL:
+#ifdef HAVE_WT
+        if(router_get_http_port(sr)) server_update_ospf_ttl();
+#endif
         break;        
     }
 }

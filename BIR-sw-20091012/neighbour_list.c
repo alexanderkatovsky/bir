@@ -91,6 +91,7 @@ void neighbour_list_scan_neighbours(struct sr_instance * sr, struct neighbour_li
         interface_list_send_flood(sr);
     }
     mutex_unlock(nl->mutex);
+    router_notify(sr,flood ? ROUTER_UPDATE_OSPF : ROUTER_UPDATE_OSPF_TTL);
 }
 
 struct __neighbour_list_loop_i
