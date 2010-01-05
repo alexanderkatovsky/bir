@@ -282,7 +282,7 @@ void interface_list_thread_run(struct sr_instance * sr)
     if(iflist->time_to_hello <= 0 && bi_assoc_array_length(iflist->array) > 0)
     {
         interface_list_send_hello(iflist);
-        iflist->time_to_hello = OSPF_DEFAULT_HELLOINT;
+        iflist->time_to_hello = ROUTER(sr)->hello;
     }
     else
     {
@@ -292,7 +292,7 @@ void interface_list_thread_run(struct sr_instance * sr)
     if(iflist->time_to_flood <= 0 && bi_assoc_array_length(iflist->array) > 0)
     {
         interface_list_send_flood(iflist->sr);
-        iflist->time_to_flood = OSPF_DEFAULT_LSUINT;
+        iflist->time_to_flood = ROUTER(sr)->flood;
     }
     else
     {
@@ -300,6 +300,8 @@ void interface_list_thread_run(struct sr_instance * sr)
     }
 
     mutex_unlock(iflist->mutex);
+
+    router_notify(sr, ROUTER_UPDATE_ROUTER_TTL);
 }
 
 void * interface_list_get_IP(void * data)
@@ -321,7 +323,7 @@ void interface_list_create(struct sr_instance * sr)
     ret->total = 0;
     ret->sr = sr;
     ret->time_to_hello = 0;
-    ret->time_to_flood = OSPF_DEFAULT_LSUINT;
+    ret->time_to_flood = ROUTER(sr)->flood;
     ret->mutex = mutex_create();
     router_add_thread(sr,interface_list_thread_run, NULL);
 }
@@ -798,5 +800,17 @@ void interface_list_set_aid(struct sr_instance * sr, char * name, uint32_t aid)
     if(entry)
     {
         entry->aid = aid;
+    }
+}
+
+void interface_list_get_ospf_info(struct sr_instance * sr, int * hello, int * flood)
+{
+    if(hello)
+    {
+        *hello = INTERFACE_LIST(sr)->time_to_hello;
+    }
+    if(flood)
+    {
+        *flood = INTERFACE_LIST(sr)->time_to_flood;
     }
 }

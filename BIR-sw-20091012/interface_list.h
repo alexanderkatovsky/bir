@@ -88,4 +88,6 @@ int interface_list_forward_packet(struct sr_instance * sr, char * from, char * t
 int interface_list_forward_lsu(struct sr_instance * sr, char * from, char * to, uint32_t from_ip);
 int interface_list_ospf_enabled(struct sr_instance * sr, char * interface);
 
+void interface_list_get_ospf_info(struct sr_instance * sr, int * hello, int * flood);
+
 #endif

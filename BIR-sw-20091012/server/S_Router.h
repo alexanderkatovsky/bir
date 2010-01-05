@@ -201,7 +201,8 @@ public:
 
 class RouterInfo : public WPanel
 {
-    RIWInPlaceEdit * __rid, * __aid;
+    RIWInPlaceEdit * __rid, * __aid, * __hello, * __flood;
+    WText * __next_hello, * __next_flood;
 
     cbCHANGED(__rid_changed, __rid,
               TestServer::ip_err();,
@@ -212,6 +213,19 @@ class RouterInfo : public WPanel
               uint32_t aid;
               from_string<uint32_t>(aid, s, dec);
               router_set_aid(TestServer::SR, aid););
+
+    cbCHANGED(__hello_changed, __hello,
+              WMessageBox::show("Error", "Hello invalid", Ok);,
+              int hello;
+              from_string<int>(hello, s, dec);
+              router_set_ospf_info(TestServer::SR, &hello, 0););
+
+    cbCHANGED(__flood_changed, __flood,
+              WMessageBox::show("Error", "Flood invalid", Ok);,
+              int flood;
+              from_string<int>(flood, s, dec);
+              router_set_ospf_info(TestServer::SR, 0, &flood););    
+    
 
 public:
     RouterInfo()
@@ -235,9 +249,27 @@ public:
         layout->addWidget(new WText("aid:"), i,0,AlignMiddle);
         layout->addWidget(__aid,i++,1,AlignMiddle);
 
+        WContainerWidget * __hello_c = new WContainerWidget();
+        __hello = new RIWInPlaceEdit("");
+        __hello_c->addWidget(__hello);
+        __next_hello = new WText("");
+        __hello_c->addWidget(__next_hello);
+        __hello->lineEdit()->setValidator(new WIntValidator(1,0xffff));
+        layout->addWidget(new WText("OSPF hello interval:"), i,0,AlignMiddle);
+        layout->addWidget(__hello_c,i++,1,AlignMiddle);
+
+        WContainerWidget * __flood_c = new WContainerWidget();
+        __flood = new RIWInPlaceEdit("");
+        __next_flood = new WText("");
+        __flood_c->addWidget(__flood);
+        __flood_c->addWidget(__next_flood);
+        __flood->lineEdit()->setValidator(new WIntValidator(1,0xffff));
+        layout->addWidget(new WText("LSU flood interval:"), i,0,AlignMiddle);
+        layout->addWidget(__flood_c,i++,1,AlignMiddle);        
+
         ostringstream stream;
         stream << __DATE__ << "," << __TIME__;
-        layout->addWidget(new WText("Time:"), i,0,AlignMiddle);
+        layout->addWidget(new WText("Compile Time:"), i,0,AlignMiddle);
         layout->addWidget(new WText(stream.str()),i++,1,AlignMiddle);
 
 #ifdef _DEBUG_
@@ -253,7 +285,7 @@ public:
 
         ostringstream stream2;
         stream2 << debug_str << "," << cpu_str;
-        layout->addWidget(new WText("Type:"), i,0,AlignMiddle);
+        layout->addWidget(new WText("Compile Type:"), i,0,AlignMiddle);
         layout->addWidget(new WText(stream2.str()),i++,1,AlignMiddle);
         layout->setColumnStretch(0,0);
         layout->setColumnStretch(1,1);
@@ -263,6 +295,8 @@ public:
         __aid->valueChanged().connect(SLOT(this,RouterInfo::__aid_changed));
         //__aid->saveButton()->clicked().connect(SLOT(this,RouterInfo::__aid_changed));
         __rid->valueChanged().connect(SLOT(this,RouterInfo::__rid_changed));
+        __hello->valueChanged().connect(SLOT(this,RouterInfo::__hello_changed));
+        __flood->valueChanged().connect(SLOT(this,RouterInfo::__flood_changed));
     }
 
     void Update()
@@ -270,6 +304,24 @@ public:
         uint32_t aid = router_get_aid(TestServer::SR);
         __rid->setText(ip_to_string(ROUTER(TestServer::SR)->rid));
         __aid->setText(to_string<uint32_t>(aid,dec));
+
+        int hello, flood;
+        router_get_ospf_info(TestServer::SR, &hello, &flood);
+        __hello->setText(to_string<int>(hello,dec));
+        __flood->setText(to_string<int>(flood,dec));
+
+        UpdateOSPF();
+    }
+
+    void UpdateOSPF()
+    {
+        int hello, flood;
+        interface_list_get_ospf_info(TestServer::SR, &hello, &flood);
+        ostringstream streamh, streamf;
+        streamh << dec << " (next hello in " << hello << "s)";
+        streamf << dec << " (next flood in " << flood << "s)";
+        __next_hello->setText(streamh.str());
+        __next_flood->setText(streamf.str());
     }
 };
 
@@ -309,6 +361,11 @@ public:
         }
 
         __info->Update();
+    }
+
+    void UpdateOSPF()
+    {
+        __info->UpdateOSPF();
     }
 };
 

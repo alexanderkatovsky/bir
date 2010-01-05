@@ -117,6 +117,13 @@ public:
         __router->Update();
         triggerUpdate();
     }
+    
+    void UpdateRouterTtl()
+    {
+        UpdateLock lock = getUpdateLock();
+        __router->UpdateOSPF();
+        triggerUpdate();
+    }
 private:
     void __style()
     {
@@ -195,6 +202,16 @@ void TestServer::update_ip()
     mutex_unlock(_updateMutex);
 }
 
+void TestServer::update_router_ttl()
+{
+    mutex_lock(_updateMutex);
+    for(set<TestApp *>::iterator ii=_updateList.begin(); ii!=_updateList.end(); ++ii)
+    {
+        (*ii)->UpdateRouterTtl();
+    }
+    mutex_unlock(_updateMutex);
+}
+
 void TestServer::update_arptable(int dyn, int ttl)
 {
     mutex_lock(_updateMutex);
@@ -203,6 +220,11 @@ void TestServer::update_arptable(int dyn, int ttl)
         (*ii)->UpdateARPTable(dyn,ttl);
     }
     mutex_unlock(_updateMutex);
+}
+
+void server_update_router_ttl()
+{
+    if(TestServer::server) TestServer::server->update_router_ttl();
 }
 
 void server_update_fwdtable()

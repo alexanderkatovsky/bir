@@ -140,6 +140,8 @@ void router_create(struct sr_instance * sr, struct sr_options * opt)
     ret->threads = assoc_array_create(router_thread_key, assoc_array_key_comp_int);
     sr->router = ret;
     ret->exit_signal = 1;
+    ret->hello = OSPF_DEFAULT_HELLOINT;
+    ret->flood = OSPF_DEFAULT_LSUINT;
 
 #ifdef _CPUMODE_
     strcpy(ret->device.device_name,DEFAULT_IFACE);
@@ -345,6 +347,11 @@ void router_notify(struct sr_instance * sr, int code)
         if(router_get_http_port(sr)) server_update_ip();
 #endif
         break;
+    case ROUTER_UPDATE_ROUTER_TTL:
+#ifdef HAVE_WT
+        if(router_get_http_port(sr)) server_update_router_ttl();
+#endif
+        break;        
     }
 }
 
@@ -367,14 +374,26 @@ void __router_set_aid_a(struct sr_vns_if * iface, void * data)
     interface_list_set_aid(ai->sr, iface->name, ai->aid);
 }
 
-uint32_t router_set_aid(struct sr_instance * sr, uint32_t aid)
+void router_set_aid(struct sr_instance * sr, uint32_t aid)
 {
     struct __router_set_aid_i ai = {sr,aid};
     interface_list_loop_interfaces(sr, __router_set_aid_a, &ai);
     router_notify(sr, ROUTER_UPDATE_IFACE_IP);
 }
 
-uint32_t router_set_rid(struct sr_instance * sr, uint32_t rid)
+void router_set_rid(struct sr_instance * sr, uint32_t rid)
 {
     ROUTER(sr)->rid = rid;
+}
+
+void router_set_ospf_info(struct sr_instance * sr, int * hello, int * flood)
+{
+    if(hello) ROUTER(sr)->hello = *hello;
+    if(flood) ROUTER(sr)->flood = *flood;
+}
+
+void router_get_ospf_info(struct sr_instance * sr, int * hello, int * flood)
+{
+    if(hello) *hello = ROUTER(sr)->hello;
+    if(flood) *flood = ROUTER(sr)->flood;
 }

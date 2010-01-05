@@ -14,6 +14,7 @@ extern "C" {
     void server_update_arptable(int ttl);
     void server_update_arptable_s();
     void server_update_ip();
+    void server_update_router_ttl();
 
 #ifdef CPP
 }
@@ -51,6 +52,7 @@ public:
     void update_fwdtable(int);
     void update_arptable(int,int);
     void update_ip();
+    void update_router_ttl();
 
     static struct sr_instance * SR;
     static TestServer * server;

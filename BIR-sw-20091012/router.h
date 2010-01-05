@@ -55,6 +55,8 @@ struct sr_router
     struct sr_options opt;
     struct RCPServer * rcp_server;
 
+    int hello, flood;
+
 #ifdef _CPUMODE_
     struct nf2device device;
 #endif
@@ -66,6 +68,7 @@ struct sr_router
 #define ROUTER_UPDATE_ARP_TABLE_S      3
 #define ROUTER_UPDATE_ARP_TABLE_TTL    4
 #define ROUTER_UPDATE_IFACE_IP         5
+#define ROUTER_UPDATE_ROUTER_TTL       6
 
 void router_create(struct sr_instance * sr, struct sr_options * opt);
 void router_destroy(struct sr_router * router);
@@ -80,8 +83,11 @@ void router_swap_eth_header_and_send(struct sr_packet * packet);
 void router_add_interface(struct sr_instance * sr, struct sr_vns_if * interface);
 void router_notify(struct sr_instance * sr, int code);
 uint32_t router_get_aid(struct sr_instance * sr);
-    uint32_t router_set_aid(struct sr_instance * sr, uint32_t aid);
-    uint32_t router_set_rid(struct sr_instance * sr, uint32_t rid);
+    void router_set_aid(struct sr_instance * sr, uint32_t aid);
+    void router_set_rid(struct sr_instance * sr, uint32_t rid);
+    void router_set_ospf_info(struct sr_instance * sr, int * hello, int * flood);
+    void router_get_ospf_info(struct sr_instance * sr, int * hello, int * flood);
+    
 
 #define ROUTER(sr) ((struct sr_router*)((sr)->router))
 #define INTERFACE_LIST(sr) ((struct interface_list *)(ROUTER(sr)->iflist))
