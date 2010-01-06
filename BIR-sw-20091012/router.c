@@ -308,7 +308,9 @@ void sr_router_default_options(struct sr_options * opt)
     opt->show_tcp = 0;
     opt->show_udp = 0;
     opt->show_dhcp = 0;
+#ifdef HAVE_WT
     opt->http_port = NULL;
+#endif
 }
 
 struct __nat_i
