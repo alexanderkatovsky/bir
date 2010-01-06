@@ -79,18 +79,33 @@ class ARPTables : public WContainerWidget
 protected:
     ARPTable * __arp_d, * __arp_s;
     WPanel * __wpd, * __wps;
+    int __dyn_update, __s_update;
 public:
     ARPTables();
 
-    void Update(int dyn, int ttl)
+    void NeedUpdate(int dyn, int ttl)
     {
         if(dyn)
         {
-            __arp_d->Update(ttl);
+            __dyn_update = 1;
         }
         else
         {
+            __s_update = 1;
+        }
+    }
+
+    void Update()
+    {
+        if(__dyn_update)
+        {
+            __arp_d->Update(0);
+            __dyn_update = 0;
+        }
+        if(__s_update)
+        {
             __arp_s->Update(0);
+            __s_update = 0;
         }
     }
 };

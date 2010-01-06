@@ -85,6 +85,9 @@ void FwdTable::Update()
 
 FwdTables::FwdTables()
 {
+    __dyn_update = 0;
+    __s_update = 0;
+    
     __fwd_d = new FwdTable(1);
     __fwd_s = new FwdTable(0);
 

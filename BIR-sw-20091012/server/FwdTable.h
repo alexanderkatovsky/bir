@@ -82,18 +82,33 @@ class FwdTables : public WContainerWidget
 protected:
     FwdTable * __fwd_d, * __fwd_s;
     WPanel * __wpd, * __wps;
+    int __dyn_update, __s_update;
 public:
     FwdTables();
 
-    void Update(int dyn)
+    void NeedUpdate(int dyn)
     {
         if(dyn)
         {
-            __fwd_d->Update();
+            __dyn_update = 1;
         }
         else
         {
+            __s_update = 1;
+        }
+    }
+
+    void Update()
+    {
+        if(__dyn_update)
+        {
+            __fwd_d->Update();
+            __dyn_update = 0;
+        }
+        if(__s_update)
+        {
             __fwd_s->Update();
+            __s_update = 0;
         }
     }
 };

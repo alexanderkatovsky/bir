@@ -71,6 +71,7 @@ struct sr_router
 #define ROUTER_UPDATE_ROUTER_TTL       6
 #define ROUTER_UPDATE_OSPF             7
 #define ROUTER_UPDATE_OSPF_TTL         8
+#define ROUTER_UPDATE_NAT              9
 
 void router_create(struct sr_instance * sr, struct sr_options * opt);
 void router_destroy(struct sr_router * router);

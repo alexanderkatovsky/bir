@@ -21,15 +21,12 @@
 #include "ARPTables.h"
 #include "S_Router.h"
 #include "S_OSPF.h"
+#include "S_NAT.h"
 
 TestServer * TestServer::server = NULL;
 struct sr_instance * TestServer::SR = NULL;
 struct sr_mutex * TestServer::_updateMutex = NULL;
 set<TestApp * > TestServer::_updateList;
-
-class S_NAT : public WContainerWidget
-{
-};
 
 class TestApp : public WApplication
 {
@@ -93,46 +90,60 @@ public:
         TestServer::RemoveFromUpdateList(this);
     }
 
-    void UpdateFwdTable(int dyn)
+    void Update()
     {
         UpdateLock lock = getUpdateLock();
-        __fwd->Update(dyn);
+        __fwd->Update();
+        __arp->Update();
+        __router->Update();
+        __ospf->Update();
+        __nat->Update();
         triggerUpdate();
     }
 
+    void UpdateFwdTable(int dyn)
+    {
+        __fwd->NeedUpdate(dyn);
+        if(dyn == 0)
+        {
+            Update();
+        }
+    }
+
+    void UpdateNat()
+    {
+        __nat->NeedUpdate();
+    }
+
+    
     void UpdateARPTable(int dyn, int ttl)
     {
-        UpdateLock lock = getUpdateLock();
-        __arp->Update(dyn,ttl);
-        triggerUpdate();
+        __arp->NeedUpdate(dyn,ttl);
+        if(dyn == 0)
+        {
+            Update();
+        }
     }
 
     void UpdateIP()
     {
-        UpdateLock lock = getUpdateLock();
-        __router->Update();
-        triggerUpdate();
+        __router->NeedUpdate();
+        Update();
     }
     
     void UpdateRouterTtl()
     {
-        UpdateLock lock = getUpdateLock();
-        __router->UpdateOSPF();
-        triggerUpdate();
+        __router->NeedUpdateOSPF();
     }
     
     void UpdateOSPF()
     {
-        UpdateLock lock = getUpdateLock();
-        __ospf->Update();
-        triggerUpdate();
+        __ospf->NeedUpdate();
     }
     
     void UpdateOSPFTtl()
     {
-        UpdateLock lock = getUpdateLock();
-        __ospf->UpdateTtl();
-        triggerUpdate();
+        __ospf->NeedUpdateTtl();
     }
 private:
     void __style()
@@ -202,6 +213,18 @@ void TestServer::update_fwdtable(int dyn)
     mutex_unlock(_updateMutex);
 }
 
+
+void TestServer::update_nat()
+{
+    mutex_lock(_updateMutex);
+    for(set<TestApp *>::iterator ii=_updateList.begin(); ii!=_updateList.end(); ++ii)
+    {
+        (*ii)->UpdateNat();
+    }
+    mutex_unlock(_updateMutex);
+}
+
+
 void TestServer::update_ip()
 {
     mutex_lock(_updateMutex);
@@ -254,9 +277,24 @@ void TestServer::update_arptable(int dyn, int ttl)
     mutex_unlock(_updateMutex);
 }
 
+void TestServer::update()
+{
+    mutex_lock(_updateMutex);
+    for(set<TestApp *>::iterator ii=_updateList.begin(); ii!=_updateList.end(); ++ii)
+    {
+        (*ii)->Update();
+    }
+    mutex_unlock(_updateMutex);
+}
+
 void server_update_ospf()
 {
     if(TestServer::server) TestServer::server->update_ospf();
+}
+
+void server_update_nat()
+{
+    if(TestServer::server) TestServer::server->update_nat();
 }
 
 void server_update_ospf_ttl()
@@ -292,6 +330,11 @@ void server_update_arptable(int ttl)
 void server_update_arptable_s()
 {
     if(TestServer::server) TestServer::server->update_arptable(0,0);
+}
+
+void server_update()
+{
+    if(TestServer::server) TestServer::server->update();
 }
 
 void TestServer::AddToUpdateList(TestApp * app)

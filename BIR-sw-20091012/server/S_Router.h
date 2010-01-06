@@ -339,10 +339,15 @@ class S_Router : public WContainerWidget
         r->__interfaces.push_back(ri);
         r->__layout->addWidget(ri, n / 2, n % 2);
     }
+
+    int __update;
+    int __updateOSPF;
     
 public:
     S_Router()
     {
+        __update = 0;
+        __updateOSPF = 0;
         Wt::WContainerWidget *w = new Wt::WContainerWidget();
         __layout = new WGridLayout();
         interface_list_loop_interfaces(TestServer::SR, __add_interface, this);
@@ -355,17 +360,31 @@ public:
 
     void Update()
     {
-        for(vector<RouterInterface *>::iterator ii=__interfaces.begin(); ii!=__interfaces.end(); ++ii)
+        if(__update)
         {
-            (*ii)->Update();
-        }
+            for(vector<RouterInterface *>::iterator ii=__interfaces.begin(); ii!=__interfaces.end(); ++ii)
+            {
+                (*ii)->Update();
+            }
 
-        __info->Update();
+            __info->Update();
+            __update = 0;
+        }
+        if(__updateOSPF)
+        {
+            __info->UpdateOSPF();
+            __updateOSPF = 0;
+        }
     }
 
-    void UpdateOSPF()
+    void NeedUpdate()
     {
-        __info->UpdateOSPF();
+        __update = 1;
+    }
+
+    void NeedUpdateOSPF()
+    {
+        __updateOSPF = 1;
     }
 };
 

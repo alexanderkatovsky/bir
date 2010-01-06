@@ -136,7 +136,7 @@ void nat_depricate_entries(struct sr_instance * sr)
         nat_hw_delete_entry(sr,entry->hw_i);
         free(entry);
     }
-    
+    router_notify(sr, ROUTER_UPDATE_NAT);
     fifo_destroy(delete);
 }
 
@@ -306,6 +306,8 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port,
 
     mutex_unlock(NAT(sr)->mutex);
 
+    router_notify(sr, ROUTER_UPDATE_NAT);
+
     return ret;
 }
 
@@ -320,6 +322,7 @@ int nat_in(struct sr_instance * sr, uint32_t src_ip, uint16_t src_port, uint32_t
     {
         *dst_ip = entry->inbound.ip;
         *dst_port = entry->inbound.port;
+        router_notify(sr, ROUTER_UPDATE_NAT);
         return 1;
     }
     return 0;
@@ -341,4 +344,30 @@ void nat_show(struct sr_instance * sr, print_t print)
 {
     print("\nNAT table:\n");
     bi_assoc_array_walk_array(NAT(sr)->table,__nat_show_a,print);
+}
+
+struct __loop_i
+{
+    void (*fn)(uint32_t i, uint32_t o, uint32_t d,
+               uint16_t pi, uint16_t po, uint16_t pd, int t, void * userdata);
+    void * userdata;
+};
+
+static int __loop_a(void * data, void * userdata)
+{
+    struct nat_entry * e = (struct nat_entry *)data;
+    struct __loop_i * i = (struct __loop_i *)userdata;
+
+    i->fn(e->inbound.ip, e->outbound.out.ip, e->outbound.dst.ip,
+          e->inbound.port, e->outbound.out.port, e->outbound.dst.port, e->ttl,
+          i->userdata);
+    return 0;
+}
+
+void nat_table_loop(struct sr_instance * sr, void (*fn)(uint32_t i, uint32_t o, uint32_t d,
+                                                        uint16_t pi, uint16_t po, uint16_t pd, int t, void * userdata),
+                    void * userdata)
+{
+    struct __loop_i i = {fn,userdata};
+    bi_assoc_array_walk_array(NAT(sr)->table, __loop_a, &i);
 }

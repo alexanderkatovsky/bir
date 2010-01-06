@@ -54,5 +54,8 @@ int nat_out(struct sr_instance * sr, uint32_t * src_ip, uint16_t * src_port, uin
 int nat_in(struct sr_instance * sr, uint32_t src_ip, uint16_t src_port, uint32_t * dst_ip, uint16_t * dst_port);
 
 void nat_show(struct sr_instance * sr, print_t print);
+void nat_table_loop(struct sr_instance * sr, void (*fn)(uint32_t i, uint32_t o, uint32_t d,
+                                                        uint16_t pi, uint16_t po, uint16_t pd, int t, void * userdata),
+                    void * userdata);
 
 #endif

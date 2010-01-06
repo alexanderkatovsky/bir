@@ -12,6 +12,7 @@
 #include <Wt/WCheckBox>
 #include <Wt/WComboBox>
 #include <Wt/WVBoxLayout>
+#include <Wt/WBoxLayout>
 
 #include "FwdTable.h"
 #include "ARPTables.h"
@@ -94,29 +95,123 @@ public:
     }
 };
 
+
+
+class TTable : public WTable
+{
+    struct Link
+    {
+        uint32_t rid,subnet,mask;
+        Link(uint32_t r = 0, uint32_t s = 0, uint32_t m = 0) : rid(r), subnet(s), mask(m)
+        {}
+    };
+
+    struct Node
+    {
+        uint32_t rid;
+        int seq;
+        vector<Link> links;
+
+        Node(uint32_t r = 0, int s = 0) : rid(r), seq(s)
+        {}
+    };
+
+    static void __get_links(uint32_t rid_node, int seq, uint32_t rid_link, struct ip_address ip, void * data)
+    {
+        map<uint32_t, Node> & m = *((map<uint32_t, Node> *)(data));
+        if(m.find(rid_node) == m.end())
+        {
+            m[rid_node] = Node(rid_node, seq);
+        }
+        m[rid_node].links.push_back(Link(rid_link, ip.subnet, ip.mask));
+    }
+public:
+    TTable()
+    {
+        setHeaderCount(1);
+        Update();        
+    }
+
+    void Update()
+    {
+        clear();
+        elementAt(0, 0)->addWidget(new Wt::WText(" node rid "));
+        elementAt(0, 1)->addWidget(new Wt::WText(" LSN "));
+        elementAt(0, 2)->addWidget(new Wt::WText(" link rid "));
+        elementAt(0, 3)->addWidget(new Wt::WText(" subnet "));
+        elementAt(0, 4)->addWidget(new Wt::WText(" mask "));
+
+        map<uint32_t, Node> nodes;
+        link_state_graph_loop_links(TestServer::SR, __get_links, &nodes);
+
+        int row = 1;
+        for(map<uint32_t, Node>::iterator ii = nodes.begin(); ii != nodes.end(); ++ii)
+        {
+            elementAt(row, 0)->addWidget(new Wt::WText(ip_to_string(ii->second.rid)));
+            elementAt(row, 1)->addWidget(new Wt::WText(to_string<int>(ii->second.seq, dec)));
+            row++;
+            for(vector<Link>::iterator jj = ii->second.links.begin(); jj != ii->second.links.end(); ++jj)
+            {
+                elementAt(row, 2)->addWidget(new Wt::WText(ip_to_string(jj->rid)));
+                elementAt(row, 3)->addWidget(new Wt::WText(ip_to_string(jj->subnet)));
+                elementAt(row, 4)->addWidget(new Wt::WText(ip_to_string(jj->mask)));
+                row++;
+            }
+        }
+    }
+};
+
 class S_OSPF : public WContainerWidget
 {
     NTable * __ntable;
+    TTable * __ttable;
+
+    int __update, __updateTtl;
 public:
     S_OSPF()
     {
+        __update = 0;
+        __updateTtl = 0;
+        setStyleClass("FwdTable");
         __ntable = new NTable();
         WPanel * pn = new WPanel();
         pn->setTitle("Neighbours");
         pn->setCollapsible(true);
         pn->setCentralWidget(__ntable);
         addWidget(pn);
-        setStyleClass("FwdTable");
+
+        __ttable = new TTable();
+        WPanel * pt = new WPanel();
+        pt->setTitle("Topology");
+        pt->setCollapsible(true);
+        pt->setCentralWidget(__ttable);
+        addWidget(new WBreak());
+        addWidget(pt);
     }
 
     void Update()
     {
-        __ntable->Update();
+        if(__update)
+        {
+            __update = 0;
+            __ntable->Update();
+            __ttable->Update();
+        }
+        if(__updateTtl)
+        {
+            __updateTtl = 0;
+            __ntable->UpdateTtl();
+        }
     }
 
-    void UpdateTtl()
+    void NeedUpdateTtl()
     {
-        __ntable->UpdateTtl();
+        __updateTtl = 1;        
+    }
+
+    void NeedUpdate()
+    {
+        __update = 1;
     }
 };
 

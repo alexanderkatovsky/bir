@@ -17,6 +17,8 @@ extern "C" {
     void server_update_router_ttl();
     void server_update_ospf();
     void server_update_ospf_ttl();
+    void server_update_nat();
+    void server_update();
 
 #ifdef CPP
 }
@@ -57,6 +59,8 @@ public:
     void update_router_ttl();
     void update_ospf();
     void update_ospf_ttl();
+    void update_nat();
+    void update();
 
     static struct sr_instance * SR;
     static TestServer * server;

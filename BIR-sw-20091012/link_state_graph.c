@@ -236,6 +236,8 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
     struct __link_state_graph_deprecate_non_visited_nodes_i vni;
     struct link_state_node * lsn;
 
+    mutex_lock(LSG(sr)->mutex);
+
     /*clear dynamic entries and lock mutex*/
     forwarding_table_start_dijkstra(sr);
     
@@ -276,6 +278,7 @@ void link_state_graph_update_forwarding_table(struct sr_instance * sr)
       
     /*unlock mutex*/
     forwarding_table_end_dijkstra(sr);
+    mutex_unlock(LSG(sr)->mutex);
 }
 
 int link_state_graph_update_links(struct sr_instance * sr,
@@ -284,6 +287,8 @@ int link_state_graph_update_links(struct sr_instance * sr,
     struct link_state_node * lsn;
     struct link_state_graph * lsg = LSG(sr);
     int ret = 1;
+
+    mutex_lock(lsg->mutex);
 
     lsn = (struct link_state_node *)assoc_array_read(lsg->array,&rid);
 
@@ -305,6 +310,8 @@ int link_state_graph_update_links(struct sr_instance * sr,
         }
     }
 
+    mutex_unlock(lsg->mutex);
+
     return ret;
 }
 
@@ -317,6 +324,7 @@ void link_state_graph_destroy(struct link_state_graph * lsg)
 {
     assoc_array_delete_array(lsg->array,link_state_graph_free_node);
     free(lsg);
+    mutex_destroy(lsg->mutex);
 }
 
 void link_state_graph_create(struct sr_instance * sr)
@@ -324,6 +332,7 @@ void link_state_graph_create(struct sr_instance * sr)
     NEW_STRUCT(ret,link_state_graph);
     ROUTER(sr)->lsg = ret;
     ret->array = assoc_array_create(link_state_graph_get_key,assoc_array_key_comp_int);
+    ret->mutex = mutex_create();
 }
 
 int __link_state_graph_show_link_a(void * data, void * userdata)
@@ -355,4 +364,36 @@ int __link_state_graph_show_topology_a(void * data, void * userdata)
 void link_state_graph_show_topology(struct link_state_graph * lsg, print_t print)
 {
     assoc_array_walk_array(lsg->array,__link_state_graph_show_topology_a,print);
+}
+
+struct __loop_links_i
+{
+    void (*fn)(uint32_t rid_node, int seq, uint32_t rid_link, struct ip_address, void *);
+    struct link_state_node * node;
+    void * userdata;
+};
+
+static int __loop_links_a(void * data, void * userdata)
+{
+    struct link * lk = (struct link *)data;
+    struct __loop_links_i * i = (struct __loop_links_i *)userdata;
+    i->fn(i->node->rid, i->node->seq, lk->rid, lk->ip, i->userdata);
+    return 0;
+}
+
+static int __loop_nodes_a(void * data, void * userdata)
+{
+    struct link_state_node * node = (struct link_state_node *)data;
+    struct __loop_links_i * i = (struct __loop_links_i *)userdata;
+    i->node = node;
+    assoc_array_walk_array(node->links, __loop_links_a, i);
+    return 0;
+}
+
+void link_state_graph_loop_links(struct sr_instance * sr, void (*fn)(uint32_t rid_node, int seq,
+                                                                     uint32_t rid_link,
+                                                                     struct ip_address, void *), void * userdata)
+{
+    struct __loop_links_i i = {fn, 0, userdata};
+    assoc_array_walk_array(LSG(sr)->array, __loop_nodes_a, &i);
 }

@@ -134,6 +134,13 @@ void * router_thread_key(void * data)
     return &((struct sr_thread *)data)->i;
 }
 
+#ifdef HAVE_WT
+static void __http_server_update(struct sr_instance * sr)
+{
+    if(router_get_http_port(sr)) server_update();
+}
+#endif
+
 void router_create(struct sr_instance * sr, struct sr_options * opt)
 {
     NEW_STRUCT(ret,sr_router);
@@ -177,6 +184,9 @@ void router_create(struct sr_instance * sr, struct sr_options * opt)
         ret->rcp_server = 0;
     }
 
+#ifdef HAVE_WT
+    router_add_thread(sr, __http_server_update, 0);
+#endif
     sys_thread_new(router_thread,sr);
 
 #ifdef HAVE_WT
@@ -301,9 +311,26 @@ void sr_router_default_options(struct sr_options * opt)
     opt->http_port = NULL;
 }
 
+struct __nat_i
+{
+    struct sr_instance * sr;
+    int nat;
+};
+
+static void __nat_a(struct sr_vns_if * iface, void * data)
+{
+    struct __nat_i * i = (struct __nat_i *)data;
+    if(interface_list_nat_enabled(i->sr, iface->name))
+    {
+        i->nat = 1;
+    }
+}
+
 int router_nat_enabled(struct sr_instance * sr)
 {
-    return ((OPTIONS(sr)->inbound != NULL) || (OPTIONS(sr)->outbound != NULL));
+    struct __nat_i i = {sr, 0};
+    interface_list_loop_interfaces(sr, __nat_a, &i);
+    return i.nat;
 }
 
 #ifdef HAVE_WT
@@ -360,6 +387,11 @@ void router_notify(struct sr_instance * sr, int code)
     case ROUTER_UPDATE_OSPF_TTL:
 #ifdef HAVE_WT
         if(router_get_http_port(sr)) server_update_ospf_ttl();
+#endif
+        break;
+    case ROUTER_UPDATE_NAT:
+#ifdef HAVE_WT
+        if(router_get_http_port(sr)) server_update_nat();
 #endif
         break;        
     }

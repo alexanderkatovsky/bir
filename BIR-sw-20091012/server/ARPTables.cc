@@ -119,6 +119,9 @@ void ARPTable::Update(int ttl)
 
 ARPTables::ARPTables()
 {
+    __dyn_update = 0;
+    __s_update = 0;
+    
     __arp_d = new ARPTable(1);
     __arp_s = new ARPTable(0);
 
