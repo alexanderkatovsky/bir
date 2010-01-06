@@ -8,9 +8,9 @@ endif
 
 AUTOMAKE_OPTIONS = foreign
 SUBDIRS = cli lwtcp .
-AM_CFLAGS= $(WTCF)  -Wall -D_GNU_SOURCE -I lwtcp -I cli -D_LINUX_ $(DEBUG_C_FLAGS) $(CPU_C_FLAGS)
-AM_CXXFLAGS= $(AM_CFLAGS) -DCPP $(DEBUG_C_FLAGS)
-AM_LDFLAGS= $(WTLF) $(DEBUG_C_FLAGS) -lpthread #-z muldefs
+CFLAGS= $(WTCF)  -Wall -D_GNU_SOURCE -I lwtcp -I cli -D_LINUX_ $(DEBUG_C_FLAGS) $(CPU_C_FLAGS)
+CXXFLAGS= $(CFLAGS) -DCPP 
+LDFLAGS= $(WTLF) $(DEBUG_C_FLAGS) -lpthread #-z muldefs
 
 SR_C_SRCS = sr_base.c sr_dumper.c sr_integration.c sr_lwtcp_glue.c \
                sr_vns.c sr_cpu_extension_nf2.c real_socket_helper.c sr_rt.c \

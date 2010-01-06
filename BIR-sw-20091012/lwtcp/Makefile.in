@@ -94,7 +94,7 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
-CFLAGS = @CFLAGS@
+CFLAGS = -Wall -D_GNU_SOURCE  -D_LINUX_ $(DEBUG_C_FLAGS)
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPU_C_FLAGS = @CPU_C_FLAGS@
@@ -184,7 +184,6 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = lwip
-AM_CFLAGS = -Wall -D_GNU_SOURCE  -D_LINUX_ $(DEBUG_C_FLAGS)
 LWTCP_C_SRCS = tcp.c tcp_input.c tcp_output.c \
              mem.c memp.c stats.c sys.c \
              inet.c pbuf.c sys_arch.c \
