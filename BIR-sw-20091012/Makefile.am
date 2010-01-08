@@ -37,4 +37,4 @@ bin_PROGRAMS=sr
 sr_SOURCES=$(WTSRCS) $(SR_SRCS_MAIN) $(SR_SRCS_BASE)
 sr_LDADD=$(WTLIBS) cli/libcli.a lwtcp/liblwtcp.a libsr.a
 
-EXTRA_DIST=start_sr.sh kill_sr.sh  RCP/RCPClient.py
+EXTRA_DIST=start_sr.sh kill_sr.sh  RCP/RCPClient.py design rtable.EMPTY
