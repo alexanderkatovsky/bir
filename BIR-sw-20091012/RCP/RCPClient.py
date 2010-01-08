@@ -1,4 +1,4 @@
-import socket
+import socket,sys
 from construct import *
 
 def dict2obj(d):
@@ -113,8 +113,11 @@ class Router:
     def GetForwardingTable(self):
         return self.__get(self.RCP_CODE_GET_FORWARDING_TABLE, ForwardingTable())
 
+port = 3333
+if len(sys.argv) > 1:
+    port = int(sys.argv[1])
         
-router = Router("127.0.0.1",3333)
+router = Router("127.0.0.1",port)
 try:
     print IP.ToString(router.GetRouterID())
     for e in router.GetForwardingTable():

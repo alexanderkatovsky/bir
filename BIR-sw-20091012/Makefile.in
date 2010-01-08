@@ -35,7 +35,7 @@ bin_PROGRAMS = sr$(EXEEXT)
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
-	$(top_srcdir)/configure AUTHORS ChangeLog NEWS depcomp \
+	$(top_srcdir)/configure AUTHORS ChangeLog INSTALL NEWS depcomp \
 	install-sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -231,7 +231,7 @@ top_srcdir = @top_srcdir@
 @TEST_HAVE_WT_TRUE@server/FwdTable.h server/ARPTables.h server/server.h server/S_Router.h server/S_OSPF.h server/S_NAT.h
 
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = cli lwtcp .
+SUBDIRS = tvns cli lwtcp . 
 SR_C_SRCS = sr_base.c sr_dumper.c sr_integration.c sr_lwtcp_glue.c \
                sr_vns.c sr_cpu_extension_nf2.c real_socket_helper.c sr_rt.c \
                debug.c interface_list.c router.c assoc_array.c bi_assoc_array.c arp.c checksum.c ip.c \
@@ -252,6 +252,7 @@ lib_LIBRARIES = libsr.a
 libsr_a_SOURCES = $(SR_SRCS)
 sr_SOURCES = $(WTSRCS) $(SR_SRCS_MAIN) $(SR_SRCS_BASE)
 sr_LDADD = $(WTLIBS) cli/libcli.a lwtcp/liblwtcp.a libsr.a
+EXTRA_DIST = start_sr.sh kill_sr.sh
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 

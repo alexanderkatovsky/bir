@@ -135,7 +135,7 @@ void RCPServerThread(void * data)
     struct sockaddr_in addr;
     struct sockaddr client_addr;
     int clientfd;
-    unsigned sock_len;
+    unsigned sock_len = sizeof(struct sockaddr_in);
     struct RCPClient * client;
 
     rcp->sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -154,6 +154,7 @@ void RCPServerThread(void * data)
         {
             break;
         }
+        printf("\nRCP Client connected\n");
         client = RCPClientCreate(rcp, clientfd);
         mutex_lock(client->server->mutex);
         assoc_array_insert(rcp->clients, client);

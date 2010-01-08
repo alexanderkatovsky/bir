@@ -1,11 +1,63 @@
-== Software principles ==
-1. malloc/free pairs must be in the same module; they can export copy/delete functions if another module needs to save the data for life beyond the call stack.
-2. No static variables in functions, for thread safety.
-3. Function names are prepended with the name of the c file to which they belong
+=== Overview ===
 
-== Data Structures ==
-The data structure <data-structure> is defined in <data-structure>.h and only accessible through the interface provided by <data-structure>.c.  The data structures marked "thread safe" have a mutex that is used by their interface functions to make them thread safe.  The data structures are encapsulated in sr_router, which contains:
-        o  interface_list (thread safe)
+The router can either be run in VNS mode or CPU mode.  In VNS mode, the router communicates with a server which emmulates the hardware and a virtual topology over TCP.  In CPU mode, the router communicates with hardware via hardware ethernet interfaces, named nf2c0, nf2c1, nf2c2, nf2c3; their MAC and ip addresses are given to the router in a file, which is specified on the command line (or called cpuhw by default).  In VNS mode, the hardware information is provided at startup from the server.
+
+=== Startup ===
+
+When the router starts up, main calls sr_init_low_level_subystem, which parses the command line (getopt has been replaced with getopt_long), performs initialization and then runs the main program loop.  The router options, which is a struct defined in common.h and contained in the router instance, is initialized here (struct sr_options).  Then sr_init_instance is called, which initializes the router instance, which contains the data structures (the arp cache, arp table, forwarding table, and so on).  If running in CPU mode, sr_cpu_init_hardware is called, which reads in the interface details from the hardware file and binds sockets to the ethernet interfaces.  If running in CPU mode, we connect to the server and read in the hardware information.  Finally sr_low_level_network_subsystem is called, which contains the main while loop, which waits for incoming ethernet packets, which send them to sr_integ_input for processing.  In CPU mode, we repeatedly call sr_cpu_input, which uses select to wait synchronously for data from one of the interfaces.  In VNS mode, sr_vns_read_from_server performs the same function, taking its data from the TCP socket connected to the VNS server.
+
+=== Command Line Options===
+
+If running in debug mode, there are command line options for output.  By default, there is no output, --verbose turns on everything and --show_<type> prints out the packets of type <type> to the terminal.  For example, --show_ip prints all packets with an IP header (TCP, OSPF, etc), --show_ospf_lsu turns on showing link state update packets.
+
+Specifying --arp_proxy enables the router to respond to ARP requests on behalf of other routers in its forwarding table.
+
+=== RCP Server ===
+
+RCP stands for Router Control Protocol.  RCP is a TCP protocol for communicating with the router.  The idea was to use it for automated testing.  Regression test scripts would be written in python.  Routers would be started in various TVNS topologies by the test scripts (see tvns/README).  The RCPServer would allow querying and controlling the router during the tests (using hooks in the C code) from the python test scripts.  Not much work has been done on this, but the idea is illustrated by a small python script which prints out the RID and forwarding table of a running router:
+
+sr-1.0/tvns#   python VNS.py nat_circ.top
+sr-1.0#        ./start_sr.sh 9 " --RCPPort 3333"
+sr-1.0#        python RCP/RCPClient.py 3333
+
+=== DHCP ===
+
+The router functions as a very basic DHCP server.  For example, 
+sr-1.0/tvns#   sudo python VNS.py tunnel.top
+sr-1.0#        ./sr -r rtable.EMPTY -s localhost -v r1 --dhcp eth0,192.168.0.10,192.168.0.20 --show_dhcp
+~#             ifconfig t1
+~#             sudo dhclient t1
+~#             ifconfig t1
+After a few seconds (see tvns/README near "unresolved issues") the interface t1 is bound to 192.168.0.10.
+
+=== NAT ===
+
+TCP and UDP packets that are not for the router and come into a NAT inbound interface and for which there is a route to the destination via a NAT outbound interface are added to the NAT translation table, where a port is assigned unique to the (outbound interface, destination, destination port) tuple.  If no more ports are available then the packet is silently dropped.  If there is a MAC address for the next hop, and the router is in CPU mode then the hardware NAT table is written to and hardware takes over the routing and NAT translation.  If the router is in CPU mode and there is no MAC address for the next hop then the packet is passed to the arp_reply_waiting_list (ARWL) module and the hardware table is not written to.  We could have modified the ARWL module to distinguish NAT and non-NAT packets, but decided not to in the interests of maintaning modularity.
+
+It was necessary to add a separate NAT forwarding table to the router.  This is because of the following scenario.  There exists a destination B which is accessible from interfaces A and A'.  A is NAT disabled and A' is NAT outbound and the Dijkstra algorithm determines that A is the gateway interface.  Then without extra information, the NAT module will reject NAT translation for TCP/UDP packets to B, even though B is accessible through a NAT outbound interface.  The NAT forwarding table is computed by Dijkstra initialized with the outbound interfaces.
+
+In CPU mode, the hardware maintains a counter so that software will not deprecate entries that are still active from the hardware perspective.  A thread periodically checks the counter and reinitializes the ttl of entries in the NAT table if the counter has increased.
+
+=== HTTP interface ===
+
+If Wt (http://www.webtoolkit.eu/wt) is available then a simple HTTP interface will be built.
+
+sr-1.0/tvns#   python VNS.py nat_circ.top
+sr-1.0#        ./start_sr.sh 9 " --http_port 8080"
+~#            firefox localhost:8080
+
+Text in grey boxes can be clicked on and modified.  This includes the router ip and MAC addresses, the HELLO and LSU flood time, and various interface attributes.  It is possible to view the forwarding and ARP tables, wich are updated in real time.  It is possible to add static routes and static ARP entries.
+
+=== Data Structures and design principles ===
+
+The routine tasks needed to be carried out periodically are consolidated into a single thread, which runs every second calling a sequence of functions.  Modules that need to run a task periodically in a seperate thread call router_add_thread on creation.  PTHREAD_MUTEX_RECURSIVE_NP is added to the flags in the creation of mutexes in order to avoid freezing a thread when it re-enters a critical section.
+
+malloc/free pairs must be in the same module; they can export copy/delete functions if another module needs to save the data for life beyond the call stack.
+
+The basic data structure is an associative array, which is implemented as an AA tree.  A simple interface is provided allowing creation, deletion, insertion and in order traversal (which is useful in the Longest Prefix Match algorithm).  To create an array, two functions need to be provided; one to retrieve the key and another to compare two keys.  A bi-directional map (bi_assoc_array) is derived from assoc_array and is used when there are two keys.  For example, in interface_list in which one key is the ip address and another is the name of an interface.  The bi-directional array was also used to implement the NAT table, in which the first key is (source ip, source port) and the second key is (output ip, output port, destination ip, destination port).  
+
+The rule that is often followed is that data structure <data-structure> is defined in <data-structure>.h and only accessible through the interface provided by <data-structure>.c.  The data structures have a mutex that is used by their interface functions to make them thread safe.  The data structures are encapsulated in sr_router, which contains:
+        o  interface_list 
                 -- a bidirectional map <ip address of interface, name of interface> --> <list of neighbours (neighbour_list), interface info>
                 -- thread 
                    -- sends LSU flood every 30s
@@ -13,91 +65,42 @@ The data structure <data-structure> is defined in <data-structure>.h and only ac
                    -- deletes neighbours that have not sent a HELLO after 15s
                       -- calls link_state_graph_update_forwarding_table, and sends LSU flood
                 -- mac addresses of the interfaces are described by a hardware file, which is passed on the command line to the router.  At start up, these are written to hardware and their ip addresses are written to the hardware ip filter table, along with the OSPF hello ip address
-        o  neighbour_list (thread safe)
+        o  neighbour_list 
                 -- a map <router id> --> <neighbouring router info>
                    -- used in interface_list
-        o  forwarding_table (thread safe)
+        o  forwarding_table 
                 -- two maps <subnet mask> --> <[ip address]> for static and dynamic
                 -- Largest Prefix Matching
                 -- writes to hardware whenever modified (entries are written in order of subnet mask; big to low; i.e. most specific to least specific prefix)
-        o  arp_cache (thread safe)
+        o  arp_cache 
                 -- a bidirectional map <ip,MAC> --> <ip,MAC,ttl> where ttl is a timeout for the entry.  
                    -- thread
                       -- deletes arp cache entries after 15s.  When a packet is received the ttl for the entry for the MAC address of the sender is reinitialised.
                 -- writes arp cache to hardware whenever it is modified
-        o  arp_reply_waiting_list (thread safe)
+        o  arp_reply_waiting_list 
                 -- a map <next hop ip> --> <fifo queue of packets with this next hop id, number of arp request attempts, timeout for current request>
                 -- thread
                    -- resends arp requests after a fixed time interval, deletes the entry after a fixed number of attempts when it sends a destination unreachable message for each packet.
-        o  link_state_graph (thread safe)
+        o  link_state_graph 
                 -- a map <router id> --> <rid, seq num, [link]> where [link] is a list of links <subnet, mask, rid>
                 -- link_state_graph_update_forwarding_table
                    -- performs Dijkstra, which updates the dynamic forwarding_table, starting with the neighbouring routers
                       -- delete rids in the link_state_graph if they were not visited in Dijkstra
-        o  nat_table -- tbd
+        o  nat_table 
+                -- A bidirectional map <(source ip, source port),(out ip, out port, destination ip, destination port)> --> <(source ip, source port, out ip, out port, destination ip, destination port, ttl)>
+                -- thread
+                   -- deletes old entries and checks hardware counter.
 
- -- The maps are based on an associative array data structure, which is implemented as an AA Tree.  The tree is composed of nodes that each hold void * data.  The constructor is passed a function that extracts the key from data and compares two datas in a total order.  Functions are provided to read, write and delete entries with a particular key, and also a function that walks the tree in order from biggest to smallest; the order property of the traversal is used in forwarding_table for performing Largest Prefix Matching, and writing to hardware in order.
-                
-== Module Decomposition ==
-There are four types of module (each is a collection of c files):
-(1) sending and receiving different types of ethernet packets that correspond to the TCP/IP specificatons (icmp.c, arp.c, ip.c, ospf.c)
-(2) utility functions (checksum.c, router.c)
-(3) reading, modifying and algorithms on the 'high level' data structures (interface_list.c, forwarding_table.c etc).  Examples of the algorithms are Least Prefix Matching for the forwarding table, and Dijkstra's algorithm. 
-(4) The underlying 'low level' data structures (assoc_array.c, fifo.c,etc)
 
-Their dependency relationships are:
 
-(1) <--> (3) --> (4)
- |        |
- |        |
- v        |
-(2) <------
+=== TODO  ===
 
-The structure of (1) (i.e. its call graph) is determined by the TCP/IP specifications and (3) is driven by the demands of (1).  At the moment, maps are all AA trees, but the intention is to implement the forwarding table as a trie. 
+Improve the HTTP interface.  For example, Wt offers powerful facilities for displaying dynamically updated graphics. The dot libraries that generated the png images of the TVNS topologies could be used with gd and Wt to produce images of the OSPF topology, updated in real time.
 
-== Packet Flow ==
-                                        from hardware using select
-                          to read from the sockets connected to HW interfaces
-                                                   |
-                                                   |
-                                                   V 
-                                     router_handle_incoming_packet
-                                         |                   |                  
-                                         V                   V
-                 arp_handle_incoming_packet                 ip_handle_incoming_packet
-                                        | |                | | | |              
-   arp_request_handler_process_reply <--- |                | | | V
-   arp_reply_to_request <------------------                | | | icmp_handle_incoming_packet
-                                                           | | -> ip_forward (packet not for us)
-                                                           | -----> ospf_handle_incoming_packet         
-                                                           ---------->sr_transport_input (for TCP)
+Rewrite the software in a functional programming language.  The creation of the software was driven by the flow of an ethernet packet through various modules, shaped by specifications.  This appears at a glance to be most naturally expressed in a functional language.
 
- -- Packets sent from one interface to another are not passed to hardware, but are handled entirely in software.
- -- Incoming packets are verified for checksum, ip version, and are silently dropped if verification fails
- -- Communication with hardware is by BSD sockets and select
- -- if an ip packet is not for us then check its ttl; if it is <= 1 then send an ICMP timeout message, else send to ip_forward
- -- ip_forward looks up the next hop in the forwarding table.  If that fails then return ICMP destination unreachable.  Else look up the MAC address of the next hop in the arp_cache.  If that fails then add the packet to arp_reply_waiting_list.  Else send the packet onto the hardware.
+Create a regression test framework using RCP.
 
-== Interop testing ==
-   -- We set up the routers as depicted in the diagram interop_test.png.  
-   -- Pinging from eth1 (the Linux kernel on the same machine as R4) to R4.  
-   -- Sending pings to the other routers and from the other routers, which checks that OSPF works.  
-   -- Test with various configurations; e.g., running our router on R4 , and the reference router on R11 and R12.
-   -- TVNS
 
-=== NAT ===
-
--- Assumptions:
-*  If NAT is enabled on the router, an interface is either inbound, outbound, or NAT disabled
-*  On the topology: A node accessible from an inbound interface is only accessible through that interface.
-*  The nodes have unique ip addresses over all connected topologies.
-
--- notes
-* In the forwarding table, an outbound interface should be given preference over a NAT disabled interface.  Otherwise some nodes accessible to both an outbound and a NAT disabled interface might not be accessible to a node on the inbound interface, if Dijkstra chooses the NAT disabled interface as the gateway.
-* In the future, we could have multiple inbound interfaces on the same topology.  A solution would be to have a separate forwarding table for each topology.  There would be a single outbound topology, and multiple inbound topologies, and for each topology, a forwarding table with an associated link_state_graph
-* At the moment, there is only one pool of port numbers across all outbound interfaces; in the future, there could be one pool per outbound interface.
-
--- packet flow:
-if tcp packet is for us and from an outbound interface then pass it to nat_fwd_in; if we find an entry in the NAT table then forward the packet to the node behind the NAT; if tcp packet is not for us and from an inbound interface and the next_hop is through an outbound interface then pass it to nat_fwd_out
 
 

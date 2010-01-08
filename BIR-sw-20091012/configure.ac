@@ -89,7 +89,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([bzero gethostbyname gethostname gettimeofday inet_ntoa memmove memset select socket strchr strstr strtol])
 
 AM_INIT_AUTOMAKE(sr, 1.0)
-AC_OUTPUT(Makefile cli/Makefile lwtcp/Makefile lwtcp/lwip/Makefile)
+AC_OUTPUT(Makefile cli/Makefile lwtcp/Makefile lwtcp/lwip/Makefile tvns/Makefile)
 
 
 if test "x$have_wt" = "xno"; then

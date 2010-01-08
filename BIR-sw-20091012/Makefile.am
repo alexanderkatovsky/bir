@@ -7,7 +7,7 @@ endif
 
 
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = cli lwtcp .
+SUBDIRS = tvns cli lwtcp . 
 CFLAGS= $(WTCF)  -Wall -D_GNU_SOURCE -I lwtcp -I cli -D_LINUX_ $(DEBUG_C_FLAGS) $(CPU_C_FLAGS)
 CXXFLAGS= $(CFLAGS) -DCPP 
 LDFLAGS= $(WTLF) $(DEBUG_C_FLAGS) -lpthread #-z muldefs
@@ -37,3 +37,4 @@ bin_PROGRAMS=sr
 sr_SOURCES=$(WTSRCS) $(SR_SRCS_MAIN) $(SR_SRCS_BASE)
 sr_LDADD=$(WTLIBS) cli/libcli.a lwtcp/liblwtcp.a libsr.a
 
+EXTRA_DIST=start_sr.sh kill_sr.sh  RCP/RCPClient.py
