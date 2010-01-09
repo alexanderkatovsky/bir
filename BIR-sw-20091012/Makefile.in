@@ -252,7 +252,7 @@ lib_LIBRARIES = libsr.a
 libsr_a_SOURCES = $(SR_SRCS)
 sr_SOURCES = $(WTSRCS) $(SR_SRCS_MAIN) $(SR_SRCS_BASE)
 sr_LDADD = $(WTLIBS) cli/libcli.a lwtcp/liblwtcp.a libsr.a
-EXTRA_DIST = start_sr.sh kill_sr.sh  RCP/RCPClient.py design
+EXTRA_DIST = start_sr.sh kill_sr.sh  RCP/RCPClient.py design rtable.EMPTY
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 

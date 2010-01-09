@@ -23,7 +23,7 @@ sr-1.0#        python RCP/RCPClient.py 3333
 === DHCP ===
 
 The router functions as a very basic DHCP server.  For example, 
-sr-1.0/tvns#   sudo python VNS.py tunnel.top
+sr-1.0/tvns#   sudo python VNS.py tunnelr.top
 sr-1.0#        ./sr -r rtable.EMPTY -s localhost -v r1 --dhcp eth0,192.168.0.10,192.168.0.20 --show_dhcp
 ~#             ifconfig t1
 ~#             sudo dhclient t1
